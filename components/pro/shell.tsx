@@ -18,6 +18,10 @@ const LINKS = [
   { href: '/pro/manifest', label: 'Manifest' },
   { href: '/pro/alerts', label: 'Alerts' },
   { href: '/pro/brief', label: 'Brief' },
+  { href: '/pro/vehicles', label: 'Vehicles' },
+  { href: '/pro/filings', label: 'Filings' },
+  { href: '/pro/slips', label: 'Slips' },
+  { href: '/pro/digest', label: 'Digest' },
 ]
 
 export function ProShell({ children, level, email }: { children: ReactNode; level: AccessLevel; email: string | null }) {

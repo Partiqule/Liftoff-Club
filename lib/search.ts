@@ -29,6 +29,7 @@ export function searchAll(query: string, launches: Launch[]): SearchHit[] {
     }
     if (launch.provider.companyId && launch.provider.name.toLowerCase().includes(text)) {
       hits.push({ kind: 'company', title: launch.provider.name, href: `/companies/${launch.provider.companyId}`, detail: 'On the board' })
+      hits.push({ kind: 'company', title: `${launch.provider.name} timeline`, href: `/pro/company/${launch.provider.companyId}`, detail: 'Pro' })
     }
   }
   for (const term of GLOSSARY) {
