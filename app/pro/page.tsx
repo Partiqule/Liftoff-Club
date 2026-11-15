@@ -19,7 +19,7 @@ export default async function ProHome() {
       <p className="kicker">Industry desk</p>
       <h1>{PRO_COPY.title}</h1>
       <p className="lede">{PRO_COPY.lede}</p>
-      <p className="meta">{PRO_COPY.pricing}</p>
+      <p className="meta">{PRO_COPY.offer}</p>
       <div className="pro-personas">
         <section className="pro-card">
           <h2>{PRO_COPY.companyTitle}</h2>
@@ -58,7 +58,7 @@ export default async function ProHome() {
       </p>
       <h2>{PRO_COPY.accessTitle}</h2>
       <p>{PRO_COPY.accessBody}</p>
-      <p className="meta">{PRO_COPY.pricing}</p>
+      <p className="meta">{PRO_COPY.offer}</p>
       <AccessForm />
       <p className="note">{PRO_COPY.savedBody}</p>
     </main>

@@ -1,5 +1,10 @@
 import type { Place } from '@/lib/types'
 
+/**
+ * Open-Meteo free API is not for commercial use.
+ * A paid plan is required before Pro ever charges.
+ */
+
 /** Home town for first paint, before a saved place or a tap on Use my location. */
 export const CENTENNIAL: Place = {
   label: 'Centennial, Colorado',
