@@ -23,6 +23,6 @@ export const PRO_COPY = {
     'Saved target accounts, constellations, rockets, and launch sites in this browser.',
   ],
   accessTitle: 'Request early access',
-  accessBody: 'Nothing on this form is saved on a server. Your mail app opens with the note, and you choose who receives it.',
+  accessBody: 'Leave your name, work email, company, and role. The note is saved so we can reply. Nothing here is a payment.',
   savedBody: 'Saved targets and alert rules stay in this browser. A later version can move them to an account. This pilot does not.',
 } as const
