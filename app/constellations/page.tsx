@@ -44,12 +44,16 @@ function Counts({ counts }: { counts: ConstellationCounts | null }) {
   if (!counts) return <p className="note">The catalog did not answer, so the live count is blank.</p>
   return (
     <dl className="plate">
-      <dt>Launched</dt>
-      <dd>{formatCount(counts.launched)}</dd>
       <dt>In orbit</dt>
       <dd>{formatCount(counts.inOrbit)}</dd>
-      <dt>Launches this year</dt>
-      <dd>{formatCount(counts.launchesThisYear)}</dd>
+      {counts.launched !== counts.inOrbit ? (
+        <>
+          <dt>Launched</dt>
+          <dd>{formatCount(counts.launched)}</dd>
+        </>
+      ) : null}
+      <dt>This year</dt>
+      <dd>{formatCount(counts.launchesThisYear)} launches</dd>
     </dl>
   )
 }
@@ -63,7 +67,7 @@ export default async function ConstellationsPage() {
       <h1>Constellations</h1>
       <p className="lede when-kid">How many satellites are up, and what they do. A plan number is shown only when a company or a government wrote it down.</p>
       <p className="lede when-adult">
-        In orbit, launched, and launches this year come from the CelesTrak catalog. A stated size or capacity is shown only with a source and a date. If we do not have one, the line stays blank.
+        In orbit and launches this year come from the CelesTrak catalog. A stated size or capacity is shown only with a source and a date. If we do not have one, the line stays blank.
       </p>
       {cards.map((card) => (
         <section key={card.profile.id}>
@@ -98,7 +102,9 @@ export default async function ConstellationsPage() {
           </div>
         </section>
       ))}
-      <p className="note">Catalog counts can include spares and can lag a new launch by a day or two. They are not a promise of how many are working.</p>
+      <p className="note">
+        The catalog group lists satellites it still tracks. It does not add back ones that have already come down, so a separate launched total appears only when the file includes them. Counts can include spares and can lag a new launch by a day or two.
+      </p>
     </main>
   )
 }

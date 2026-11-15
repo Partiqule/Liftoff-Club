@@ -48,12 +48,12 @@ export default async function LaunchPage({ params }: { params: Promise<{ id: str
         {launch.provider.name} · {launch.padLocation ?? launch.padName}
       </p>
       <div className="detail-top">
+        <RocketFigure rocketName={launch.rocketName} />
         <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
           <Patch provider={launch.provider.name} rocket={launch.rocketName} />
           <StatusStamp abbrev={launch.statusAbbrev} name={launch.statusName} />
         </div>
         <h1>{launch.name}</h1>
-        <RocketFigure rocketName={launch.rocketName} />
         <AiOrbit notes={aiNotes} />
         <Countdown net={launch.net} size="lg" />
         <p className="day-link">

@@ -302,10 +302,10 @@ dialog.term-card .kicker { font-size: 0.95rem; margin: 0; }
 .trail { width: 7.5rem; height: auto; display: block; }
 .trail-hero {
   position: absolute;
-  left: -22%;
-  top: 1.5rem;
-  width: 148%;
-  height: auto;
+  left: -4%;
+  top: 0;
+  width: 112%;
+  height: 34%;
   pointer-events: none;
 }
 .tonight::before {
@@ -389,7 +389,7 @@ dialog.term-card .kicker { font-size: 0.95rem; margin: 0; }
 .detail-grid { display: grid; gap: 2rem; }
 .plate {
   display: grid;
-  grid-template-columns: 7rem 1fr;
+  grid-template-columns: 9.5rem 1fr;
   gap: 0.45rem 0.8rem;
   margin: 0.8rem 0 0;
   color: var(--cold);
