@@ -8,6 +8,7 @@ import { CalendarLinks } from '@/components/calendar-links'
 import { Countdown } from '@/components/countdown'
 import { JobsCorner } from '@/components/jobs'
 import { LocalTime } from '@/components/local-time'
+import { LaunchRemind } from '@/components/launch-remind'
 import { RocketFigure } from '@/components/rocket-figure'
 import { StatusStamp } from '@/components/status-stamp'
 import { VisibilityCard } from '@/components/visibility-card'
@@ -57,6 +58,7 @@ export default async function LaunchPage({ params }: { params: Promise<{ id: str
             Launch day mode
           </Link>
         </p>
+        <LaunchRemind launchId={launch.id} />
         <p className="meta">
           <LocalTime iso={launch.net} />
           {launch.windowEnd ? (
