@@ -6,12 +6,13 @@ These principles govern color, type, motion, and components. If a new screen nee
 
 ## 1. One voice
 
-Two faces, one job each, and no third voice.
+Three faces, one job each.
 
-- **Gloock** is the display face for the wordmark, headlines, and the launch day clock. It is a high contrast serif drawn by Duarte Constante. Copyright 2022 The Gloock Project Authors. Licensed under the SIL Open Font License 1.1. We self host the Latin files from the Fontsource package `@fontsource/gloock`, which ships that same OFL license.
-- **Inclusive Sans** is the reading face for stories, lists, and controls. It is drawn by Olivia King for long reading and for readers who need clear letter shapes. Copyright 2024 The Inclusive Sans Project Authors. Licensed under the SIL Open Font License 1.1. We self host the Latin 400 and 500 files from `@fontsource/inclusive-sans`.
+- **Gloock** is the display face for the wordmark and headlines. It is a high contrast serif drawn by Duarte Constante. Copyright 2022 The Gloock Project Authors. Licensed under the SIL Open Font License 1.1. We self host the Latin files from `@fontsource/gloock`.
+- **Inclusive Sans** is the reading face for stories, lists, and controls. It is drawn by Olivia King. Copyright 2024 The Inclusive Sans Project Authors. Licensed under the SIL Open Font License 1.1. We self host the Latin 400 and 500 files from `@fontsource/inclusive-sans`.
+- **Barlow** is the data face for small labels, timestamps, and figures. It is drawn by Jeremy Tribby. Copyright 2017 The Barlow Project Authors. Licensed under the SIL Open Font License 1.1. We self host the Latin 300 and 400 files from `@fontsource/barlow`. Labels are small, uppercase, and widely spaced. Figures are light, with tabular numerals and a small unit.
 
-Neither face is a default interface font. We do not mix in a monospace, a script, or a third family.
+We do not mix in a monospace, a script, or another family.
 
 Actions are words with a trail under them. They are not filled buttons, pills, stamps, or tickets. If two elements do different jobs, they differ by brightness and size, not by a new shape.
 

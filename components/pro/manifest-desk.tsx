@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { FigureLine } from '@/components/pro/figure-line'
 import { useMemo, useState } from 'react'
 import { filterManifest, manifestCsv, manifestFacts } from '@/lib/pro/manifest-intel'
 import { formatMountain } from '@/lib/pro/time'
@@ -77,7 +78,7 @@ export function ManifestDesk({
             <h2>
               <Link href={`/launches/${launch.id}`}>{launch.name}</Link>
             </h2>
-            <p className="meta">
+            <p className="pro-time">
               {formatMountain(launch.net)} · {launch.rocketName}
             </p>
             <dl className="pro-facts">
@@ -85,7 +86,7 @@ export function ManifestDesk({
                 <div key={fact.label}>
                   <dt>{fact.label}</dt>
                   <dd>
-                    {fact.text}
+                    <FigureLine text={fact.text} />
                     {fact.sourceUrl && fact.asOf ? (
                       <>
                         {' '}
