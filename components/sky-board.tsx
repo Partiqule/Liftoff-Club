@@ -4,6 +4,8 @@ import { useClub } from '@/components/club-provider'
 import { LocationEditor } from '@/components/location-editor'
 import { compass8, heightPhrase } from '@/lib/geo'
 import { bestPasses, planForPass } from '@/lib/planner'
+import { Jellyfish } from '@/components/jellyfish'
+import { Trail } from '@/components/trail'
 import { formatClock } from '@/lib/time'
 import { skyAt } from '@/lib/weather'
 
@@ -31,6 +33,7 @@ export function SkyBoard() {
   if (skyState === 'loading' || skyState === 'idle') {
     return (
       <section className="wrap page" aria-busy="true">
+        <Jellyfish size="load" />
         <p className="kicker">{place.label}</p>
         <h1>Plotting passes.</h1>
         <p className="lede">Station first, then a sample of Starlink. We do not propagate every satellite in the constellation.</p>
@@ -52,7 +55,7 @@ export function SkyBoard() {
   return (
     <section className="wrap page">
       <p className="kicker">{place.label}</p>
-      <h1>What walks over.</h1>
+      <h1>What crosses the sky.</h1>
       <p className="lede when-kid">
         The space station is the bright one. Starlink satellites are usually dim dots. Give your eyes a minute in the dark.
       </p>
@@ -94,9 +97,11 @@ function PassList({
         const clock = formatClock(pass.start, timeZone)
         const plan = planForPass(pass, place, clock)
         const judgement = skyAt(weather, pass.peak)
+        const glow = judgement.call === 'nogo' || pass.grade === 'poor' ? 'fade' : pass.grade === 'great' || pass.grade === 'good' ? 'strong' : 'mid'
         return (
-          <li className="pass" key={pass.id}>
+          <li className={`pass light-${glow}`} key={pass.id}>
             <div>
+              <Trail glow={glow} />
               <div className="pass-time">{clock}</div>
               <div className="meta">{Math.round(pass.durationSec / 60)} min</div>
             </div>
@@ -126,10 +131,8 @@ function PassList({
               </details>
             </div>
             <div>
-              <span className={`stamp stamp-${pass.grade}`}>{pass.gradeLabel}</span>
-              <div style={{ marginTop: '0.4rem' }}>
-                <span className={`pill pill-${judgement.call}`}>{judgement.label}</span>
-              </div>
+              <span>{pass.gradeLabel}</span>
+              <div className="meta">{judgement.label}</div>
             </div>
           </li>
         )

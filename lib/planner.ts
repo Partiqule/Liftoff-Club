@@ -54,7 +54,7 @@ export function gradePass(input: {
     return {
       grade: 'great',
       gradeLabel: 'Easy to see',
-      gradeReason: `A high pass in a dark sky. It looks like a bright star that walks and does not blink.${fade}`,
+      gradeReason: `A high pass in a dark sky. It looks like a bright star that glides and does not blink.${fade}`,
     }
   }
   if (dark && high >= 20) {
@@ -100,7 +100,7 @@ export function planForPass(pass: SkyPass, place: string, clock: string): Family
       pass.kind === 'iss' ? 'No binoculars needed. It is brighter than most stars.' : 'Patience. Starlink is a faint steady dot.',
     ],
     kid: pass.kind === 'iss'
-      ? `${who[0].toUpperCase()}${who.slice(1)} will look like a bright star walking ${direction}. It does not blink. Planes blink.`
+      ? `${who[0].toUpperCase()}${who.slice(1)} will look like a bright star gliding ${direction}. It does not blink. Planes blink.`
       : `${pass.name} is a dim dot that moves in a straight line. If it blinks, it is probably a plane.`,
     adult: `${pass.gradeReason} Rise azimuth is about ${Math.round(pass.riseAzimuth)}°. Highest elevation is about ${Math.round(pass.maxElevation)}°. Times can be off by a couple of minutes.`,
   }

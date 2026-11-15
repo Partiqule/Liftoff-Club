@@ -22,7 +22,7 @@ export function Header() {
         Skip to content
       </a>
       <header className="topbar">
-        <div className="wrap" style={{ display: 'flex', alignItems: 'center', gap: '1rem', width: 'min(1080px, 100%)' }}>
+        <div className="wrap topbar-inner">
           <Link className="brand" href="/">
             <Logo />
             <Wordmark />

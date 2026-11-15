@@ -14,7 +14,7 @@ export function formatWhen(iso: string, timeZone?: string, locale = 'en-US'): st
 
 export function formatClock(iso: string, timeZone?: string, locale = 'en-US'): string {
   const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return '—'
+  if (Number.isNaN(date.getTime())) return 'Not set'
   return new Intl.DateTimeFormat(locale, {
     timeZone: timeZone || 'UTC',
     hour: 'numeric',

@@ -12,7 +12,7 @@ export function SettingsPanel({ providers }: { providers: string[] }) {
       <section>
         <p className="kicker">Reading voice</p>
         <h2>Kids mode is the default</h2>
-        <p className="lede">Plain words for a seven-year-old. Turn it off when you want the fuller account. There are no kid accounts and no grown-up accounts.</p>
+        <p className="lede">Plain words for a seven year old. Turn it off when you want the fuller account. There are no kid accounts and no grown up accounts.</p>
         <button
           className="switch"
           type="button"

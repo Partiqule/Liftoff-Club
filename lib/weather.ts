@@ -31,7 +31,7 @@ export function judgeSky(input: { cloud: number | null; precip: number | null; c
   if (fog || falling || precip >= 60 || cloud >= 85) {
     return {
       call: 'nogo',
-      label: 'No-go',
+      label: 'No go',
       reason: fog
         ? 'Fog is in the forecast. A bright satellite will not show through it.'
         : 'Clouds or rain are likely to hide the sky.',

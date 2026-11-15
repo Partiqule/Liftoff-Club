@@ -113,18 +113,9 @@ Please keep these credits if you fork the app.
 
 Photos are not embedded. Webcasts and official pages are linked out.
 
-## Design system
+## Design
 
-| Token | Use |
-| --- | --- |
-| `#081018` | Night page |
-| `#f4ecdc` | Parchment text |
-| `#ff7a3c` | The only signal color |
-| Fraunces | Stories, headlines, the wordmark |
-| Atkinson Hyperlegible | UI copy a child can read |
-| IBM Plex Mono | Clocks, stamps, labels |
-
-Buttons are letterpress, not pills. Launches are flight strips, not a card grid. Calendar actions are ticket stubs. Motion is a blink on the launch-day colon and nothing that carries information by itself. `prefers-reduced-motion` turns that off.
+The look is one system: a deep field, a launch trail, and a twilight plume. Principles, including the self hosted typefaces and their licenses, live in [docs/DESIGN.md](docs/DESIGN.md).
 
 Company pages live at `/companies` and `/companies/[slug]`. A slug is the company id (`spacex`, `united-launch-alliance`). “ULA” and “United Launch Alliance” are the same id. Starlink is a payload name on SpaceX, not a second company. Pages are public and unclaimed: `claimedBy` is always null. There is no company login. Vercel Web Analytics, if you turn it on, counts page views in aggregate and the app strips query strings first. It does not keep a profile of who looked.
 

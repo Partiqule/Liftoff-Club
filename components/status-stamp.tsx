@@ -10,8 +10,8 @@ export function stampTone(abbrev: string, name: string): 'go' | 'wait' | 'fly' |
 export function StatusStamp({ abbrev, name }: { abbrev: string; name: string }) {
   const tone = stampTone(abbrev, name)
   return (
-    <span className={`stamp stamp-${tone}`} title={name}>
-      {abbrev || name}
+    <span className={`light light-${tone === 'go' || tone === 'fly' ? 'strong' : tone === 'bad' ? 'fade' : 'mid'}`} title={name}>
+      {name}
     </span>
   )
 }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Countdown } from '@/components/countdown'
+import { Jellyfish } from '@/components/jellyfish'
 import { Logo } from '@/components/logo'
 import { stageScript } from '@/lib/stages'
 import type { Launch } from '@/lib/types'
@@ -24,6 +25,18 @@ export function LaunchDayScreen({ launch }: { launch: Launch }) {
 
   return (
     <section className="day-screen">
+      <Jellyfish size="day" />
+      <svg className="day-arc" viewBox="0 0 1000 640" preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+          <linearGradient id="dayglow" x1="0" y1="1" x2="1" y2="0">
+            <stop offset="0" stopColor="#6d628c" stopOpacity="0" />
+            <stop offset="0.45" stopColor="#c5d2e2" stopOpacity="0.7" />
+            <stop offset="1" stopColor="#f3d7b0" />
+          </linearGradient>
+        </defs>
+        <path d="M30 560C280 560 460 80 970 120" />
+        <circle cx="970" cy="120" r="5" fill="#f3d7b0" />
+      </svg>
       <div className="day-top">
         <Link className="brand" href={`/launches/${launch.id}`}>
           <Logo size={48} />
@@ -78,16 +91,16 @@ export function LaunchDayScreen({ launch }: { launch: Launch }) {
 }
 
 function formatOffset(seconds: number): string {
-  const sign = seconds < 0 ? 'T−' : seconds > 0 ? 'T+' : 'T'
   const abs = Math.abs(Math.round(seconds))
   const minutes = Math.floor(abs / 60)
   const remain = abs % 60
+  const relation = seconds < 0 ? 'before' : seconds > 0 ? 'after' : 'liftoff'
+  let span = `${remain}s`
   if (minutes >= 60) {
     const hours = Math.floor(minutes / 60)
     const mins = minutes % 60
-    return `${sign}${hours}h${String(mins).padStart(2, '0')}m`
-  }
-  if (minutes > 0 && remain === 0) return `${sign}${minutes}m`
-  if (minutes > 0) return `${sign}${minutes}m${String(remain).padStart(2, '0')}s`
-  return `${sign}${remain}s`
+    span = mins ? `${hours}h ${mins}m` : `${hours}h`
+  } else if (minutes > 0 && remain === 0) span = `${minutes}m`
+  else if (minutes > 0) span = `${minutes}m ${remain}s`
+  return relation === 'liftoff' ? 'Liftoff' : `${span} ${relation}`
 }

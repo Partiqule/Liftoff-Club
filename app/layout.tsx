@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next'
 import type { ReactNode } from 'react'
-import { Atkinson_Hyperlegible, Fraunces, IBM_Plex_Mono } from 'next/font/google'
+import '@fontsource/gloock/latin-400.css'
+import '@fontsource/inclusive-sans/latin-400.css'
+import '@fontsource/inclusive-sans/latin-500.css'
 import Script from 'next/script'
 import { ClubAnalytics } from '@/components/analytics'
 import { ClubProvider } from '@/components/club-provider'
@@ -11,27 +13,6 @@ import { toBrief } from '@/lib/schedule'
 import { siteUrl } from '@/lib/site'
 import './globals.css'
 
-const display = Fraunces({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-fraunces',
-  style: ['normal', 'italic'],
-})
-
-const body = Atkinson_Hyperlegible({
-  subsets: ['latin'],
-  weight: ['400', '700'],
-  display: 'swap',
-  variable: '--font-atkinson',
-})
-
-const mono = IBM_Plex_Mono({
-  subsets: ['latin'],
-  weight: ['400', '500'],
-  display: 'swap',
-  variable: '--font-plex',
-})
-
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl()),
   title: { default: 'Liftoff Club', template: '%s · Liftoff Club' },
@@ -41,13 +22,13 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: 'Liftoff Club', statusBarStyle: 'black-translucent' },
   openGraph: {
     title: 'Liftoff Club',
-    description: 'Watch the launch board, then step outside if the station is walking over your town.',
+    description: 'Watch the launch board, then step outside if the station is crossing your town.',
     type: 'website',
   },
 }
 
 export const viewport: Viewport = {
-  themeColor: '#081018',
+  themeColor: '#07060f',
   colorScheme: 'dark',
   width: 'device-width',
   initialScale: 1,
@@ -59,8 +40,14 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const board = await getLaunches()
   const briefs = board.launches.map(toBrief)
   return (
-    <html lang="en" className={`${display.variable} ${body.variable} ${mono.variable}`} suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <body>
+        <div className="galaxy" aria-hidden="true">
+          <div className="field-nebula" />
+          <div className="field-stars field-stars-far" />
+          <div className="field-stars field-stars-mid" />
+          <div className="field-stars field-stars-near" />
+        </div>
         <Script id="liftoff-voice" strategy="beforeInteractive">
           {`try{var s=JSON.parse(localStorage.getItem('liftoff-club-v1')||'{}');document.documentElement.dataset.voice=s.kidsMode===false?'adult':'kid';}catch(e){document.documentElement.dataset.voice='kid';}`}
         </Script>
