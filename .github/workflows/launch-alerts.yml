@@ -5,18 +5,24 @@ on:
     - cron: '*/10 * * * *'
   workflow_dispatch:
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
       - name: Ask the live site to send due alerts
-        env:
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          if [ -z "$CRON_SECRET" ]; then
-            echo "Add CRON_SECRET under GitHub Settings, Secrets and variables, Actions. Use the same value as the Vercel env var."
+          token="$(curl --fail --silent --show-error \
+            --header "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https://liftoffclub.app" \
+            | jq --raw-output '.value')"
+          if [ -z "$token" ] || [ "$token" = "null" ]; then
+            echo "GitHub did not issue an OIDC token."
             exit 1
           fi
           curl --fail-with-body --silent --show-error --max-time 60 \
-            -H "Authorization: Bearer ${CRON_SECRET}" \
+            --header "Authorization: Bearer ${token}" \
             "https://liftoffclub.app/api/push/cron"
