@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from 'react'
 import { accessMailto, accessNote, type AccessDesk } from '@/lib/pro/access'
+import { track } from '@/lib/track'
 
 export function AccessForm() {
   const [name, setName] = useState('')
@@ -16,6 +17,7 @@ export function AccessForm() {
     const input = { name, email, organization, desk, note }
     const text = accessNote(input)
     setReady(text)
+    track('pro_signup_submitted')
     window.location.href = accessMailto(input)
   }
 
