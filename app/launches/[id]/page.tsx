@@ -8,12 +8,14 @@ import { CalendarLinks } from '@/components/calendar-links'
 import { Countdown } from '@/components/countdown'
 import { JobsCorner } from '@/components/jobs'
 import { LocalTime } from '@/components/local-time'
+import { RocketFigure } from '@/components/rocket-figure'
 import { Patch } from '@/components/patch'
 import { StatusStamp } from '@/components/status-stamp'
 import { VisibilityCard } from '@/components/visibility-card'
 import { aiNotesForLaunch } from '@/lib/ai-orbit'
 import { explainLaunch } from '@/lib/explain'
 import { getLaunch, getLaunches } from '@/lib/launches'
+import { rocketId } from '@/lib/rocket-photos'
 import { siteUrl } from '@/lib/site'
 
 export const revalidate = 3600
@@ -51,6 +53,7 @@ export default async function LaunchPage({ params }: { params: Promise<{ id: str
           <StatusStamp abbrev={launch.statusAbbrev} name={launch.statusName} />
         </div>
         <h1>{launch.name}</h1>
+        <RocketFigure rocketName={launch.rocketName} />
         <AiOrbit notes={aiNotes} />
         <Countdown net={launch.net} size="lg" />
         <p className="day-link">
@@ -89,7 +92,9 @@ export default async function LaunchPage({ params }: { params: Promise<{ id: str
           <p className="kicker">Flight plate</p>
           <dl className="plate">
             <dt>Rocket</dt>
-            <dd>{launch.rocketName}</dd>
+            <dd>
+              <Link href={`/rockets/${rocketId(launch.rocketName)}`}>{launch.rocketName}</Link>
+            </dd>
             <dt>Pad</dt>
             <dd>{launch.padName}</dd>
             <dt>Orbit</dt>

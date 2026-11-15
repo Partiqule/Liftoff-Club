@@ -65,6 +65,9 @@ After deploy, subscribe to `https://your-site/calendar/feed.ics` from the launch
 - Follow a company on its public page. The list of who is flying what stays in this browser.
 - “Ask about this launch” on the grown-up page. Answers come only from that launch’s listing. A model is used only if `EXPLAINER_API_KEY` is set, and the reply is cached. With no key, the answer is read from the record.
 - Space words. Calls such as Max Q, MECO, SECO, fairing separation, scrub, T minus, LEO, GEO, SSO, RTLS, and droneship are tappable on a launch, its timeline, and launch day. The card has a grown up line and a kids line. Words you open are saved in this browser, and the full list is at `/glossary`.
+- Constellations at `/constellations`. How many satellites are in orbit is counted from CelesTrak. A stated size or capacity appears only with a source and a date. Otherwise the line says no public figure yet.
+- An “AI in orbit” line on a launch or a company only when a public source says that mission runs a model on the spacecraft.
+- Rocket photos on launch pages and at `/rockets`. Only public domain, CC0, CC BY, and CC BY-SA. Each picture has the author, the license, and a source link. Rockets without one of those licenses get a drawn fallback.
 - A payload and customer list (“space jobs corner”) with a short brief and a careers link when we actually have one.
 - A saved town or device location. It never leaves the browser for an account, because there isn’t one.
 - Tonight’s International Space Station passes, plus a small sample of Starlink passes: direction, time, how high, and an honest grade.

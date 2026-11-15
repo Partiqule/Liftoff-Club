@@ -394,6 +394,18 @@ dialog.term-card .kicker { font-size: 0.95rem; margin: 0; }
   margin: 0.8rem 0 0;
   color: var(--cold);
 }
+.rocket-figure { margin: 1.1rem 0 0.4rem; }
+.rocket-figure img { width: min(100%, 42rem); max-height: 28rem; object-fit: cover; display: block; background: var(--void); }
+.rocket-fallback {
+  width: min(100%, 42rem);
+  min-height: 11rem;
+  display: flex;
+  align-items: flex-end;
+  padding: 1rem 1rem 0.4rem;
+  background:
+    radial-gradient(circle at 78% 18%, rgba(109, 98, 140, 0.42), transparent 58%),
+    var(--void);
+}
 .capacity-line { height: 2px; background: rgba(197, 210, 226, 0.22); margin: 0.55rem 0 0.35rem; }
 .capacity-line span { display: block; height: 100%; background: linear-gradient(90deg, transparent, var(--core)); box-shadow: 0 0 10px rgba(243, 215, 176, 0.75); }
 .plate dt { color: var(--nebula); }
