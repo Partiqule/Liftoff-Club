@@ -66,15 +66,19 @@ function MissionView({ launch, asOf, onFamily }: { launch: Launch; asOf: string 
   const operators = [...new Set(payloads.map((item) => item.company).filter(Boolean))].join(', ')
 
   return (
-    <section className="mission-screen">
+    <main className="mission-screen">
       <div className="mission-top">
         <Link className="brand" href={`/launches/${launch.id}`}>
           <Logo />
           <span className="meta">Back</span>
         </Link>
         <div className="mission-clock-block">
-          <p className="kicker">{phase}</p>
-          <p className="mission-clock">{clock}</p>
+          <p className="kicker" suppressHydrationWarning>
+            {phase}
+          </p>
+          <p className="mission-clock" suppressHydrationWarning>
+            {clock}
+          </p>
           <p className="pro-time">{launch.net ? formatMountain(launch.net) : 'Time not set'}</p>
         </div>
         <button className="btn mission-switch" type="button" onClick={onFamily}>
@@ -152,7 +156,7 @@ function MissionView({ launch, asOf, onFamily }: { launch: Launch; asOf: string 
           })}
         </ol>
       </div>
-    </section>
+    </main>
   )
 }
 

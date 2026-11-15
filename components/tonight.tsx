@@ -29,13 +29,17 @@ export function Tonight() {
       <Trail glow={glow} span="hero" />
       <p className="kicker">Tonight over {town}</p>
       <p className="flourish">Ad astra</p>
+      <h1>
+        Tonight over {town}
+        {next ? <span className="when">{next.name}</span> : null}
+      </h1>
+      {who && direction && clock ? (
+        <p className="lede">
+          {who} {direction} at {clock}.
+        </p>
+      ) : null}
       {who && direction && clock ? (
         <>
-          <h1>
-            {who}
-            <span className="dir">{direction}</span>
-            <span className="when">at {clock}</span>
-          </h1>
           <p className="lede when-kid">
             {lead?.kind === 'iss'
               ? `It looks like a bright star that glides and does not blink. Highest point: ${heightPhrase(lead.maxElevation)}.`
@@ -47,16 +51,9 @@ export function Tonight() {
           </p>
         </>
       ) : skyState === 'error' ? (
-        <>
-          <h1>The launch board is ready.</h1>
-          <p className="lede">The sky chart is resting. The next rocket is still listed below.</p>
-        </>
+        <p className="lede">The sky chart is resting. The next rocket is still listed below.</p>
       ) : (
-        <div className="sky-skeleton" aria-hidden="true">
-          <span className="bone bone-title" />
-          <span className="bone" />
-          <span className="bone bone-short" />
-        </div>
+        <p className="lede">The sky chart is settling. The next rocket is already listed.</p>
       )}
       {next ? (
         <p className="hero-next">
