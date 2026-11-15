@@ -10,6 +10,9 @@ import { ClubAnalytics } from '@/components/analytics'
 import { ClubProvider } from '@/components/club-provider'
 import { Footer } from '@/components/footer'
 import { Header } from '@/components/header'
+import { NativeBridge } from '@/components/native-bridge'
+import { RememberSchedule } from '@/components/remember-schedule'
+import { iosSchedule } from '@/lib/ios/schedule'
 import { getLaunches } from '@/lib/launches'
 import { toBrief } from '@/lib/schedule'
 import { siteUrl } from '@/lib/site'
@@ -49,6 +52,7 @@ export const revalidate = 3600
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const board = await getLaunches()
   const briefs = board.launches.map(toBrief)
+  const schedule = iosSchedule(board.launches, siteUrl())
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
@@ -62,6 +66,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           {`try{var s=JSON.parse(localStorage.getItem('liftoff-club-v1')||'{}');document.documentElement.dataset.voice=s.kidsMode===false?'adult':'kid';document.documentElement.dataset.night=s.nightRed===true?'red':'sky';}catch(e){document.documentElement.dataset.voice='kid';document.documentElement.dataset.night='sky';}`}
         </Script>
         <ClubProvider briefs={briefs}>
+          <NativeBridge />
+          <RememberSchedule schedule={schedule} />
           <Header />
           {children}
           <Footer />

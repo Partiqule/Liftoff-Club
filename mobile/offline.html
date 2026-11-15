@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Offline · Liftoff Club</title>
+    <style>
+      body { margin: 0; background: #07060f; color: #f4efe4; font-family: Georgia, "Times New Roman", serif; }
+      main { padding: 2.5rem 1.4rem 4rem; max-width: 32rem; }
+      h1 { font-weight: 400; font-size: 2.2rem; }
+      p, li { font-family: "Avenir Next", "Segoe UI", sans-serif; line-height: 1.45; }
+      a { color: #d7c4a3; }
+      ul { padding-left: 1.1rem; }
+      .when { color: #b7c4d6; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p>No connection</p>
+      <h1>The sky is still there</h1>
+      <p>Live pages need a connection. This list is the last schedule saved on this phone. The home screen widget uses the same list.</p>
+      <ul id="list"></ul>
+      <p id="empty">No saved launch list yet. Open Liftoff Club once while you are online.</p>
+      <p><a href="https://liftoffclub.app/">Try the live site</a></p>
+    </main>
+    <script>
+      var list = document.getElementById('list')
+      var empty = document.getElementById('empty')
+      function show(payload) {
+        var launches = payload && payload.launches ? payload.launches : []
+        if (!launches.length) return
+        empty.hidden = true
+        launches.forEach(function (launch) {
+          var item = document.createElement('li')
+          var link = document.createElement('a')
+          link.href = launch.url || 'https://liftoffclub.app/'
+          link.textContent = launch.name || 'Launch'
+          item.appendChild(link)
+          var when = document.createElement('div')
+          when.className = 'when'
+          when.textContent = launch.whenLabel || 'Clock not set'
+          item.appendChild(when)
+          list.appendChild(item)
+        })
+      }
+      var bridge = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.LiftoffNative
+      if (bridge && bridge.getSchedule) {
+        bridge.getSchedule().then(function (result) {
+          try { show(JSON.parse(result.json || '{}')) } catch (error) { show(null) }
+        }).catch(function () { show(null) })
+      }
+    </script>
+  </body>
+</html>
