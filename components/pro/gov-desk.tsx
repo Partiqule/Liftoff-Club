@@ -1,26 +1,15 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { filterOpportunities, type Award, type Opportunity } from '@/lib/pro/gov'
+import { filterAwards, type Award } from '@/lib/pro/gov'
 
-export function GovDesk({
-  opportunities,
-  awards,
-  notice,
-  fetchedAt,
-}: {
-  opportunities: Opportunity[]
-  awards: Award[]
-  notice: string | null
-  fetchedAt: string
-}) {
+export function GovDesk({ awards, fetchedAt }: { awards: Award[]; fetchedAt: string }) {
   const [agency, setAgency] = useState('')
-  const [noticeType, setNoticeType] = useState('')
-  const [deadline, setDeadline] = useState('')
   const [keyword, setKeyword] = useState('')
-  const agencies = useMemo(() => [...new Set(opportunities.map((row) => row.agency))].sort(), [opportunities])
-  const types = useMemo(() => [...new Set(opportunities.map((row) => row.noticeType))].sort(), [opportunities])
-  const rows = filterOpportunities(opportunities, { agency, noticeType, deadline, keyword })
+  const [range, setRange] = useState<'' | '365' | '90'>('')
+  const [sort, setSort] = useState<'newest' | 'amount'>('newest')
+  const agencies = useMemo(() => [...new Set(awards.map((row) => row.agency))].sort(), [awards])
+  const rows = filterAwards(awards, { agency, keyword, range, sort })
 
   return (
     <>
@@ -35,68 +24,30 @@ export function GovDesk({
           </select>
         </label>
         <label>
-          Notice type
-          <select className="pro-select" value={noticeType} onChange={(event) => setNoticeType(event.target.value)}>
-            <option value="">All types</option>
-            {types.map((item) => (
-              <option key={item}>{item}</option>
-            ))}
+          When
+          <select className="pro-select" value={range} onChange={(event) => setRange(event.target.value as '' | '365' | '90')}>
+            <option value="">Past two years</option>
+            <option value="365">Past year</option>
+            <option value="90">Past 90 days</option>
           </select>
         </label>
         <label>
-          Deadline
-          <select className="pro-select" value={deadline} onChange={(event) => setDeadline(event.target.value)}>
-            <option value="">Any deadline</option>
-            <option value="open">Still open</option>
-            <option value="30">Due within 30 days</option>
+          Sort
+          <select className="pro-select" value={sort} onChange={(event) => setSort(event.target.value as 'newest' | 'amount')}>
+            <option value="newest">Newest first</option>
+            <option value="amount">Largest amount</option>
           </select>
         </label>
         <label>
           Keyword
-          <input className="field" value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="launch, satellite, ground station" />
+          <input className="field" value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="satellite, launch, recipient" />
         </label>
       </form>
-      {notice ? <p className="note">{notice}</p> : null}
-      <h2>Open notices</h2>
-      <p className="meta">SAM.gov. Posted dates without a clock stay as dates. Deadlines with a clock are Mountain Time. As of {fetchedAt.slice(0, 10)}.</p>
-      {rows.length === 0 ? <p className="lede">No public notice matches these filters.</p> : null}
+      <h2>Past awards</h2>
+      <p className="meta">USAspending.gov. Amounts are the published award amounts. Dates are the published start dates. As of {fetchedAt.slice(0, 10)}.</p>
+      {rows.length === 0 ? <p className="lede">No public award matches these filters.</p> : null}
       <ul className="pro-cards">
         {rows.map((row) => (
-          <li key={row.id} className="pro-card">
-            <p className="kicker">{row.noticeType}</p>
-            <h3>
-              <a href={row.url}>{row.title}</a>
-            </h3>
-            <dl className="pro-facts">
-              <div>
-                <dt>Agency</dt>
-                <dd>{row.agency}</dd>
-              </div>
-              <div>
-                <dt>Posted</dt>
-                <dd>{row.postedLabel}</dd>
-              </div>
-              <div>
-                <dt>Response deadline</dt>
-                <dd>{row.deadlineLabel}</dd>
-              </div>
-              <div>
-                <dt>Set aside</dt>
-                <dd>{row.setAside}</dd>
-              </div>
-              <div>
-                <dt>NAICS</dt>
-                <dd>{row.naics}</dd>
-              </div>
-            </dl>
-          </li>
-        ))}
-      </ul>
-      <h2>Recent awards</h2>
-      <p className="meta">USAspending.gov. Amounts are the published award amounts. Dates are the published start dates.</p>
-      {awards.length === 0 ? <p className="lede">No public award came back for these codes and agencies.</p> : null}
-      <ul className="pro-cards">
-        {awards.map((row) => (
           <li key={`${row.naics}-${row.id}`} className="pro-card">
             <h3>
               <a href={row.url}>{row.recipient}</a>

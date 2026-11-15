@@ -3,7 +3,7 @@ import { formatMountain } from '@/lib/pro/time'
 /**
  * Census NAICS 2022 titles.
  * 336414, 336415, and 336419 cover space vehicles and also guided missiles.
- * 541715 is broad research, so a notice in that code is kept only when the text matches a space keyword.
+ * 541715 is broad research, so an award in that code is kept only when the text matches a space keyword.
  */
 export const SPACE_NAICS = [
   { code: '336414', title: 'Guided Missile and Space Vehicle Manufacturing', keywordGate: false },
@@ -24,24 +24,12 @@ export const GOV_AGENCIES = [
   { tier: 'subtier' as const, name: 'National Reconnaissance Office' },
 ]
 
-export type Opportunity = {
-  id: string
-  title: string
-  agency: string
-  noticeType: string
-  posted: string
-  postedLabel: string
-  deadline: string | null
-  deadlineLabel: string
-  setAside: string
-  naics: string
-  url: string
-}
-
 export type Award = {
   id: string
   recipient: string
+  amount: number | null
   amountLabel: string
+  date: string
   dateLabel: string
   agency: string
   naics: string
@@ -53,7 +41,7 @@ export function matchesSpaceKeyword(text: string): boolean {
   return SPACE_KEYWORDS.some((word) => hay.includes(word))
 }
 
-export function keepOpportunity(naics: string, text: string): boolean {
+export function keepAwardText(naics: string, text: string): boolean {
   const code = SPACE_NAICS.find((item) => item.code === naics)
   if (!code) return false
   if (!code.keywordGate) return true
@@ -61,7 +49,7 @@ export function keepOpportunity(naics: string, text: string): boolean {
 }
 
 export function formatPublicWhen(value: string | null | undefined): string {
-  if (!value?.trim()) return 'No public deadline yet'
+  if (!value?.trim()) return 'No public date yet'
   const text = value.trim()
   if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
     const date = new Date(`${text}T12:00:00Z`)
@@ -71,39 +59,6 @@ export function formatPublicWhen(value: string | null | undefined): string {
   const parsed = Date.parse(text)
   if (!Number.isFinite(parsed)) return text
   return formatMountain(new Date(parsed).toISOString())
-}
-
-type SamRow = {
-  noticeId?: string
-  title?: string
-  fullParentPathName?: string
-  type?: string
-  postedDate?: string
-  responseDeadLine?: string
-  typeOfSetAsideDescription?: string
-  naicsCode?: string
-  uiLink?: string
-}
-
-export function fromSam(row: SamRow): Opportunity | null {
-  const naics = (row.naicsCode ?? '').replace(/\D/g, '').slice(0, 6)
-  const title = (row.title ?? '').trim()
-  const id = (row.noticeId ?? '').trim()
-  if (!id || !title || !keepOpportunity(naics, `${title} ${row.fullParentPathName ?? ''}`)) return null
-  const url = row.uiLink?.startsWith('https://') ? row.uiLink : `https://sam.gov/opp/${id}/view`
-  return {
-    id,
-    title,
-    agency: (row.fullParentPathName ?? '').split('.').pop()?.trim() || 'Agency not listed',
-    noticeType: (row.type ?? '').trim() || 'Notice',
-    posted: row.postedDate ?? '',
-    postedLabel: formatPublicWhen(row.postedDate),
-    deadline: row.responseDeadLine?.trim() || null,
-    deadlineLabel: formatPublicWhen(row.responseDeadLine),
-    setAside: (row.typeOfSetAsideDescription ?? '').trim() || 'No set aside listed',
-    naics,
-    url,
-  }
 }
 
 type AwardRow = {
@@ -119,16 +74,15 @@ type AwardRow = {
 export function fromAward(row: AwardRow, naics: string): Award | null {
   const id = (row['Award ID'] ?? '').trim()
   const recipient = (row['Recipient Name'] ?? '').trim()
-  if (!id || !recipient) return null
+  if (!id || !recipient || !keepAwardText(naics, `${recipient} ${row['Awarding Sub Agency'] ?? ''} ${row['Awarding Agency'] ?? ''}`)) return null
   const internal = row.generated_internal_id?.trim()
-  const amount = row['Award Amount']
+  const amount = typeof row['Award Amount'] === 'number' && Number.isFinite(row['Award Amount']) ? row['Award Amount'] : null
   return {
     id,
     recipient,
-    amountLabel:
-      typeof amount === 'number' && Number.isFinite(amount)
-        ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(amount)
-        : 'No public figure yet',
+    amount,
+    amountLabel: amount == null ? 'No public figure yet' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(amount),
+    date: row['Start Date'] ?? '',
     dateLabel: formatPublicWhen(row['Start Date']),
     agency: (row['Awarding Sub Agency'] || row['Awarding Agency'] || 'Agency not listed').trim(),
     naics,
@@ -136,26 +90,24 @@ export function fromAward(row: AwardRow, naics: string): Award | null {
   }
 }
 
-export function filterOpportunities(
-  rows: Opportunity[],
-  query: { agency?: string; noticeType?: string; deadline?: string; keyword?: string },
+export function filterAwards(
+  rows: Award[],
+  query: { agency?: string; keyword?: string; range?: '' | '365' | '90'; sort?: 'newest' | 'amount' },
   now = Date.now(),
-): Opportunity[] {
+): Award[] {
   const keyword = query.keyword?.trim().toLowerCase() ?? ''
-  return rows.filter((row) => {
+  const span = query.range === '90' ? 90 : query.range === '365' ? 365 : 0
+  const filtered = rows.filter((row) => {
     if (query.agency && row.agency !== query.agency) return false
-    if (query.noticeType && row.noticeType !== query.noticeType) return false
-    if (keyword && !`${row.title} ${row.agency} ${row.naics}`.toLowerCase().includes(keyword)) return false
-    if (query.deadline === 'open') {
-      if (!row.deadline) return true
-      const when = Date.parse(row.deadline)
-      return !Number.isFinite(when) || when >= now
-    }
-    if (query.deadline === '30') {
-      if (!row.deadline) return false
-      const when = Date.parse(row.deadline)
-      return Number.isFinite(when) && when >= now && when <= now + 30 * 24 * 60 * 60 * 1000
+    if (keyword && !`${row.recipient} ${row.agency} ${row.naics}`.toLowerCase().includes(keyword)) return false
+    if (span > 0) {
+      const when = Date.parse(row.date)
+      if (!Number.isFinite(when) || when < now - span * 24 * 60 * 60 * 1000) return false
     }
     return true
+  })
+  return filtered.sort((a, b) => {
+    if (query.sort === 'amount') return (b.amount ?? -1) - (a.amount ?? -1)
+    return (b.date || '').localeCompare(a.date || '')
   })
 }
