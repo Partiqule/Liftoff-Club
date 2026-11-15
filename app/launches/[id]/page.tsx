@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { AskLaunch } from '@/components/ask-launch'
 import { CalendarLinks } from '@/components/calendar-links'
 import { Countdown } from '@/components/countdown'
 import { JobsCorner } from '@/components/jobs'
@@ -110,6 +111,52 @@ export default async function LaunchPage({ params }: { params: Promise<{ id: str
           </dl>
           {launch.weatherConcerns ? <p className="note">{launch.weatherConcerns}</p> : null}
           {launch.landingDescription ? <p className="note">{launch.landingDescription}</p> : null}
+          <div className="when-adult">
+            <p className="kicker">The record</p>
+            <dl className="plate">
+              <dt>Destination</dt>
+              <dd>{launch.spacecraftDestination ?? 'Not listed'}</dd>
+              <dt>Customers</dt>
+              <dd>
+                {launch.manifest.filter((item) => item.role !== 'provider').map((item) => item.company).filter((name, index, all) => all.indexOf(name) === index).join(', ') ||
+                  'Not named'}
+              </dd>
+              {launch.boosterSerial ? (
+                <>
+                  <dt>History</dt>
+                  <dd>
+                    {[
+                      launch.boosterReused === true ? 'Flown before' : launch.boosterReused === false ? 'First flight' : null,
+                      launch.boosterCareerFlights ? `${launch.boosterCareerFlights} flights` : null,
+                      launch.boosterSuccessfulLandings != null ? `${launch.boosterSuccessfulLandings} landings` : null,
+                      launch.previousFlightName ? `Last: ${launch.previousFlightName}` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ') || 'No extra history'}
+                  </dd>
+                </>
+              ) : null}
+            </dl>
+            {launch.webcasts?.length ? (
+              <div className="tickets">
+                {launch.webcasts.map((video) => (
+                  <a key={video.url} className="ticket" href={video.url}>
+                    {video.title}
+                  </a>
+                ))}
+              </div>
+            ) : null}
+            <h2>Clock changes</h2>
+            {(launch.updates ?? []).length === 0 ? <p className="note">No public note of a scrub or delay.</p> : null}
+            <ul className="jobs">
+              {(launch.updates ?? []).map((update) => (
+                <li key={`${update.at ?? 'note'}-${update.text.slice(0, 24)}`}>
+                  <p>{update.text}</p>
+                  {update.at ? <p className="meta">{update.at}</p> : null}
+                </li>
+              ))}
+            </ul>
+          </div>
           <div className="tickets" style={{ marginTop: '1rem' }}>
             {launch.webcastUrl ? (
               <a className="ticket" href={launch.webcastUrl}>
@@ -125,6 +172,7 @@ export default async function LaunchPage({ params }: { params: Promise<{ id: str
         </aside>
       </div>
       <JobsCorner launch={launch} />
+      <AskLaunch launchId={launch.id} />
       <CalendarLinks launch={launch} baseUrl={siteUrl()} />
     </main>
   )

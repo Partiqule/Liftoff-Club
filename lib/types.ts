@@ -67,13 +67,20 @@ export type Launch = {
   statusDescription: string | null
   webcastUrl: string | null
   webcastTitle: string | null
+  webcasts: { title: string; url: string }[]
   infoUrl: string | null
   timeline: TimelineEvent[]
+  updates: { at: string | null; text: string }[]
   lastUpdated: string | null
   probability: number | null
   weatherConcerns: string | null
   boosterSerial: string | null
   boosterFlights: number | null
+  boosterReused: boolean | null
+  boosterCareerFlights: number | null
+  boosterSuccessfulLandings: number | null
+  boosterAttemptedLandings: number | null
+  previousFlightName: string | null
   landingDescription: string | null
   landingLocation: string | null
   spacecraftName: string | null
@@ -162,6 +169,12 @@ export type Place = {
   source: 'browser' | 'search'
 }
 
+export type AlertRules = {
+  starship: boolean
+  visibleFromHere: boolean
+  hourWithWeather: boolean
+}
+
 export type NotificationSettings = {
   enabled: boolean
   leadMinutes: 30 | 60 | 180
@@ -169,6 +182,7 @@ export type NotificationSettings = {
   providers: string[]
   visibleOnly: boolean
   includeSky: boolean
+  rules: AlertRules
 }
 
 export type Settings = {

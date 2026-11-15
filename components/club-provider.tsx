@@ -153,7 +153,7 @@ export function ClubProvider({ briefs, children }: { briefs: LaunchBrief[]; chil
     const tick = async () => {
       if (stopped) return
       const already = new Set(loadFired())
-      const due = dueAlerts({ now: Date.now(), settings, briefs, passes, already })
+      const due = dueAlerts({ now: Date.now(), settings, briefs, passes, already, weather })
       if (due.length === 0) return
       const registration = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : undefined
       for (const alert of due) {
@@ -176,7 +176,7 @@ export function ClubProvider({ briefs, children }: { briefs: LaunchBrief[]; chil
       stopped = true
       window.clearInterval(id)
     }
-  }, [hydrated, settings, briefs, passes])
+  }, [hydrated, settings, briefs, passes, weather])
 
   const updateSettings = useCallback((next: Settings | ((current: Settings) => Settings)) => {
     commitSettings(typeof next === 'function' ? next(readSettings()) : next)

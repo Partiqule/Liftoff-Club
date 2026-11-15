@@ -1,3 +1,4 @@
+import { FOLLOWS_KEY } from '@/lib/follows'
 import type { NotificationSettings, Place, Settings } from '@/lib/types'
 
 export const SETTINGS_KEY = 'liftoff-club-v1'
@@ -10,6 +11,7 @@ export const defaultNotifications: NotificationSettings = {
   providers: [],
   visibleOnly: false,
   includeSky: true,
+  rules: { starship: false, visibleFromHere: false, hourWithWeather: false },
 }
 
 export const defaultSettings: Settings = {
@@ -57,6 +59,11 @@ export function sanitizeSettings(value: unknown): Settings {
       providers: Array.isArray(notes.providers) ? notes.providers.filter((item) => typeof item === 'string').slice(0, 24) : [],
       visibleOnly: notes.visibleOnly === true,
       includeSky: notes.includeSky !== false,
+      rules: {
+        starship: notes.rules?.starship === true,
+        visibleFromHere: notes.rules?.visibleFromHere === true,
+        hourWithWeather: notes.rules?.hourWithWeather === true,
+      },
     },
   }
 }
@@ -97,4 +104,5 @@ export function clearClubStorage(): void {
   if (typeof window === 'undefined') return
   window.localStorage.removeItem(SETTINGS_KEY)
   window.localStorage.removeItem(FIRED_KEY)
+  window.localStorage.removeItem(FOLLOWS_KEY)
 }

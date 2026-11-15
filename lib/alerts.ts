@@ -1,6 +1,7 @@
 import { isQuietHour } from '@/lib/quiet'
 import type { AlertCandidate, LaunchBrief, Settings, SkyPass } from '@/lib/types'
 import { seeLaunch } from '@/lib/visibility'
+import { skyAt, type WeatherBundle } from '@/lib/weather'
 
 export function dueAlerts(input: {
   now: number
@@ -8,6 +9,7 @@ export function dueAlerts(input: {
   briefs: LaunchBrief[]
   passes: SkyPass[]
   already: Set<string>
+  weather?: WeatherBundle | null
 }): AlertCandidate[] {
   const notes = input.settings.notifications
   if (!notes.enabled) return []
@@ -25,28 +27,44 @@ export function dueAlerts(input: {
     const id = `launch:${launch.id}`
     if (input.already.has(id)) continue
     if (!providerAllowed(launch.providerName, notes)) continue
-    if (notes.visibleOnly && input.settings.location) {
-      const verdict = seeLaunch(
-        {
-          name: launch.name,
-          rocketName: launch.rocketName,
-          provider: { name: launch.providerName, abbrev: null, description: null, country: null, siteUrl: null, type: null, companyId: null },
-          padLat: launch.padLat,
-          padLon: launch.padLon,
-          padName: launch.padName,
-          precision: launch.precision,
-          net: launch.net,
-          windowEnd: launch.windowEnd,
-        },
-        input.settings.location,
-        new Date(when),
-      )
-      if (verdict.grade !== 'likely' && verdict.grade !== 'maybe') continue
-    }
+    const verdict = input.settings.location
+      ? seeLaunch(
+          {
+            name: launch.name,
+            rocketName: launch.rocketName,
+            provider: { name: launch.providerName, abbrev: null, description: null, country: null, siteUrl: null, type: null, companyId: null },
+            padLat: launch.padLat,
+            padLon: launch.padLon,
+            padName: launch.padName,
+            precision: launch.precision,
+            net: launch.net,
+            windowEnd: launch.windowEnd,
+          },
+          input.settings.location,
+          new Date(when),
+        )
+      : null
+    const visible = verdict?.grade === 'likely' || verdict?.grade === 'maybe'
+    if (notes.visibleOnly && input.settings.location && !visible) continue
+    const rules = notes.rules ?? { starship: false, visibleFromHere: false, hourWithWeather: false }
+    const rulesOn = rules.starship || rules.visibleFromHere || rules.hourWithWeather
+    const matched: string[] = []
+    if (rules.starship && /starship/i.test(`${launch.name} ${launch.rocketName}`)) matched.push('Starship')
+    if (rules.visibleFromHere && visible) matched.push('visible from here')
+    if (rules.hourWithWeather && delta <= 60 * 60 * 1000) matched.push('inside an hour')
+    if (rulesOn && matched.length === 0) continue
+    const weatherLine =
+      rules.hourWithWeather && input.weather && launch.net ? skyAt(input.weather, launch.net) : null
+    const body = [
+      matched.length ? `Rule: ${matched.join(', ')}.` : 'A launch on your list is inside the reminder window.',
+      weatherLine ? `Sky: ${weatherLine.label}. ${weatherLine.reason}` : null,
+    ]
+      .filter(Boolean)
+      .join(' ')
     alerts.push({
       id,
       title: `Soon: ${launch.name}`,
-      body: 'A launch on your list is inside the reminder window.',
+      body,
       url: `/launches/${launch.id}/day`,
       when,
     })

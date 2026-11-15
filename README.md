@@ -54,8 +54,12 @@ After deploy, subscribe to `https://your-site/calendar/feed.ics` from the launch
 ## What version 1 does
 
 - Upcoming launches worldwide, with the next SpaceX flight called out on the home page.
-- A launch page: plain-language story, flight plate, webcast, official page.
+- A launch page: plain-language story, flight plate, webcast, official page. Grown-up mode adds booster history, orbit and destination, customers, every webcast, and public notes about scrubs or delays when the listing has them.
 - Kids mode, on by default. The grown-up version is the same page with the fuller account.
+- Saved alert rules on this device: any Starship, anything we might see from here, and a one hour reminder that includes the sky call.
+- A daily and weekly brief on its own page. It is the same text a later email or text could send. Nothing is sent.
+- Follow a company on its public page. The list of who is flying what stays in this browser.
+- “Ask about this launch” on the grown-up page. Answers come only from that launch’s listing. A model is used only if `EXPLAINER_API_KEY` is set, and the reply is cached. With no key, the answer is read from the record.
 - A payload and customer list (“space jobs corner”) with a short brief and a careers link when we actually have one.
 - A saved town or device location. It never leaves the browser for an account, because there isn’t one.
 - Tonight’s International Space Station passes, plus a small sample of Starlink passes: direction, time, how high, and an honest grade.
@@ -69,7 +73,8 @@ After deploy, subscribe to `https://your-site/calendar/feed.ics` from the launch
 
 ## What is stubbed
 
-- **Model-written stories.** The seam is in `lib/explain.ts`. Set `EXPLAINER_API_KEY` and the server will call an OpenAI-compatible chat endpoint, cache the result, and fall back to the template if the call fails. Version 1 ships the template.
+- **Model-written stories and answers.** The seams are `lib/explain.ts` and `lib/ask.ts`. Set `EXPLAINER_API_KEY` and the server will call an OpenAI-compatible chat endpoint, cache the result, and fall back to the listing if the call fails. With no key, nothing is invented.
+- **Email or text briefs.** The brief page already builds the message (`lib/brief.ts`, channel `screen`). A sender for email or text is not connected.
 - **Push notifications when the phone is asleep.** The browser permission, filters, quiet hours, and a small service worker are in place. There is no push server, on purpose: that would be another account and another key.
 - **Higher Launch Library rate limits.** One cached request an hour is the design. A token is optional.
 

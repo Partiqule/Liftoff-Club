@@ -137,8 +137,24 @@ export function normalizeLaunch(value: unknown): Launch | null {
 
   const videos = Array.isArray(item.vid_urls) ? item.vid_urls : []
   const videoRecords = videos.map(record).filter((entry): entry is Record<string, unknown> => Boolean(entry))
+  const webcasts = videoRecords
+    .map((video) => {
+      const url = text(video.url)
+      if (!url) return null
+      return { title: text(video.title) ?? 'Webcast', url }
+    })
+    .filter((video): video is { title: string; url: string } => Boolean(video))
   const official = videoRecords.find((video) => /official/i.test(text(record(video.type)?.name) ?? ''))
   const video = official ?? videoRecords[0]
+  const updates = (Array.isArray(item.updates) ? item.updates : [])
+    .map((entry) => {
+      const update = record(entry)
+      const comment = text(update?.comment) ?? text(update?.description)
+      if (!comment) return null
+      return { at: text(update?.created_on) ?? text(update?.created_at), text: comment }
+    })
+    .filter((update): update is { at: string | null; text: string } => Boolean(update))
+    .slice(0, 8)
   const infos = Array.isArray(item.info_urls) ? item.info_urls : []
   const info = record(infos[0])
   const probability = numberish(item.probability)
@@ -168,13 +184,20 @@ export function normalizeLaunch(value: unknown): Launch | null {
     statusDescription: text(status?.description),
     webcastUrl: text(video?.url),
     webcastTitle: text(video?.title),
+    webcasts,
     infoUrl: text(info?.url),
     timeline: readTimeline(item.timeline),
+    updates,
     lastUpdated: text(item.last_updated),
     probability: probability != null && probability >= 0 && probability <= 100 ? probability : null,
     weatherConcerns: text(item.weather_concerns),
     boosterSerial: text(launcher?.serial_number),
     boosterFlights: numberish(booster?.launcher_flight_number),
+    boosterReused: typeof booster?.reused === 'boolean' ? booster.reused : null,
+    boosterCareerFlights: numberish(launcher?.flights),
+    boosterSuccessfulLandings: numberish(launcher?.successful_landings),
+    boosterAttemptedLandings: numberish(launcher?.attempted_landings),
+    previousFlightName: text(record(booster?.previous_flight)?.name),
     landingDescription: text(landing?.description),
     landingLocation: text(landingLocation?.name),
     spacecraftName: cleanCraft(spacecraftName),

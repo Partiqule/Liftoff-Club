@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { LocalTime } from '@/components/local-time'
+import { FollowList } from '@/components/follow-list'
 import { companyPage, companiesOnBoard } from '@/lib/company-board'
 import { listCatalog } from '@/lib/companies'
 import { getLaunches } from '@/lib/launches'
@@ -38,6 +39,16 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
   const page = companyPage(slug, board.launches)
   if (!page) notFound()
   const { company, flights } = page
+  const roster = companiesOnBoard(board.launches).map((item) => {
+    const next = companyPage(item.slug, board.launches)?.flights[0]
+    return {
+      slug: item.slug,
+      name: item.name,
+      launchId: next?.launchId ?? null,
+      launchName: next?.launchName ?? null,
+      net: next?.net ?? null,
+    }
+  })
   return (
     <main id="content" className="wrap page">
       <p className="kicker">Public profile · unclaimed</p>
@@ -83,6 +94,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
           ))}
         </ul>
       </section>
+      <FollowList slug={company.slug} roster={roster} />
     </main>
   )
 }

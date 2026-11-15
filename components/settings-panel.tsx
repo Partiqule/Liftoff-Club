@@ -134,6 +134,43 @@ export function SettingsPanel({ providers }: { providers: string[] }) {
           />
           <span>Include space station and Starlink passes</span>
         </label>
+        <p className="kicker">Saved rules</p>
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={notes.rules.starship}
+            onChange={(event) =>
+              updateSettings({ ...settings, notifications: { ...notes, rules: { ...notes.rules, starship: event.target.checked } } })
+            }
+          />
+          <span>Any Starship</span>
+        </label>
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={notes.rules.visibleFromHere}
+            onChange={(event) =>
+              updateSettings({
+                ...settings,
+                notifications: { ...notes, rules: { ...notes.rules, visibleFromHere: event.target.checked } },
+              })
+            }
+          />
+          <span>Anything we might see from here</span>
+        </label>
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={notes.rules.hourWithWeather}
+            onChange={(event) =>
+              updateSettings({
+                ...settings,
+                notifications: { ...notes, rules: { ...notes.rules, hourWithWeather: event.target.checked } },
+              })
+            }
+          />
+          <span>One hour before, with the sky call</span>
+        </label>
       </section>
 
       <section>

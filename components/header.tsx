@@ -9,6 +9,7 @@ const LINKS = [
   { href: '/', label: 'Tonight' },
   { href: '/launches', label: 'Launches' },
   { href: '/sky', label: 'Sky' },
+  { href: '/brief', label: 'Brief' },
   { href: '/settings', label: 'House rules' },
 ]
 

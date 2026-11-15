@@ -139,6 +139,13 @@ function repairLaunch(launch: Launch): Launch {
       ...launch.provider,
       companyId: launch.provider?.companyId || providerCompany.id,
     },
+    webcasts: launch.webcasts ?? (launch.webcastUrl ? [{ title: launch.webcastTitle ?? 'Webcast', url: launch.webcastUrl }] : []),
+    updates: launch.updates ?? [],
+    boosterReused: launch.boosterReused ?? null,
+    boosterCareerFlights: launch.boosterCareerFlights ?? null,
+    boosterSuccessfulLandings: launch.boosterSuccessfulLandings ?? null,
+    boosterAttemptedLandings: launch.boosterAttemptedLandings ?? null,
+    previousFlightName: launch.previousFlightName ?? null,
     manifest: (launch.manifest ?? []).map((item) => {
       const company = resolveCompany(item.company || item.name || providerCompany.name)
       return {
