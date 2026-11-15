@@ -9,7 +9,6 @@ import { Countdown } from '@/components/countdown'
 import { JobsCorner } from '@/components/jobs'
 import { LocalTime } from '@/components/local-time'
 import { RocketFigure } from '@/components/rocket-figure'
-import { Patch } from '@/components/patch'
 import { StatusStamp } from '@/components/status-stamp'
 import { VisibilityCard } from '@/components/visibility-card'
 import { aiNotesForLaunch } from '@/lib/ai-orbit'
@@ -49,10 +48,7 @@ export default async function LaunchPage({ params }: { params: Promise<{ id: str
       </p>
       <div className="detail-top">
         <RocketFigure rocketName={launch.rocketName} />
-        <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
-          <Patch provider={launch.provider.name} rocket={launch.rocketName} />
-          <StatusStamp abbrev={launch.statusAbbrev} name={launch.statusName} />
-        </div>
+        <StatusStamp abbrev={launch.statusAbbrev} name={launch.statusName} />
         <h1>{launch.name}</h1>
         <AiOrbit notes={aiNotes} />
         <Countdown net={launch.net} size="lg" />
