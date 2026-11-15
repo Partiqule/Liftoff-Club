@@ -1,4 +1,9 @@
 import type { SkyJudgement } from '@/lib/types'
+
+/**
+ * Open-Meteo free API is not for commercial use.
+ * A paid plan is required before Pro ever charges.
+ */
 import { hourKey } from '@/lib/time'
 
 export type HourSky = {
