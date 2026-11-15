@@ -1,7 +1,10 @@
 'use client'
 
 import { Logo, Wordmark } from '@/components/logo'
+import { SiteSearch } from '@/components/site-search'
 import { useClub } from '@/components/club-provider'
+import { zoneAbbrev } from '@/lib/pro/time'
+import { useActiveZone } from '@/components/use-zone'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
@@ -16,7 +19,9 @@ const LINKS = [
 export function Header() {
   const pathname = usePathname()
   const { settings, updateSettings } = useClub()
+  const zone = useActiveZone()
   const kids = settings.kidsMode
+  const town = settings.location?.label.split(',')[0] || 'Set your town'
   return (
     <>
       <a className="skip" href="#content">
@@ -38,12 +43,13 @@ export function Header() {
               </Link>
             ))}
           </nav>
+          <SiteSearch />
           <div className="top-tools">
             <Link className="pro-entry" href="/pro">
               Pro
             </Link>
             <Link className="place-chip" href="/settings#place">
-              {settings.location ? settings.location.label : 'Set your town'}
+              {town} · {zoneAbbrev(zone)}
             </Link>
             <button
               className="switch"

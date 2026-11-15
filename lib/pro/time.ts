@@ -1,39 +1,62 @@
 export const MOUNTAIN = 'America/Denver'
 
 /** A coarse public NET is a date, not a clock. Midnight UTC must not become 5:00 PM MT. */
-export function formatLaunchWhen(iso: string | null | undefined, precision: string | null | undefined, statusName?: string | null): string {
+export function zoneAbbrev(zone: string, date = new Date()): string {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone: zone, timeZoneName: 'short' }).formatToParts(date)
+    return parts.find((part) => part.type === 'timeZoneName')?.value || zone
+  } catch {
+    return zone
+  }
+}
+
+export function isTimeZone(zone: string): boolean {
+  try {
+    Intl.DateTimeFormat('en-US', { timeZone: zone })
+    return true
+  } catch {
+    return false
+  }
+}
+
+export function formatLaunchWhen(
+  iso: string | null | undefined,
+  precision: string | null | undefined,
+  statusName?: string | null,
+  zone: string = MOUNTAIN,
+): string {
   if (!iso) return 'Time not set'
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return 'Time not set'
   const coarse = `${precision ?? ''} ${statusName ?? ''}`.toLowerCase()
   const placeholder = /00:00:00/.test(iso) && /tbd|to be determined|month|quarter|year|day/.test(coarse)
   if (/year/.test(coarse) && !/month|day|hour|minute|second/.test(precision ?? '')) {
-    return new Intl.DateTimeFormat('en-US', { timeZone: MOUNTAIN, year: 'numeric' }).format(date)
+    return new Intl.DateTimeFormat('en-US', { timeZone: zone, year: 'numeric' }).format(date)
   }
-  if (/month|quarter/.test(coarse) || placeholder && /month|quarter|tbd|to be determined/.test(coarse)) {
-    const month = new Intl.DateTimeFormat('en-US', { timeZone: MOUNTAIN, month: 'long', year: 'numeric' }).format(date)
+  if (/month|quarter/.test(coarse) || (placeholder && /month|quarter|tbd|to be determined/.test(coarse))) {
+    const month = new Intl.DateTimeFormat('en-US', { timeZone: zone, month: 'long', year: 'numeric' }).format(date)
     return `${month}, clock not set`
   }
   if (/\bday\b/.test(coarse) || placeholder) {
-    const day = new Intl.DateTimeFormat('en-US', { timeZone: MOUNTAIN, month: 'short', day: 'numeric', year: 'numeric' }).format(date)
+    const day = new Intl.DateTimeFormat('en-US', { timeZone: zone, month: 'short', day: 'numeric', year: 'numeric' }).format(date)
     return `${day}, clock not set`
   }
-  return formatMountain(iso)
+  return formatMountain(iso, zone)
 }
 
-export function formatMountain(iso: string | null | undefined): string {
+export function formatMountain(iso: string | null | undefined, zone: string = MOUNTAIN): string {
   if (!iso) return 'Time not set'
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return 'Time not set'
   const formatted = new Intl.DateTimeFormat('en-US', {
-    timeZone: MOUNTAIN,
+    timeZone: zone,
     month: 'short',
     day: 'numeric',
     year: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
   }).format(date)
-  return `${formatted} MT`
+  return `${formatted} ${zoneAbbrev(zone, date)}`
 }
 
 export function mountainMonth(iso: string): number | null {

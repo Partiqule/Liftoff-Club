@@ -15,7 +15,7 @@ import { StatusStamp } from '@/components/status-stamp'
 import { VisibilityCard } from '@/components/visibility-card'
 import { aiNotesForLaunch } from '@/lib/ai-orbit'
 import { explainLaunch } from '@/lib/explain'
-import { getLaunch, getLaunches } from '@/lib/launches'
+import { getLaunch, getLaunches, launchesToPrerender } from '@/lib/launches'
 import { rocketId } from '@/lib/rocket-photos'
 import { siteUrl } from '@/lib/site'
 
@@ -23,7 +23,7 @@ export const revalidate = 3600
 
 export async function generateStaticParams() {
   const board = await getLaunches()
-  return board.launches.map((launch) => ({ id: launch.id }))
+  return launchesToPrerender(board.launches).map((launch) => ({ id: launch.id }))
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {

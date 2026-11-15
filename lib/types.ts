@@ -87,6 +87,8 @@ export type Launch = {
   spacecraftDestination: string | null
   payloadHints: PayloadHint[]
   manifest: ManifestItem[]
+  /** Program names from Launch Library 2, when the listing has any. */
+  programs: string[]
   featured: boolean
 }
 
@@ -192,6 +194,9 @@ export type Settings = {
   quietEnd: string
   notifications: NotificationSettings
   location: Place | null
+  /** auto uses the device zone. chosen uses `zone`. */
+  zoneMode: 'auto' | 'chosen'
+  zone: string
 }
 
 export type AlertCandidate = {

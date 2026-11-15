@@ -1,7 +1,8 @@
+import { isStarshipOrHeavy } from '@/lib/heavy-board'
 import { formatMountain } from '@/lib/pro/time'
 import type { Launch } from '@/lib/types'
 
-const RIDESHARE = /\btransporter\b|\bbandwagon\b|\brideshare\b/i
+const RIDESHARE = /\btransporter(?:\s*[- ]?\s*\d+)?\b|\bbandwagon(?:\s*[- ]?\s*\d+)?\b|\brideshare\b/i
 const LL2 = 'https://thespacedevs.com/llapi'
 
 export type CitedField = {
@@ -21,10 +22,16 @@ export function manifestFacts(launch: Launch, asOf: string | null): CitedField[]
   ]
 }
 
-export function rideshareSlot(launch: Pick<Launch, 'name' | 'missionName' | 'missionType'>): string | null {
+export function rideshareSlot(launch: Launch): string | null {
   const text = `${launch.name} ${launch.missionName ?? ''} ${launch.missionType ?? ''}`
   const match = text.match(/\b(?:transporter|bandwagon|rideshare)(?:\s*[- ]?\s*\d+)?/i)
-  return match ? match[0].replace(/\s+/g, ' ') : null
+  if (match) return match[0].replace(/\s+/g, ' ')
+  if (/rideshare/i.test(launch.missionType ?? '')) return launch.missionType
+  const program = (launch.programs ?? []).find((name) => RIDESHARE.test(name))
+  if (program) return program
+  const customers = payloadCustomers(launch)
+  if (customers.length >= 2) return customers.join(', ')
+  return null
 }
 
 export type ManifestFilters = {
@@ -34,14 +41,25 @@ export type ManifestFilters = {
   site: string
 }
 
-export function isRideshareLaunch(launch: Pick<Launch, 'name' | 'missionName' | 'missionType'>): boolean {
-  return RIDESHARE.test(`${launch.name} ${launch.missionName ?? ''} ${launch.missionType ?? ''}`)
+export function isRideshareLaunch(launch: Launch): boolean {
+  const named = `${launch.name} ${launch.missionName ?? ''} ${launch.missionType ?? ''} ${(launch.programs ?? []).join(' ')}`
+  if (RIDESHARE.test(named)) return true
+  return payloadCustomers(launch).length >= 2
+}
+
+function payloadCustomers(launch: Launch): string[] {
+  const provider = launch.provider?.name?.toLowerCase() ?? ''
+  const names = launch.manifest
+    .filter((item) => item.role === 'customer' || item.role === 'payload')
+    .map((item) => item.company)
+    .filter((name) => name && name.toLowerCase() !== provider)
+  return [...new Set(names)]
 }
 
 export function filterManifest(launches: Launch[], filters: ManifestFilters): Launch[] {
   const company = filters.company.trim().toLowerCase()
   return launches.filter((launch) => {
-    if (filters.rideshare && !isRideshareLaunch(launch)) return false
+    if (filters.rideshare && !isRideshareLaunch(launch) && !isStarshipOrHeavy(launch)) return false
     if (filters.orbit && (launch.orbitAbbrev ?? launch.orbitName ?? '') !== filters.orbit) return false
     if (filters.site && (launch.padLocation ?? launch.padName) !== filters.site) return false
     if (!company) return true

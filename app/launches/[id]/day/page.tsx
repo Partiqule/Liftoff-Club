@@ -1,13 +1,13 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { MissionShell } from '@/components/mission-view'
-import { getLaunch, getLaunches } from '@/lib/launches'
+import { getLaunch, getLaunches, launchesToPrerender } from '@/lib/launches'
 
 export const revalidate = 3600
 
 export async function generateStaticParams() {
   const board = await getLaunches()
-  return board.launches.map((launch) => ({ id: launch.id }))
+  return launchesToPrerender(board.launches).map((launch) => ({ id: launch.id }))
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {

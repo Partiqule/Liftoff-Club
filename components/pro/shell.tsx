@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { ReactNode } from 'react'
 import { Logo, Wordmark } from '@/components/logo'
+import { track } from '@/lib/track'
 import { PRO_COPY } from '@/lib/pro/copy'
 
 const LINKS = [
@@ -41,6 +42,9 @@ export function ProShell({ children }: { children: ReactNode }) {
               </Link>
             ))}
           </nav>
+          <Link className="pro-cta" href="/pro#access" onClick={() => track('pro_access_clicked')}>
+            Request early access
+          </Link>
           <Link className="pro-family" href="/">
             Family site
           </Link>

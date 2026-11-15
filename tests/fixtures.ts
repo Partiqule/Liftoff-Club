@@ -57,6 +57,7 @@ export function makeLaunch(overrides: Partial<Launch> = {}): Launch {
     spacecraftName: null,
     spacecraftDestination: null,
     payloadHints: [],
+    programs: [],
     featured: true,
   }
   const merged = { ...base, ...overrides }

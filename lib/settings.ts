@@ -23,6 +23,8 @@ export const defaultSettings: Settings = {
   quietEnd: '07:00',
   notifications: defaultNotifications,
   location: CENTENNIAL,
+  zoneMode: 'auto',
+  zone: 'America/Denver',
 }
 
 function isPlace(value: unknown): value is Place {
@@ -56,6 +58,8 @@ export function sanitizeSettings(value: unknown): Settings {
     quietStart: clock(raw.quietStart, defaultSettings.quietStart),
     quietEnd: clock(raw.quietEnd, defaultSettings.quietEnd),
     location: isPlace(raw.location) ? raw.location : CENTENNIAL,
+    zoneMode: raw.zoneMode === 'chosen' ? 'chosen' : 'auto',
+    zone: typeof raw.zone === 'string' && raw.zone.length < 80 ? raw.zone : 'America/Denver',
     notifications: {
       enabled: notes.enabled === true,
       leadMinutes: lead === 30 || lead === 180 ? lead : 60,

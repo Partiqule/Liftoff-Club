@@ -24,6 +24,11 @@ export default async function ProHome() {
       <h1>{PRO_COPY.title}</h1>
       <p className="lede">{PRO_COPY.lede}</p>
       <p className="meta">{PRO_COPY.offer}</p>
+      <p>
+        <Link className="btn" href="#access">
+          Request early access
+        </Link>
+      </p>
       <div className="pro-personas">
         <section className="pro-card">
           <h2>{PRO_COPY.companyTitle}</h2>

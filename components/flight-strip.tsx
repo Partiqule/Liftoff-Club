@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { LocalTime } from '@/components/local-time'
 import { StatusStamp } from '@/components/status-stamp'
 import { Trail } from '@/components/trail'
+import { flightKind } from '@/lib/flight-kind'
 import type { Launch } from '@/lib/types'
 
 export function FlightStrip({
@@ -22,6 +23,7 @@ export function FlightStrip({
         {trail ? <Trail glow={featured ? 'strong' : 'mid'} /> : null}
         <div className="strip-copy">
           <StatusStamp abbrev={launch.statusAbbrev} name={launch.statusName} />
+          {flightKind(launch) ? <p className="kicker">{flightKind(launch)}</p> : null}
           <h3 className="strip-name">{launch.name}</h3>
           <p className="strip-meta">
             {launch.provider.name} · {launch.rocketName}
