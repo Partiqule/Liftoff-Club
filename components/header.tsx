@@ -10,7 +10,7 @@ const LINKS = [
   { href: '/launches', label: 'Launches' },
   { href: '/sky', label: 'Sky' },
   { href: '/brief', label: 'Brief' },
-  { href: '/settings', label: 'House rules' },
+  { href: '/settings', label: 'For parents' },
 ]
 
 export function Header() {
@@ -26,7 +26,12 @@ export function Header() {
         <div className="wrap topbar-inner">
           <Link className="brand" href="/">
             <Logo />
-            <Wordmark />
+            <span className="brand-words">
+              <Wordmark />
+              <span className="tagline">
+                Look up together <span className="flourish">Ad astra</span>
+              </span>
+            </span>
           </Link>
           <nav className="top-nav" aria-label="Primary">
             {LINKS.map((link) => (
@@ -48,6 +53,15 @@ export function Header() {
             >
               <span className="switch-ui" data-on={kids ? 'true' : 'false'} />
               <span className="switch-label">Kids mode</span>
+            </button>
+            <button
+              className="switch"
+              type="button"
+              aria-pressed={settings.nightRed}
+              onClick={() => updateSettings((current) => ({ ...current, nightRed: !current.nightRed }))}
+            >
+              <span className="switch-ui" data-on={settings.nightRed ? 'true' : 'false'} />
+              <span className="switch-label">Night red</span>
             </button>
           </div>
         </div>

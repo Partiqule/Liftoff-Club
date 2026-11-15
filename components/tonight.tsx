@@ -19,8 +19,8 @@ export function Tonight() {
     return (
       <section className="tonight wrap" aria-busy="true">
         <Trail glow="mid" span="load" />
-        <p className="kicker">Tonight</p>
-        <h1>{place ? `Checking the sky over ${place.label}.` : 'Checking tonight’s sky.'}</h1>
+        <p className="kicker">{place ? `Tonight over ${place.label.split(',')[0]}` : 'Tonight'}</p>
+        <h1>{place ? `Checking the sky over ${place.label.split(',')[0]}.` : 'Checking tonight’s sky.'}</h1>
         <p className="lede">Orbits first, then clouds. This takes a moment and stays on your device.</p>
       </section>
     )
@@ -68,12 +68,11 @@ export function Tonight() {
   const judgement = skyAt(weather, lead.peak)
   const who = lead.kind === 'iss' ? 'The station rises' : 'A dim Starlink crosses'
   const glow = judgement.call === 'nogo' ? 'fade' : judgement.call === 'go' ? 'strong' : 'mid'
+  const town = place.label.split(',')[0]?.trim() || place.label
   return (
     <section className={`tonight wrap light-${glow}`}>
       <Trail glow={glow} span="hero" />
-      <p className="kicker">
-        {place.label} · {lead.gradeLabel}
-      </p>
+      <p className="kicker">Tonight over {town}</p>
       <h1>
         {who}
         <span className="dir">{direction}</span>
@@ -83,7 +82,7 @@ export function Tonight() {
         {lead.kind === 'iss'
           ? `It looks like a bright star that glides and does not blink. Highest point: ${heightPhrase(lead.maxElevation)}.`
           : 'Starlink satellites are faint steady dots. The station is the one that looks obvious. This is the best of a dim sample.'}{' '}
-        Sky call: {judgement.label.toLowerCase()}. {judgement.reason}
+        {judgement.label}
       </p>
       <p className="lede when-adult">
         {lead.gradeReason} Max elevation about {Math.round(lead.maxElevation)}°. {judgement.reason}
@@ -93,7 +92,6 @@ export function Tonight() {
         <Link className="btn" href="/sky">
           Plan the viewing
         </Link>
-        <span className={glow === 'fade' ? 'light-fade' : 'light-strong'}>{judgement.label}</span>
       </div>
     </section>
   )

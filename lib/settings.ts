@@ -17,6 +17,7 @@ export const defaultNotifications: NotificationSettings = {
 
 export const defaultSettings: Settings = {
   kidsMode: true,
+  nightRed: false,
   quietStart: '21:00',
   quietEnd: '07:00',
   notifications: defaultNotifications,
@@ -50,6 +51,7 @@ export function sanitizeSettings(value: unknown): Settings {
   const providerMode = notes.providerMode === 'spacex' || notes.providerMode === 'chosen' ? notes.providerMode : 'all'
   return {
     kidsMode: raw.kidsMode !== false,
+    nightRed: raw.nightRed === true,
     quietStart: clock(raw.quietStart, defaultSettings.quietStart),
     quietEnd: clock(raw.quietEnd, defaultSettings.quietEnd),
     location: isPlace(raw.location) ? raw.location : null,

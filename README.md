@@ -38,7 +38,7 @@ npm run build
 npm start
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Type a city (Centennial works) or use the device location. Kids mode is already on. House rules are under that name in the nav.
+Open [http://localhost:3000](http://localhost:3000). Type a city (Centennial works) or use the device location. Kids mode is already on. Parent controls are under For parents in the nav. Night red is there too, for watching outside.
 
 `npm run dev` is there for day-to-day changes.
 

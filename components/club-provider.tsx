@@ -76,6 +76,7 @@ export function ClubProvider({ briefs, children }: { briefs: LaunchBrief[]; chil
 
   useEffect(() => {
     document.documentElement.dataset.voice = settings.kidsMode ? 'kid' : 'adult'
+    document.documentElement.dataset.night = settings.nightRed ? 'red' : 'sky'
     if (settings.location) document.documentElement.dataset.place = settings.location.label
     else delete document.documentElement.dataset.place
   }, [settings])

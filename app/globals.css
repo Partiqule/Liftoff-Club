@@ -126,9 +126,13 @@ a:hover { color: var(--core); }
 .topbar-inner {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  flex-wrap: wrap;
+  gap: 0.65rem 1rem;
   min-height: 4.25rem;
 }
+.brand-words { display: flex; flex-direction: column; min-width: 0; }
+.tagline { color: var(--cold); font-size: 0.78rem; line-height: 1.2; }
+.flourish { margin-left: 0.45rem; font-family: var(--font-display); color: var(--nebula); letter-spacing: 0.04em; }
 .brand {
   display: flex;
   align-items: center;
@@ -141,7 +145,7 @@ a:hover { color: var(--core); }
 .top-nav { display: none; gap: 1.25rem; }
 .top-nav a { text-decoration: none; color: var(--cold); font-weight: 400; }
 .top-nav a[aria-current="page"] { color: var(--ink); }
-.top-tools { margin-left: auto; display: flex; align-items: center; gap: 1rem; }
+.top-tools { margin-left: auto; display: flex; align-items: center; flex-wrap: wrap; gap: 0.35rem 0.8rem; }
 .place-chip {
   display: none;
   color: var(--cold);
@@ -185,7 +189,7 @@ h1, h2, h3, .display, .wordmark, .count-digits, .day-count, .pass-time {
   line-height: 1.02;
   margin: 0;
 }
-h1 { font-size: clamp(2.6rem, 8vw, 5.4rem); }
+h1 { font-size: clamp(2.15rem, 9vw, 5.4rem); overflow-wrap: anywhere; }
 h2 { font-size: clamp(1.7rem, 3.5vw, 2.4rem); margin-top: 2.4rem; }
 h3 { font-size: 1.25rem; line-height: 1.2; }
 .kicker {
@@ -553,6 +557,26 @@ input.field::placeholder { color: var(--nebula); }
 }
 .site-footer p { max-width: 42rem; }
 .day-link { margin: 0.6rem 0; }
+
+html[data-night="red"] {
+  --void: #120303;
+  --dust: #2a1010;
+  --nebula: #c48984;
+  --cold: #f0c2bc;
+  --ink: #ffe4df;
+  --core: #ff9a92;
+  --line: rgba(255, 160, 150, 0.32);
+}
+html[data-night="red"] body { background: var(--void); }
+html[data-night="red"] .galaxy { filter: sepia(1) saturate(3) hue-rotate(-15deg) brightness(0.42); }
+html[data-night="red"] .light-strong { text-shadow: 0 0 12px rgba(255, 120, 110, 0.45); }
+
+@media (max-width: 759px) {
+  .flourish { display: none; }
+  .rocket-figure img, .rocket-fallback { width: 100%; }
+  .kicker, .lede, .meta, .story { overflow-wrap: anywhere; }
+  .switch { min-height: 44px; }
+}
 
 html[data-voice="adult"] .when-kid { display: none; }
 html[data-voice="kid"] .when-adult { display: none; }

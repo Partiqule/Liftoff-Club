@@ -187,6 +187,7 @@ export type NotificationSettings = {
 
 export type Settings = {
   kidsMode: boolean
+  nightRed: boolean
   quietStart: string
   quietEnd: string
   notifications: NotificationSettings

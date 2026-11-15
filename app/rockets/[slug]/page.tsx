@@ -19,7 +19,14 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
   const photo = ROCKET_PHOTOS.find((item) => item.id === slug)
-  return { title: photo?.alt.split('.')[0] ?? 'Rocket' }
+  const raw = photo?.matches[0] ?? 'Rocket'
+  const title = raw.replace(/\b[a-z]/g, (letter) => letter.toUpperCase())
+  return {
+    title,
+    description: photo
+      ? `${photo.alt} Photo by ${photo.author}. ${photo.license}.`
+      : 'A rocket on the Liftoff Club board.',
+  }
 }
 
 export default async function RocketPage({ params }: { params: Promise<{ slug: string }> }) {

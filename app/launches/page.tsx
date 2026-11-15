@@ -7,7 +7,10 @@ import { webcalFeedUrl } from '@/lib/calendar'
 import { getLaunches } from '@/lib/launches'
 import { filterLaunches, isStillAhead } from '@/lib/schedule'
 
-export const metadata: Metadata = { title: 'The board' }
+export const metadata: Metadata = {
+  title: 'The board',
+  description: 'Upcoming launches worldwide, with a calendar you can subscribe to when a rocket slips.',
+}
 
 export default async function LaunchesPage({
   searchParams,

@@ -18,7 +18,7 @@ export function judgeSky(input: { cloud: number | null; precip: number | null; c
   if (input.cloud == null && input.code == null) {
     return {
       call: 'unknown',
-      label: 'No forecast',
+      label: 'No forecast yet.',
       reason: 'The weather feed did not answer. The pass time is still worth knowing.',
       cloud: null,
     }
@@ -31,7 +31,7 @@ export function judgeSky(input: { cloud: number | null; precip: number | null; c
   if (fog || falling || precip >= 60 || cloud >= 85) {
     return {
       call: 'nogo',
-      label: 'No go',
+      label: fog ? 'Fog is likely to hide it.' : 'Clouds are likely to hide it.',
       reason: fog
         ? 'Fog is in the forecast. A bright satellite will not show through it.'
         : 'Clouds or rain are likely to hide the sky.',
@@ -41,15 +41,15 @@ export function judgeSky(input: { cloud: number | null; precip: number | null; c
   if (cloud <= 35 && precip <= 25) {
     return {
       call: 'go',
-      label: 'Go',
-      reason: `About ${Math.round(cloud)}% cloud. A clear enough sky to see it with your eyes.`,
+      label: "Clear skies, it's a go.",
+      reason: 'The sky looks clear enough to see it with your eyes.',
       cloud: input.cloud,
     }
   }
   return {
     call: 'maybe',
-    label: 'Maybe',
-    reason: `About ${Math.round(cloud)}% cloud. You may get a gap, or you may get a gray ceiling.`,
+    label: 'Some cloud. You might still catch it.',
+    reason: 'There may be a gap, or the sky may stay gray.',
     cloud: input.cloud,
   }
 }
@@ -67,7 +67,7 @@ export function skyAt(bundle: WeatherBundle | null, iso: string): SkyJudgement {
     if (daysOut > 7) {
       return {
         call: 'unknown',
-        label: 'Too early',
+        label: 'Too early for a sky call.',
         reason: 'The forecast is only solid for about a week. Check again closer to the night.',
         cloud: null,
       }

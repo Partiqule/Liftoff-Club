@@ -84,8 +84,7 @@ describe('saved alert rules', () => {
       weather,
     })
     expect(due).toHaveLength(1)
-    expect(due[0].body).toContain('Sky:')
-    expect(due[0].body.toLowerCase()).toContain('go')
+    expect(due[0].body).toContain("it's a go")
   })
 
   it('drops a launch we cannot see when the visibility rule is the only one on', () => {

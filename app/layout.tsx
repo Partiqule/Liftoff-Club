@@ -16,14 +16,20 @@ import './globals.css'
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl()),
   title: { default: 'Liftoff Club', template: '%s · Liftoff Club' },
-  description: 'A family companion for rocket launches and the night sky. Kids mode on, bedtime quiet hours, and a plain answer to “can we see it from here?”',
+  description: 'Look up together. A family companion for rocket launches and the night sky, with kids mode on and a plain answer about whether you can see it.',
   applicationName: 'Liftoff Club',
   manifest: '/manifest.webmanifest',
   appleWebApp: { capable: true, title: 'Liftoff Club', statusBarStyle: 'black-translucent' },
   openGraph: {
     title: 'Liftoff Club',
-    description: 'Watch the launch board, then step outside if the station is crossing your town.',
+    description: 'Look up together. Launches, the night sky, and a plain answer about whether you can see it from your town.',
     type: 'website',
+    siteName: 'Liftoff Club',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Liftoff Club',
+    description: 'Look up together. Launches and the night sky, for the kitchen table.',
   },
 }
 
@@ -49,7 +55,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           <div className="field-stars field-stars-near" />
         </div>
         <Script id="liftoff-voice" strategy="beforeInteractive">
-          {`try{var s=JSON.parse(localStorage.getItem('liftoff-club-v1')||'{}');document.documentElement.dataset.voice=s.kidsMode===false?'adult':'kid';}catch(e){document.documentElement.dataset.voice='kid';}`}
+          {`try{var s=JSON.parse(localStorage.getItem('liftoff-club-v1')||'{}');document.documentElement.dataset.voice=s.kidsMode===false?'adult':'kid';document.documentElement.dataset.night=s.nightRed===true?'red':'sky';}catch(e){document.documentElement.dataset.voice='kid';document.documentElement.dataset.night='sky';}`}
         </Script>
         <ClubProvider briefs={briefs}>
           <Header />

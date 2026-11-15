@@ -57,7 +57,7 @@ export function dueAlerts(input: {
       rules.hourWithWeather && input.weather && launch.net ? skyAt(input.weather, launch.net) : null
     const body = [
       matched.length ? `Rule: ${matched.join(', ')}.` : 'A launch on your list is inside the reminder window.',
-      weatherLine ? `Sky: ${weatherLine.label}. ${weatherLine.reason}` : null,
+      weatherLine ? weatherLine.label : null,
     ]
       .filter(Boolean)
       .join(' ')

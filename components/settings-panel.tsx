@@ -25,6 +25,21 @@ export function SettingsPanel({ providers }: { providers: string[] }) {
         </button>
       </section>
 
+      <section>
+        <p className="kicker">Outside at night</p>
+        <h2>Night red</h2>
+        <p className="lede">Dims the page to red so bright white and blue do not wash out your night vision. Saved on this device.</p>
+        <button
+          className="switch"
+          type="button"
+          aria-pressed={settings.nightRed}
+          onClick={() => updateSettings({ ...settings, nightRed: !settings.nightRed })}
+        >
+          <span className="switch-ui" data-on={settings.nightRed ? 'true' : 'false'} />
+          <span className="switch-label">{settings.nightRed ? 'Night red on' : 'Night red off'}</span>
+        </button>
+      </section>
+
       <LocationEditor />
 
       <section>
