@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { AdminDesk } from '@/components/pro/admin-desk'
 import { accessStatus } from '@/lib/pro/access-store'
-import { listSignups } from '@/lib/pro/signups'
+import { listSignups, tierLabel } from '@/lib/pro/signups'
 import { readViewer } from '@/lib/pro/viewer'
 
 export const metadata: Metadata = {
@@ -22,6 +22,8 @@ export default async function AdminPage() {
           role: row.role,
           createdAt: row.createdAt,
           status: (await accessStatus(row.email)) ?? 'pending',
+          tier: tierLabel(row.tier),
+          companySize: row.companySize,
         })),
       )
     : []

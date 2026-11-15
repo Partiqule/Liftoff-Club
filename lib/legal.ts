@@ -8,6 +8,7 @@ export const PRIVACY = {
   collectTitle: 'What is collected',
   collect: [
     'Pro early access stores the name, email, company, and role you type, so we can send a reply.',
+    'Business early access also stores company size and an optional note about what you track.',
     'Phone alerts, if a grown up turns them on, store the browser address that receives the alert. There is no name and no email on that record.',
     'A town and a time zone are saved in the browser on the device. They are not sent to an account.',
     'Vercel Web Analytics counts pages. Query strings are stripped. The family site does not require a cookie for that count.',

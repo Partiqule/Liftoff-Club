@@ -10,6 +10,8 @@ export type AdminRow = {
   role: string
   createdAt: string
   status: string
+  tier: string
+  companySize: string | null
 }
 
 export function AdminDesk({ rows }: { rows: AdminRow[] }) {
@@ -55,7 +57,8 @@ export function AdminDesk({ rows }: { rows: AdminRow[] }) {
           <li key={`${row.email}-${row.createdAt}`}>
             <h3>{row.name}</h3>
             <p className="meta">
-              {row.email} · {row.company} · {row.role} · {row.status}
+              {row.tier} · {row.email} · {row.company} · {row.role}
+              {row.companySize ? ` · ${row.companySize}` : ''} · {row.status}
             </p>
             <p>
               <button className="btn" type="button" onClick={() => void post({ action: 'approve', email: row.email })}>
