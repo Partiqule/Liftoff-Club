@@ -129,7 +129,17 @@ a:hover { color: var(--core); }
 .site-search { position: relative; min-width: min(100%, 16rem); flex: 1; }
 .search-hits { position: absolute; z-index: 30; left: 0; right: 0; margin: 0.3rem 0 0; padding: 0.4rem 0; list-style: none; background: var(--dust); border: 1px solid var(--line); }
 .search-hits a { display: grid; gap: 0.15rem; padding: 0.55rem 0.8rem; text-decoration: none; }
-.pro-cta { color: var(--core); text-decoration: none; min-height: 44px; display: inline-flex; align-items: center; }
+.pro-cta { color: var(--core); text-decoration: none; min-height: 44px; display: inline-flex; align-items: center; background: none; border: 0; padding: 0; font: inherit; cursor: pointer; }
+.pro-signed { display: inline-flex; align-items: center; gap: 0.8rem; }
+.pro-dialog {
+  width: min(36rem, calc(100vw - 2rem));
+  border: 1px solid var(--line);
+  background: var(--void);
+  color: var(--ink);
+  padding: 1.4rem 1.2rem 1.6rem;
+}
+.pro-dialog::backdrop { background: rgba(7, 6, 15, 0.78); }
+.pro-dialog h2 { margin-top: 0; }
 
 .topbar {
   position: sticky;
@@ -787,7 +797,11 @@ html:not([data-voice]) .when-adult { display: none; }
   body:has(.pro-brief) { background: white; color: black; }
   body:has(.pro-brief) .galaxy,
   body:has(.pro-brief) .pro-bar,
-  body:has(.pro-brief) .pro-print-hide { display: none !important; }
+  body:has(.pro-brief) .topbar,
+  body:has(.pro-brief) .tabbar,
+  body:has(.pro-brief) .site-footer,
+  body:has(.pro-brief) .pro-print-hide,
+  body:has(.pro-brief) .review-controls { display: none !important; }
   body:has(.pro-brief) .pro-brief,
   body:has(.pro-brief) .pro-brief a { color: black; }
 }

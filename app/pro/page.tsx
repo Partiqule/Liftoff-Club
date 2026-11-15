@@ -1,13 +1,14 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { AccessForm } from '@/components/pro/access-form'
+import { OpenAccessButton } from '@/components/pro/open-access'
+import { TierCompare } from '@/components/tier-compare'
 import { TrackerTable } from '@/components/pro/tracker-table'
 import { previewSlice } from '@/lib/pro/access-gate'
 import { PRO_COPY } from '@/lib/pro/copy'
 import { loadProBoard } from '@/lib/pro/load'
 import { readViewer } from '@/lib/pro/viewer'
 
-export const revalidate = 3600
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'Pro',
@@ -24,11 +25,14 @@ export default async function ProHome() {
       <h1>{PRO_COPY.title}</h1>
       <p className="lede">{PRO_COPY.lede}</p>
       <p className="meta">{PRO_COPY.offer}</p>
-      <p>
-        <Link className="btn" href="#access">
-          Request early access
-        </Link>
-      </p>
+      <TierCompare />
+      {viewer.level === 'full' ? (
+        <p className="meta">You are signed in. {PRO_COPY.offer}</p>
+      ) : (
+        <p>
+          <OpenAccessButton />
+        </p>
+      )}
       <div className="pro-personas">
         <section className="pro-card">
           <h2>{PRO_COPY.companyTitle}</h2>
@@ -65,11 +69,6 @@ export default async function ProHome() {
       <p>
         <Link href="/pro/tracker">Open the full tracker</Link>
       </p>
-      <h2 id="access">{PRO_COPY.accessTitle}</h2>
-      <p>{PRO_COPY.accessBody}</p>
-      <p className="meta">{PRO_COPY.offer}</p>
-      <AccessForm />
-      <p className="note">{PRO_COPY.savedBody}</p>
     </main>
   )
 }

@@ -49,7 +49,7 @@ function source(partial: Partial<TrackerSource> = {}): TrackerSource {
 describe('pro copy', () => {
   it('describes both desks without naming a company, and skips walk and dashes', () => {
     const blob = JSON.stringify(PRO_COPY)
-    expect(blob).toMatch(/For teams at small satellite companies/)
+    expect(blob).toMatch(/For an individual in business development or strategy/)
     expect(blob).toMatch(/For people who sell constellation service/)
     expect(blob).toMatch(/Independent project/)
     expect(blob).toMatch(/Free during early access/)
@@ -268,6 +268,7 @@ describe('pro early access', () => {
     expect(good.ok).toBe(true)
     if (!good.ok || 'ignored' in good) return
     const row = { ...good.value, createdAt: '2026-11-15T19:00:00.000Z' }
+    expect(signupNote(row)).toMatch(/Tier: Pro/)
     expect(signupNote(row)).toMatch(/Company desk/)
     expect(signupCsv([row])).toContain('ada@example.com')
     expect(validateSignup(good.value, 'https://spam.example')).toEqual({ ok: true, ignored: true })

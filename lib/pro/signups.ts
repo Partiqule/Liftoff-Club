@@ -1,4 +1,6 @@
 export type AccessDesk = 'company' | 'sales'
+export type AccessTier = 'pro' | 'business'
+export const COMPANY_SIZES = ['1 to 10', '11 to 50', '51 to 200', 'More than 200'] as const
 
 export type SignupInput = {
   name: string
@@ -6,6 +8,9 @@ export type SignupInput = {
   company: string
   role: string
   desk: AccessDesk
+  tier: AccessTier
+  companySize: string | null
+  tracks: string | null
 }
 
 export type SignupRecord = SignupInput & { createdAt: string }
@@ -32,24 +37,62 @@ export function validateSignup(body: unknown, honeypot: unknown): { ok: true; va
   const email = clean(raw.email, 120).toLowerCase()
   const company = clean(raw.company, 120)
   const role = clean(raw.role, 80)
-  const desk = raw.desk === 'sales' ? 'sales' : raw.desk === 'company' ? 'company' : null
+  const tier: AccessTier = raw.tier === 'business' ? 'business' : 'pro'
+  const desk = raw.desk === 'sales' ? 'sales' : raw.desk === 'company' ? 'company' : tier === 'business' ? 'company' : null
+  const companySize = COMPANY_SIZES.find((size) => size === clean(raw.companySize, 40)) ?? null
+  const tracks = clean(raw.tracks, 240) || null
   if (!name || !email || !company || !role || !desk) return { ok: false, error: 'Name, work email, company, role, and desk are required.' }
+  if (tier === 'business' && !companySize) return { ok: false, error: 'Company size is required for a business note.' }
   if (!EMAIL.test(email)) return { ok: false, error: 'That email does not look usable.' }
-  return { ok: true, value: { name, email, company, role, desk } }
+  return { ok: true, value: { name, email, company, role, desk, tier, companySize, tracks } }
 }
 
 export function signupCsv(rows: SignupRecord[]): string {
-  const header = ['createdAt', 'name', 'email', 'company', 'role', 'desk']
+  const header = ['createdAt', 'name', 'email', 'company', 'role', 'desk', 'tier', 'companySize', 'tracks']
   const lines = [header.join(',')]
   for (const row of rows) {
-    lines.push([row.createdAt, row.name, row.email, row.company, row.role, row.desk === 'sales' ? 'Sales desk' : 'Company desk'].map(csvCell).join(','))
+    const item = coerceSignup(row)
+    lines.push(
+      [item.createdAt, item.name, item.email, item.company, item.role, item.desk === 'sales' ? 'Sales desk' : 'Company desk', tierLabel(item.tier), item.companySize ?? '', item.tracks ?? ''].map(csvCell).join(','),
+    )
   }
   return lines.join('\n')
 }
 
+export function tierLabel(tier: AccessTier): string {
+  return tier === 'business' ? 'Business' : 'Pro'
+}
+
+export function signupSubject(row: SignupRecord): string {
+  return `Liftoff Club ${tierLabel(row.tier)} early access`
+}
+
 export function signupNote(row: SignupRecord): string {
-  const desk = row.desk === 'sales' ? 'Sales desk' : 'Company desk'
-  return [`Liftoff Club Pro early access`, `Name: ${row.name}`, `Email: ${row.email}`, `Company: ${row.company}`, `Role: ${row.role}`, `Desk: ${desk}`, `Received: ${row.createdAt}`].join('\n')
+  const item = coerceSignup(row)
+  const lines = [
+    signupSubject(item),
+    `Tier: ${tierLabel(item.tier)}`,
+    `Name: ${item.name}`,
+    `Email: ${item.email}`,
+    `Company: ${item.company}`,
+    `Role: ${item.role}`,
+  ]
+  if (item.tier === 'pro') lines.push(`Desk: ${item.desk === 'sales' ? 'Sales desk' : 'Company desk'}`)
+  if (item.companySize) lines.push(`Company size: ${item.companySize}`)
+  if (item.tracks) lines.push(`Tracks: ${item.tracks}`)
+  lines.push(`Received: ${item.createdAt}`)
+  return lines.join('\n')
+}
+
+export function coerceSignup(row: SignupRecord): SignupRecord {
+  const tier = row.tier === 'business' ? 'business' : 'pro'
+  return {
+    ...row,
+    tier,
+    companySize: row.companySize ?? null,
+    tracks: row.tracks ?? null,
+    desk: row.desk === 'sales' ? 'sales' : 'company',
+  }
 }
 
 function clean(value: unknown, max: number): string {
@@ -99,7 +142,7 @@ export async function listSignups(): Promise<SignupRecord[]> {
   for (const item of raw) {
     try {
       const parsed = JSON.parse(item) as SignupRecord
-      if (parsed.email && parsed.name) rows.push(parsed)
+      if (parsed.email && parsed.name) rows.push(coerceSignup(parsed))
     } catch {
       // Skip a damaged row.
     }
@@ -117,7 +160,7 @@ export async function notifySignup(row: SignupRecord): Promise<boolean> {
       body: JSON.stringify({
         from: notify.from,
         to: [notify.to],
-        subject: 'Liftoff Club Pro early access',
+        subject: signupSubject(row),
         text: signupNote(row),
       }),
     })

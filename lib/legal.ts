@@ -8,6 +8,7 @@ export const PRIVACY = {
   collectTitle: 'What is collected',
   collect: [
     'Pro early access stores the name, email, company, and role you type, so we can send a reply.',
+    'Business early access also stores company size and an optional note about what you track.',
     'Phone alerts, if a grown up turns them on, store the browser address that receives the alert. There is no name and no email on that record.',
     'The iPhone app, if you install it, stores a push token and a cached launch list on that phone so alerts and the home screen widget can work offline.',
     'A town and a time zone are saved in the browser on the device. They are not sent to an account.',

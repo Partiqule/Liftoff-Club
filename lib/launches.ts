@@ -6,6 +6,7 @@ import { cache } from 'react'
 import { resolveCompany } from '@/lib/companies'
 import { upcomingPageUrl } from '@/lib/launch-query'
 import { normalizeLaunch, normalizeLaunches } from '@/lib/normalize'
+import { recordNetSlips } from '@/lib/pro/net-slip-store'
 import { recordSlips } from '@/lib/slip-store'
 import type { Launch, LaunchBoard } from '@/lib/types'
 
@@ -52,6 +53,7 @@ export const getLaunches = cache(async (): Promise<LaunchBoard> => {
   }
   const board = await pending
   await recordSlips(board.launches)
+  await recordNetSlips(board.launches).catch(() => undefined)
   return board
 })
 

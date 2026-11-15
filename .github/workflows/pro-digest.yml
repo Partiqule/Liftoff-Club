@@ -1,0 +1,31 @@
+name: Pro digest
+
+on:
+  schedule:
+    # 7:00 America/Denver. The site sends only when local time is 7, so one of these two hours is the real Monday morning.
+    - cron: '0 13,14 * * 1'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ask the live site to send the Monday digest
+        run: |
+          token="$(curl --fail --silent --show-error \
+            --header "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https://liftoffclub.app" \
+            | jq --raw-output '.value')"
+          if [ -z "$token" ] || [ "$token" = "null" ]; then
+            echo "GitHub did not issue an OIDC token."
+            exit 1
+          fi
+          curl --fail-with-body --silent --show-error --max-time 60 \
+            --header "Authorization: Bearer ${token}" \
+            --header "Content-Type: application/json" \
+            --data '{}' \
+            "https://liftoffclub.app/api/pro/digest/send"
