@@ -447,6 +447,8 @@ dialog.term-card .kicker { font-size: 0.95rem; margin: 0; }
   margin: 0.8rem 0 0;
   color: var(--cold);
 }
+.install-steps { margin: 0.4rem 0 0; padding-left: 1.2rem; }
+.install-steps li { margin: 0.3rem 0; }
 .rocket-figure { margin: 1.1rem 0 0.4rem; overflow: visible; }
 .rocket-figure a { display: flex; justify-content: center; }
 .rocket-figure img {
