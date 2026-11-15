@@ -5,8 +5,9 @@
 export const PRO_COPY = {
   title: 'Liftoff Club Pro',
   lede: 'A desk for space industry teams who need launch, manifest, and constellation intel. The family site stays free. This desk is the pilot.',
-  pricing: 'Pilot pricing on request.',
-  footerLine: 'Independent project. Not affiliated with any company shown.',
+  offer: 'Free during early access.',
+  footerLine:
+    'Independent project. Liftoff Club is not affiliated with or endorsed by any launch provider or agency. Company and agency names only identify launches and belong to their owners.',
   companyTitle: 'Company desks',
   companyBody: 'For teams at small satellite companies, working business development and strategy.',
   companyPoints: [

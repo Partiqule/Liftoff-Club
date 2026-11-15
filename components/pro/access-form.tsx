@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useState, type FormEvent } from 'react'
 import type { AccessDesk } from '@/lib/pro/signups'
 import { track } from '@/lib/track'
@@ -74,7 +75,9 @@ export function AccessForm() {
       <button className="btn" type="submit" disabled={pending}>
         {pending ? 'Sending' : 'Request early access'}
       </button>
-      <p className="note">Your name, work email, company, and role are saved so we can reply. They are not sold. This desk does not take payment.</p>
+      <p className="note">
+        Your name, work email, company, and role are saved so we can reply. They are not sold. Free during early access. <Link href="/privacy">Privacy</Link>
+      </p>
       {message ? <p className="meta">{message}</p> : null}
     </form>
   )

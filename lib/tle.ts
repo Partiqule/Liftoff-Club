@@ -3,12 +3,10 @@ import 'server-only'
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import path from 'node:path'
 import { cache } from 'react'
-import { ISS_FALLBACK, parseTle, selectStarlink, type ParsedTle } from '@/lib/tle-select'
+import { CELESTRAK_FRESH_MS, ISS_GP_URL, celestrakText, starlinkLaunchUrl } from '@/lib/celestrak'
+import { ISS_FALLBACK, parseGpJson, selectStarlink, type ParsedTle } from '@/lib/tle-select'
 
-const USER_AGENT = 'LiftoffClub/1.0 (family sky companion; educational; cache 12h; celestrak.org)'
-const ISS_URL = 'https://celestrak.org/NORAD/elements/gp.php?CATNR=25544&FORMAT=TLE'
-const STARLINK_URL = 'https://celestrak.org/NORAD/elements/gp.php?GROUP=starlink&FORMAT=TLE'
-const FRESH_MS = 12 * 60 * 60 * 1000
+const FRESH_MS = CELESTRAK_FRESH_MS
 
 export type TleBundle = {
   iss: ParsedTle & { kind: 'iss' }
@@ -39,9 +37,15 @@ async function loadTles(): Promise<TleBundle> {
     return bundle
   }
   try {
-    const [issText, starlinkText] = await Promise.all([fetchText(ISS_URL), fetchText(STARLINK_URL)])
-    const iss = parseTle(issText)[0] ?? ISS_FALLBACK
-    const starlink = selectStarlink(parseTle(starlinkText)).map((sat) => ({ ...sat, kind: 'starlink' as const }))
+    const issText = await celestrakText(ISS_GP_URL)
+    const iss = (issText ? parseGpJson(JSON.parse(issText))[0] : null) ?? ISS_FALLBACK
+    const designator = await latestStarlinkDesignator()
+    const starlinkUrl = designator ? starlinkLaunchUrl(designator) : null
+    const starlinkText = starlinkUrl ? await celestrakText(starlinkUrl) : null
+    const starlink = selectStarlink(starlinkText ? parseGpJson(JSON.parse(starlinkText)) : []).map((sat) => ({
+      ...sat,
+      kind: 'starlink' as const,
+    }))
     const bundle: TleBundle = {
       iss: { ...iss, kind: 'iss' },
       starlink,
@@ -75,14 +79,20 @@ async function loadTles(): Promise<TleBundle> {
   }
 }
 
-async function fetchText(url: string): Promise<string> {
-  const response = await fetch(url, {
-    headers: { 'User-Agent': USER_AGENT, Accept: 'text/plain' },
-    signal: AbortSignal.timeout(25_000),
-    cache: 'no-store',
-  })
-  if (!response.ok) throw new Error(`CelesTrak answered ${response.status}`)
-  return response.text()
+async function latestStarlinkDesignator(): Promise<string | null> {
+  try {
+    const response = await fetch('https://ll.thespacedevs.com/2.3.0/launches/previous/?search=Starlink&limit=1&mode=list', {
+      headers: { Accept: 'application/json', 'User-Agent': 'LiftoffClub/1.0 (family sky; cache 24h; +https://liftoffclub.app)' },
+      signal: AbortSignal.timeout(12_000),
+      cache: 'no-store',
+    })
+    if (!response.ok) return null
+    const body = (await response.json()) as { results?: Array<{ launch_designator?: string }> }
+    const designator = body.results?.[0]?.launch_designator
+    return typeof designator === 'string' ? designator : null
+  } catch {
+    return null
+  }
 }
 
 function cachePath(): string {

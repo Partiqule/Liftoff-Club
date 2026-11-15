@@ -116,6 +116,110 @@ export function noradId(line1: string): string {
   return line1.slice(2, 7).trim()
 }
 
+export type OmmRecord = {
+  OBJECT_NAME?: string
+  OBJECT_ID?: string
+  EPOCH?: string
+  MEAN_MOTION?: number
+  ECCENTRICITY?: number
+  INCLINATION?: number
+  RA_OF_ASC_NODE?: number
+  ARG_OF_PERICENTER?: number
+  MEAN_ANOMALY?: number
+  NORAD_CAT_ID?: number
+  ELEMENT_SET_NO?: number
+  REV_AT_EPOCH?: number
+  BSTAR?: number
+  MEAN_MOTION_DOT?: number
+  MEAN_MOTION_DDOT?: number
+  CLASSIFICATION_TYPE?: string
+  EPHEMERIS_TYPE?: number
+}
+
+/** Build a two line element from a CelesTrak JSON or CSV row. Catalog numbers above 99999 are skipped. */
+export function tleFromOmm(row: OmmRecord): ParsedTle | null {
+  const cat = row.NORAD_CAT_ID
+  if (cat == null || !Number.isInteger(cat) || cat < 1 || cat > 99999) return null
+  if (!row.EPOCH || row.MEAN_MOTION == null || row.INCLINATION == null) return null
+  const catalog = String(cat).padStart(5, '0')
+  const designator = designatorField(row.OBJECT_ID ?? '')
+  const epoch = epochField(row.EPOCH)
+  if (!epoch) return null
+  const line1 = checksum(
+    `1 ${catalog}${row.CLASSIFICATION_TYPE || 'U'} ${designator} ${epoch} ${fixedDot(row.MEAN_MOTION_DOT ?? 0)} ${scientific(row.MEAN_MOTION_DDOT ?? 0)} ${scientific(row.BSTAR ?? 0)} ${row.EPHEMERIS_TYPE ?? 0} ${String(row.ELEMENT_SET_NO ?? 999).padStart(4, ' ').slice(-4)}`,
+  )
+  const line2 = checksum(
+    `2 ${catalog} ${angle(row.INCLINATION)} ${angle(row.RA_OF_ASC_NODE ?? 0)} ${ecc(row.ECCENTRICITY ?? 0)} ${angle(row.ARG_OF_PERICENTER ?? 0)} ${angle(row.MEAN_ANOMALY ?? 0)} ${motion(row.MEAN_MOTION)}${String(row.REV_AT_EPOCH ?? 0).padStart(5, '0').slice(-5)}`,
+  )
+  if (line1.length !== 69 || line2.length !== 69) return null
+  return { name: (row.OBJECT_NAME ?? 'SATELLITE').trim() || 'SATELLITE', line1, line2 }
+}
+
+export function parseGpJson(body: unknown): ParsedTle[] {
+  if (!Array.isArray(body)) return []
+  return body.map((row) => tleFromOmm(row as OmmRecord)).filter((row): row is ParsedTle => Boolean(row))
+}
+
+function designatorField(objectId: string): string {
+  const match = objectId.toUpperCase().match(/^(\d{4})-(\d+)([A-Z]+)?$/)
+  if (!match) return '        '
+  const piece = (match[3] ?? '').slice(0, 3)
+  const number = match[2].padStart(3, '0').slice(-3)
+  return `${match[1].slice(2)}${number}${piece}`.padEnd(8, ' ').slice(0, 8)
+}
+
+function epochField(iso: string): string | null {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return null
+  const year = date.getUTCFullYear()
+  const start = Date.UTC(year, 0, 1)
+  const day = (date.getTime() - start) / 86_400_000 + 1
+  const yy = String(year).slice(-2)
+  const dayText = day.toFixed(8).padStart(12, '0')
+  return `${yy}${dayText}`
+}
+
+function fixedDot(value: number): string {
+  const sign = value < 0 ? '-' : ' '
+  const body = Math.abs(value).toFixed(8).replace(/^0/, '')
+  return `${sign}${body}`.slice(0, 10)
+}
+
+function scientific(value: number): string {
+  if (!Number.isFinite(value) || value === 0) return ' 00000+0'
+  const sign = value < 0 ? '-' : ' '
+  const abs = Math.abs(value)
+  let exp = Math.floor(Math.log10(abs)) + 1
+  let mant = Math.round((abs / 10 ** exp) * 100_000)
+  if (mant === 100_000) {
+    mant = 10_000
+    exp += 1
+  }
+  const expSign = exp < 0 ? '-' : '+'
+  return `${sign}${String(mant).padStart(5, '0')}${expSign}${Math.abs(exp)}`
+}
+
+function angle(value: number): string {
+  return value.toFixed(4).padStart(8, ' ')
+}
+
+function ecc(value: number): string {
+  return value.toFixed(7).replace('0.', '').padStart(7, '0').slice(0, 7)
+}
+
+function motion(value: number): string {
+  return value.toFixed(8).padStart(11, ' ')
+}
+
+function checksum(body: string): string {
+  let sum = 0
+  for (const char of body) {
+    if (char >= '0' && char <= '9') sum += Number(char)
+    else if (char === '-') sum += 1
+  }
+  return `${body}${sum % 10}`
+}
+
 /** Last-resort station orbit. Real passes use a fresh CelesTrak element. */
 export const ISS_FALLBACK: ParsedTle = {
   name: 'ISS (ZARYA)',
