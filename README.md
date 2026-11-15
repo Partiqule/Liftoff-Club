@@ -83,7 +83,7 @@ After deploy, subscribe to `https://your-site/calendar/feed.ics` from the launch
 
 - **Model-written stories and answers.** The seams are `lib/explain.ts` and `lib/ask.ts`. Set `EXPLAINER_API_KEY` and the server will call an OpenAI-compatible chat endpoint, cache the result, and fall back to the listing if the call fails. With no key, nothing is invented.
 - **Email or text briefs.** The brief page already builds the message (`lib/brief.ts`, channel `screen`). A sender for email or text is not connected.
-- **Phone alerts while the phone is asleep.** The site can be installed, with an offline page, and a parent can allow web push for followed launches (one hour before, at liftoff, and when the public clock moves). That path stays hidden until VAPID keys, a Redis or KV store, and `CRON_SECRET` are set. Kids mode keeps it off. See `.env.example`.
+- **Phone alerts while the phone is asleep.** The site can be installed, with an offline page, and a parent can allow web push for followed launches (about one hour before, at liftoff, and when the public clock moves). GitHub Actions calls the alert route every 10 minutes. Vercel calls it once a day as a backup, because a Hobby account cannot run a cron more often than that. The path stays hidden until VAPID keys, a Redis or KV store, and `CRON_SECRET` are set. Kids mode keeps it off. See `.env.example`.
 - **Higher Launch Library rate limits.** One cached request an hour is the design. A token is optional.
 
 Pass times are a family estimate from public orbits. They can be off by a couple of minutes. They are not for flying anything.

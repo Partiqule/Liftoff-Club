@@ -1,11 +1,16 @@
 import { formatLaunchWhen } from '@/lib/pro/time'
 import { isQuietHour } from '@/lib/quiet'
 
-/** Hourly cron. The hour alert is due any time in the hour before liftoff. */
-export const HOUR_WINDOW_MS = 65 * 60 * 1000
-/** The liftoff alert is due from five minutes before until the next hourly check. */
-export const LIFTOFF_EARLY_MS = 5 * 60 * 1000
-export const LIFTOFF_LATE_MS = 50 * 60 * 1000
+/**
+ * The one hour alert is due from 75 minutes before liftoff until 45 minutes before.
+ * A GitHub schedule every 10 minutes, plus a few minutes of lag, still lands once.
+ * Redis remembers the mark so a second check in the window does not send again.
+ */
+export const HOUR_EARLY_MS = 75 * 60 * 1000
+export const HOUR_LATE_MS = 45 * 60 * 1000
+/** Liftoff is due from 12 minutes before until 15 minutes after. */
+export const LIFTOFF_EARLY_MS = 12 * 60 * 1000
+export const LIFTOFF_LATE_MS = 15 * 60 * 1000
 
 export type LaunchSnap = {
   id: string
@@ -63,7 +68,7 @@ export function planNotices(now: number, record: PushRecord, launches: LaunchSna
     if (!clockIsSet(launch) || !launch.net) continue
     const delta = Date.parse(launch.net) - now
     if (!Number.isFinite(delta)) continue
-    if (delta > 0 && delta <= HOUR_WINDOW_MS && !already(record, launch.id, `hour:${launch.net}`)) {
+    if (delta >= HOUR_LATE_MS && delta <= HOUR_EARLY_MS && !already(record, launch.id, `hour:${launch.net}`)) {
       notices.push(notice(launch, 'hour', `One hour: ${launch.name}`, `${when}. About an hour to go.`, `hour:${launch.net}`))
     }
     if (delta <= LIFTOFF_EARLY_MS && delta >= -LIFTOFF_LATE_MS && !already(record, launch.id, `liftoff:${launch.net}`)) {
