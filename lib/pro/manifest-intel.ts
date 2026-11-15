@@ -1,3 +1,4 @@
+import { isStarshipOrHeavy } from '@/lib/heavy-board'
 import { formatMountain } from '@/lib/pro/time'
 import type { Launch } from '@/lib/types'
 
@@ -58,7 +59,7 @@ function payloadCustomers(launch: Launch): string[] {
 export function filterManifest(launches: Launch[], filters: ManifestFilters): Launch[] {
   const company = filters.company.trim().toLowerCase()
   return launches.filter((launch) => {
-    if (filters.rideshare && !isRideshareLaunch(launch)) return false
+    if (filters.rideshare && !isRideshareLaunch(launch) && !isStarshipOrHeavy(launch)) return false
     if (filters.orbit && (launch.orbitAbbrev ?? launch.orbitName ?? '') !== filters.orbit) return false
     if (filters.site && (launch.padLocation ?? launch.padName) !== filters.site) return false
     if (!company) return true

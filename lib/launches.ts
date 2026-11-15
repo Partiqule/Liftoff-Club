@@ -17,6 +17,11 @@ const RECENT_TESTS = [
   'https://ll.thespacedevs.com/2.3.0/launches/previous/?search=Starship&mode=normal&limit=8',
   'https://ll.thespacedevs.com/2.3.0/launches/previous/?search=New%20Shepard&mode=normal&limit=5',
 ]
+/** Named vehicles can sit past the first pages. Pull them even if paging stops early. */
+const NAMED_UPCOMING = [
+  'https://ll.thespacedevs.com/2.3.0/launches/upcoming/?search=Starship&mode=normal&limit=30',
+  'https://ll.thespacedevs.com/2.3.0/launches/upcoming/?search=Falcon%20Heavy&mode=normal&limit=30',
+]
 
 const FRESH_MS = 50 * 60 * 1000
 const STALE_OK_MS = 7 * 24 * 60 * 60 * 1000
@@ -30,7 +35,7 @@ export function launchesToPrerender(launches: Launch[], now = Date.now()): Launc
   const picked = new Map<string, Launch>()
   for (const launch of launches) {
     const when = launch.net ? Date.parse(launch.net) : NaN
-    const named = /starship|new shepard|transporter|bandwagon|starbase/i.test(`${launch.name} ${launch.padName} ${launch.padLocation ?? ''}`)
+    const named = /starship|falcon heavy|new shepard|transporter|bandwagon|starbase/i.test(`${launch.name} ${launch.rocketName} ${launch.padName} ${launch.padLocation ?? ''}`)
     if (named || !Number.isFinite(when) || when <= horizon) picked.set(launch.id, launch)
   }
   return [...picked.values()]
@@ -125,7 +130,7 @@ async function fetchLive(): Promise<LaunchBoard> {
     if (launches.length < PAGE_SIZE) break
     if (total != null && upcoming >= total) break
   }
-  for (const url of RECENT_TESTS) {
+  for (const url of [...NAMED_UPCOMING, ...RECENT_TESTS]) {
     try {
       const body = await fetchJson(url)
       for (const launch of normalizeLaunches(body.results)) seen.set(launch.id, launch)
