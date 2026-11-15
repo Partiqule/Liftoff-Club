@@ -13,6 +13,7 @@ const LINKS = [
   { href: '/pro/manifest', label: 'Manifest' },
   { href: '/pro/alerts', label: 'Alerts' },
   { href: '/pro/brief', label: 'Brief' },
+  { href: '/pro/gov', label: 'Gov' },
 ]
 
 export function ProShell({ children }: { children: ReactNode }) {
