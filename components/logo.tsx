@@ -1,23 +1,8 @@
-export function Logo({ size = 40 }: { size?: number }) {
+export function Logo({ size = 52 }: { size?: number }) {
   return (
-    <svg className="logo-mark" width={size} height={size} viewBox="0 0 64 64" aria-hidden="true">
-      <path
-        d="M8 48C22 48 28 20 54 14"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="3.2"
-        strokeLinecap="round"
-        opacity="0.28"
-      />
-      <path
-        d="M8 48C22 48 28 20 54 14"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-      <circle cx="54" cy="14" r="2.4" fill="currentColor" />
-    </svg>
+    // The mark is Paul's illustration. A traced SVG would change it, so the header uses the transparent PNG.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img className="logo-mark" src="/brand/logo-512.png" width={size} height={size} alt="" />
   )
 }
 
