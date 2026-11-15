@@ -12,11 +12,13 @@ export function ManifestDesk({
   orbits,
   sites,
   asOf,
+  locked = false,
 }: {
   launches: Launch[]
   orbits: string[]
   sites: string[]
   asOf: string | null
+  locked?: boolean
 }) {
   const [company, setCompany] = useState('')
   const [rideshare, setRideshare] = useState(false)
@@ -67,9 +69,13 @@ export function ManifestDesk({
             ))}
           </select>
         </label>
-        <button className="btn" type="button" onClick={download} disabled={rows.length === 0}>
-          Export CSV
-        </button>
+        {locked ? (
+          <p className="meta">Export opens after approval. Free during early access.</p>
+        ) : (
+          <button className="btn" type="button" onClick={download} disabled={rows.length === 0}>
+            Export CSV
+          </button>
+        )}
       </form>
       <p className="meta">{rows.length} flights on this cut of the public board.</p>
       <div className="pro-manifest">
