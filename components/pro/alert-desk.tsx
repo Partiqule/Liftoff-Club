@@ -27,17 +27,19 @@ export function AlertDesk({
   launches,
   constellations,
   now,
+  feedToken,
 }: {
   launches: Launch[]
   constellations: ConstellationRef[]
   now: number
+  feedToken?: string | null
 }) {
   const { store, setStore, ready } = useProStore()
   const zone = useActiveZone()
   if (!ready) return <div className="pro-skeleton" aria-busy="true" aria-label="Opening saved rules" />
   const live = buildFeed(store, launches, constellations, now)
   const feed = mergeFeed(live, store.feed)
-  const calendar = `/pro/calendar/feed.ics?targets=${store.targets.map((target) => `${target.kind}:${encodeURIComponent(target.id)}`).join(',')}`
+  const calendar = `/pro/calendar/feed.ics?targets=${store.targets.map((target) => `${target.kind}:${encodeURIComponent(target.id)}`).join(',')}${feedToken ? `&access=${encodeURIComponent(feedToken)}` : ''}`
 
   function add(kind: AlertKind) {
     if (store.rules.some((rule) => rule.kind === kind && rule.enabled)) return

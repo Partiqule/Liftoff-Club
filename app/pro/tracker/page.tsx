@@ -2,7 +2,9 @@ import type { Metadata } from 'next'
 import { Cited } from '@/components/pro/cited'
 import { MonthChart } from '@/components/pro/month-chart'
 import { TrackerTable } from '@/components/pro/tracker-table'
+import { previewSlice } from '@/lib/pro/access-gate'
 import { loadProBoard } from '@/lib/pro/load'
+import { readViewer } from '@/lib/pro/viewer'
 
 export const revalidate = 3600
 
@@ -12,7 +14,9 @@ export const metadata: Metadata = {
 }
 
 export default async function TrackerPage() {
+  const viewer = await readViewer()
   const { rows } = await loadProBoard()
+  const shown = previewSlice(rows, viewer.level, 2)
   return (
     <main id="content" className="wrap page">
       <p className="kicker">Competitors and constellations</p>
@@ -21,7 +25,7 @@ export default async function TrackerPage() {
         Satellites in orbit come from the CelesTrak catalog. Last launch and launches this year come from Launch Library 2. A planned size or a capacity number appears only with a public source and a date. Otherwise the cell says no public figure yet.
       </p>
       <div className="pro-trends">
-        {rows.map((row) => (
+        {shown.map((row) => (
           <article key={row.id} className="pro-card">
             <h2>{row.name}</h2>
             <div className="pro-stat-row">
@@ -49,7 +53,7 @@ export default async function TrackerPage() {
           </article>
         ))}
       </div>
-      <TrackerTable rows={rows} />
+      <TrackerTable rows={shown} />
     </main>
   )
 }

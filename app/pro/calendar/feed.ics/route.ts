@@ -1,12 +1,23 @@
 import { feedToIcs } from '@/lib/calendar'
 import { getLaunches } from '@/lib/launches'
+import { FREE_LINE } from '@/lib/pro/access-gate'
 import { constellationRefs } from '@/lib/pro/options'
+import { readViewer } from '@/lib/pro/viewer'
 import { launchesForTargets, targetsFromQuery } from '@/lib/pro/watch'
 import { siteUrl } from '@/lib/site'
 
-export const revalidate = 1800
-
 export async function GET(request: Request) {
+  const viewer = await readViewer(request)
+  if (viewer.level !== 'full') {
+    const body = feedToIcs([], siteUrl(), Date.now(), {
+      name: 'Liftoff Club Pro',
+      description: `Preview only. ${FREE_LINE} Full desks open after approval.`,
+    })
+    return new Response(body, {
+      status: 401,
+      headers: { 'Content-Type': 'text/calendar; charset=utf-8', 'Cache-Control': 'private, no-store' },
+    })
+  }
   const targets = targetsFromQuery(new URL(request.url).searchParams.get('targets') ?? '')
   const board = await getLaunches()
   const launches = launchesForTargets(board.launches, targets, constellationRefs())
@@ -18,7 +29,7 @@ export async function GET(request: Request) {
     headers: {
       'Content-Type': 'text/calendar; charset=utf-8',
       'Content-Disposition': 'inline; filename="liftoff-club-pro.ics"',
-      'Cache-Control': 'public, max-age=600, s-maxage=1800',
+      'Cache-Control': 'private, no-store',
     },
   })
 }

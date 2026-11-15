@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useState, type FormEvent } from 'react'
+import { SIGN_IN_READY } from '@/lib/pro/access-gate'
 import type { AccessDesk } from '@/lib/pro/signups'
 import { track } from '@/lib/track'
 
@@ -25,13 +26,13 @@ export function AccessForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, company, role, desk, website }),
       })
-      const payload = (await response.json()) as { ok?: boolean; error?: string }
+      const payload = (await response.json()) as { ok?: boolean; error?: string; mailed?: boolean }
       if (!response.ok) {
         setMessage(payload.error ?? 'The note did not go through.')
         return
       }
       track('pro_signup_submitted')
-      setMessage('Received. Someone will write back if the pilot has room.')
+      setMessage(payload.mailed === false ? 'Saved. The sign in link is sent when an admin opens the desk.' : SIGN_IN_READY)
       setName('')
       setEmail('')
       setCompany('')
@@ -76,7 +77,7 @@ export function AccessForm() {
         {pending ? 'Sending' : 'Request early access'}
       </button>
       <p className="note">
-        Your name, work email, company, and role are saved so we can reply. They are not sold. Free during early access. <Link href="/privacy">Privacy</Link>
+        Your name, work email, company, and role are saved with the sign up. They are not sold. Free during early access. <Link href="/privacy">Privacy</Link>
       </p>
       {message ? <p className="meta">{message}</p> : null}
     </form>

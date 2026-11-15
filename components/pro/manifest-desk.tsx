@@ -14,12 +14,14 @@ export function ManifestDesk({
   sites,
   asOf,
   refreshedAt,
+  locked = false,
 }: {
   launches: Launch[]
   orbits: string[]
   sites: string[]
   asOf: string | null
   refreshedAt: string | null
+  locked?: boolean
 }) {
   const zone = useActiveZone()
   const [company, setCompany] = useState('')
@@ -80,9 +82,13 @@ export function ManifestDesk({
         </label>
         <div className="pro-field">
           <span>Export</span>
-          <button className="btn pro-export" type="button" onClick={download} disabled={rows.length === 0}>
-            Export CSV
-          </button>
+          {locked ? (
+            <p className="meta">Export opens after approval. Free during early access.</p>
+          ) : (
+            <button className="btn pro-export" type="button" onClick={download} disabled={rows.length === 0}>
+              Export CSV
+            </button>
+          )}
         </div>
       </form>
       <p className="meta">{rows.length} flights on this cut of the public board.</p>

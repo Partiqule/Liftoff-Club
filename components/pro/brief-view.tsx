@@ -1,16 +1,29 @@
 import { PrintButton } from '@/components/pro/print-button'
 import type { ProBrief } from '@/lib/pro/brief'
 
-export function BriefView({ brief, talk, source }: { brief: ProBrief; talk: string[]; source: 'template' | 'model' }) {
+export function BriefView({
+  brief,
+  talk,
+  source,
+  preview = false,
+}: {
+  brief: ProBrief
+  talk: string[]
+  source: 'template' | 'model'
+  preview?: boolean
+}) {
+  const facts = preview ? brief.facts.slice(0, 2) : brief.facts
+  const lines = preview ? talk.slice(0, 1) : talk
   return (
     <article className="pro-brief">
       <p className="kicker">One page brief</p>
       <h1>{brief.title}</h1>
       <p className="lede">Each figure below is a public record. The link is the source, and the date is when that source was read.</p>
+      {preview ? <p className="note">Sample brief. Free during early access. The rest opens after approval.</p> : null}
       <PrintButton />
       {brief.facts.length === 0 ? <p>No sourced figure is on file yet.</p> : null}
       <dl className="pro-facts">
-        {brief.facts.map((fact) => (
+        {facts.map((fact) => (
           <div key={`${fact.heading}-${fact.text}`}>
             <dt>{fact.heading}</dt>
             <dd>
@@ -37,7 +50,7 @@ export function BriefView({ brief, talk, source }: { brief: ProBrief; talk: stri
       <h2>Talk track</h2>
       <p className="meta">{source === 'model' ? 'Rewritten from the sourced lines above. No new numbers were kept.' : 'Written from the sourced lines above. No model key is required.'}</p>
       <ol className="pro-talk">
-        {talk.map((line) => (
+        {lines.map((line) => (
           <li key={line}>{line}</li>
         ))}
       </ol>
