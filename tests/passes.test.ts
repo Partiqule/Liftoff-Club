@@ -4,7 +4,7 @@ import { compass8, haversineKm, heightPhrase, initialBearingDeg } from '@/lib/ge
 import { gradePass, leadPass } from '@/lib/planner'
 import { predictPasses } from '@/lib/predict'
 import { sunPosition, satelliteInSunlight } from '@/lib/solar'
-import { altitudeKmFromMotion, ISS_FALLBACK, meanMotion, parseTle, selectStarlink } from '@/lib/tle-select'
+import { altitudeKmFromMotion, ISS_FALLBACK, meanMotion, parseTle, selectStarlink, tleFromOmm } from '@/lib/tle-select'
 import type { SkyPass } from '@/lib/types'
 
 const ISS = { ...ISS_FALLBACK, kind: 'iss' as const }
@@ -101,6 +101,30 @@ describe('tle selection', () => {
     const selected = selectStarlink(sats, 4)
     expect(selected.length).toBeLessThanOrEqual(4)
     expect(selected.length).toBeGreaterThan(1)
+  })
+
+  it('rebuilds the station element from a CelesTrak JSON row', () => {
+    const row = tleFromOmm({
+      OBJECT_NAME: 'ISS (ZARYA)',
+      OBJECT_ID: '1998-067A',
+      EPOCH: '2026-11-15T08:02:34.132128',
+      MEAN_MOTION: 15.49391288,
+      ECCENTRICITY: 0.0007375,
+      INCLINATION: 51.6322,
+      RA_OF_ASC_NODE: 272.1219,
+      ARG_OF_PERICENTER: 28.023,
+      MEAN_ANOMALY: 332.1155,
+      NORAD_CAT_ID: 25544,
+      ELEMENT_SET_NO: 999,
+      REV_AT_EPOCH: 59518,
+      BSTAR: 0.00019082,
+      MEAN_MOTION_DOT: 0.00010226,
+      MEAN_MOTION_DDOT: 0,
+      CLASSIFICATION_TYPE: 'U',
+      EPHEMERIS_TYPE: 0,
+    })
+    expect(row?.line1).toBe('1 25544U 98067A   26319.33511727  .00010226  00000+0  19082-3 0  9993')
+    expect(row?.line2).toBe('2 25544  51.6322 272.1219 0007375  28.0230 332.1155 15.49391288595180')
   })
 })
 

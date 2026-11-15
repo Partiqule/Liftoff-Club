@@ -4,16 +4,43 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import path from 'node:path'
 import { cache } from 'react'
 import { resolveCompany } from '@/lib/companies'
+import { upcomingPageUrl } from '@/lib/launch-query'
 import { normalizeLaunch, normalizeLaunches } from '@/lib/normalize'
+import { recordSlips } from '@/lib/slip-store'
 import type { Launch, LaunchBoard } from '@/lib/types'
 
 const USER_AGENT = 'LiftoffClub/1.0 (family launch companion; cache 1h; +https://thespacedevs.com)'
-const UPCOMING = 'https://ll.thespacedevs.com/2.3.0/launches/upcoming/?mode=detailed&limit=40&hide_recent_previous=true'
+const PAGE_SIZE = 100
+const MAX_PAGES = 6
+export { upcomingPageUrl }
+/** Recent flights the upcoming list drops once they have flown. No provider or pad filter. */
+const RECENT_TESTS = [
+  'https://ll.thespacedevs.com/2.3.0/launches/previous/?search=Starship&mode=normal&limit=8',
+  'https://ll.thespacedevs.com/2.3.0/launches/previous/?search=New%20Shepard&mode=normal&limit=5',
+]
+/** Named vehicles can sit past the first pages. Pull them even if paging stops early. */
+const NAMED_UPCOMING = [
+  'https://ll.thespacedevs.com/2.3.0/launches/upcoming/?search=Starship&mode=normal&limit=30',
+  'https://ll.thespacedevs.com/2.3.0/launches/upcoming/?search=Falcon%20Heavy&mode=normal&limit=30',
+]
+
 const FRESH_MS = 50 * 60 * 1000
 const STALE_OK_MS = 7 * 24 * 60 * 60 * 1000
 
 let memory: { expires: number; board: LaunchBoard } | null = null
 let pending: Promise<LaunchBoard> | null = null
+
+/** Prebuild the near board plus named test and rideshare flights. Later flights stay on the list and render when opened. */
+export function launchesToPrerender(launches: Launch[], now = Date.now()): Launch[] {
+  const horizon = now + 120 * 86_400_000
+  const picked = new Map<string, Launch>()
+  for (const launch of launches) {
+    const when = launch.net ? Date.parse(launch.net) : NaN
+    const named = /starship|falcon heavy|new shepard|transporter|bandwagon|starbase/i.test(`${launch.name} ${launch.rocketName} ${launch.padName} ${launch.padLocation ?? ''}`)
+    if (named || !Number.isFinite(when) || when <= horizon) picked.set(launch.id, launch)
+  }
+  return [...picked.values()]
+}
 
 export const getLaunches = cache(async (): Promise<LaunchBoard> => {
   const now = Date.now()
@@ -23,7 +50,9 @@ export const getLaunches = cache(async (): Promise<LaunchBoard> => {
       pending = null
     })
   }
-  return pending
+  const board = await pending
+  await recordSlips(board.launches)
+  return board
 })
 
 const singleCache = new Map<string, Launch>()
@@ -83,32 +112,72 @@ async function loadBoard(): Promise<LaunchBoard> {
 }
 
 async function fetchLive(): Promise<LaunchBoard> {
+  const seen = new Map<string, Launch>()
+  let total: number | null = null
+  let upcoming = 0
+  let stoppedEarly = false
+  for (let page = 0; page < MAX_PAGES; page += 1) {
+    let body: { count?: number; next?: string | null; results?: unknown }
+    try {
+      body = await fetchJson(upcomingPageUrl(page * PAGE_SIZE))
+    } catch (error) {
+      if (seen.size === 0) throw error
+      stoppedEarly = true
+      break
+    }
+    if (typeof body.count === 'number') total = body.count
+    const launches = normalizeLaunches(body.results)
+    if (launches.length === 0) break
+    for (const launch of launches) seen.set(launch.id, launch)
+    upcoming += launches.length
+    if (launches.length < PAGE_SIZE) break
+    if (total != null && upcoming >= total) break
+  }
+  for (const url of [...NAMED_UPCOMING, ...RECENT_TESTS]) {
+    try {
+      const body = await fetchJson(url)
+      for (const launch of normalizeLaunches(body.results)) seen.set(launch.id, launch)
+    } catch {
+      // The upcoming pages are the board. Recent test flights are added when the feed allows another request.
+    }
+  }
+  const launches = [...seen.values()].sort((a, b) => {
+    if (!a.net && !b.net) return a.name.localeCompare(b.name)
+    if (!a.net) return 1
+    if (!b.net) return -1
+    return Date.parse(a.net) - Date.parse(b.net)
+  })
+  if (launches.length === 0) throw new Error('Launch Library returned an empty board')
+  const short = stoppedEarly || (total != null && upcoming < total)
+  return {
+    launches,
+    fetchedAt: new Date().toISOString(),
+    source: 'live',
+    stale: false,
+    notice: short
+      ? `The public list names ${total ?? 'more'} upcoming launches. This copy has ${upcoming} of them because the feed stopped early.`
+      : null,
+    total: total ?? upcoming,
+  }
+}
+
+async function fetchJson(url: string): Promise<{ count?: number; next?: string | null; results?: unknown }> {
   const headers: Record<string, string> = {
     Accept: 'application/json',
     'User-Agent': USER_AGENT,
   }
   const token = process.env.LL2_API_TOKEN?.trim()
   if (token) headers.Authorization = `Token ${token}`
-  const response = await fetch(UPCOMING, {
+  const response = await fetch(url, {
     headers,
-    signal: AbortSignal.timeout(20_000),
+    signal: AbortSignal.timeout(25_000),
     next: { revalidate: 3600 },
   })
   if (response.status === 429) {
     throw new Error('Launch Library allows only a few free requests an hour')
   }
   if (!response.ok) throw new Error(`Launch Library answered ${response.status}`)
-  const body = (await response.json()) as { count?: number; results?: unknown }
-  const launches = normalizeLaunches(body.results)
-  if (launches.length === 0) throw new Error('Launch Library returned an empty board')
-  return {
-    launches,
-    fetchedAt: new Date().toISOString(),
-    source: 'live',
-    stale: false,
-    notice: null,
-    total: typeof body.count === 'number' ? body.count : launches.length,
-  }
+  return (await response.json()) as { count?: number; next?: string | null; results?: unknown }
 }
 
 function cachePath(): string {
@@ -162,11 +231,15 @@ function repairLaunch(launch: Launch): Launch {
     },
     webcasts: launch.webcasts ?? (launch.webcastUrl ? [{ title: launch.webcastTitle ?? 'Webcast', url: launch.webcastUrl }] : []),
     updates: launch.updates ?? [],
+    failReason: launch.failReason ?? null,
+    holdReason: launch.holdReason ?? null,
+    launchDesignator: launch.launchDesignator ?? null,
     boosterReused: launch.boosterReused ?? null,
     boosterCareerFlights: launch.boosterCareerFlights ?? null,
     boosterSuccessfulLandings: launch.boosterSuccessfulLandings ?? null,
     boosterAttemptedLandings: launch.boosterAttemptedLandings ?? null,
     previousFlightName: launch.previousFlightName ?? null,
+    programs: launch.programs ?? [],
     manifest: (launch.manifest ?? []).map((item) => {
       const company = resolveCompany(item.company || item.name || providerCompany.name)
       return {

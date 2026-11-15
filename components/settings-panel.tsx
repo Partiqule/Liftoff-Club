@@ -47,7 +47,7 @@ export function SettingsPanel({ providers }: { providers: string[] }) {
         <p className="kicker">Bedtime</p>
         <h2>Quiet hours for alerts</h2>
         <p className="lede">
-          The countdown still works. Browser alerts stay silent between these hours, in the timezone of the town you set. Your phone’s own calendar alarms are separate.
+          The countdown still works. Alerts stay silent between these hours in the time zone shown next to the clock. Your phone’s own calendar alarms are separate.
         </p>
         <div className="quiet-fields">
           <label>
@@ -149,6 +149,14 @@ export function SettingsPanel({ providers }: { providers: string[] }) {
             onChange={(event) => updateSettings({ ...settings, notifications: { ...notes, includeSky: event.target.checked } })}
           />
           <span>Include space station and Starlink passes</span>
+        </label>
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={notes.starlinkTrains}
+            onChange={(event) => updateSettings({ ...settings, notifications: { ...notes, starlinkTrains: event.target.checked } })}
+          />
+          <span>Alert me about a recent Starlink train. Times are approximate.</span>
         </label>
         <p className="kicker">Saved rules</p>
         <label className="check">

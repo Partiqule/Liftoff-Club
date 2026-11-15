@@ -7,7 +7,9 @@ import { FollowList, type FollowRosterItem } from '@/components/follow-list'
 import { aiNotesForCompany } from '@/lib/ai-orbit'
 import { companyPage, companiesOnBoard } from '@/lib/company-board'
 import { listCatalog } from '@/lib/companies'
+import { eventsForCompany, getEvents } from '@/lib/events'
 import { getLaunches } from '@/lib/launches'
+import { EventFeed } from '@/components/event-feed'
 
 export const revalidate = 3600
 
@@ -38,6 +40,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function CompanyProfilePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const board = await getLaunches()
+  const events = await getEvents()
   const page = companyPage(slug, board.launches)
   if (!page) notFound()
   const { company, flights } = page
@@ -105,6 +108,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
           ))}
         </ul>
       </section>
+      <EventFeed events={eventsForCompany(events.events, company.slug)} refreshedAt={events.fetchedAt} notice={events.notice} />
       <FollowList slug={company.slug} roster={roster} listOnly />
     </main>
   )

@@ -5,6 +5,7 @@ import { SourceNote } from '@/components/source-note'
 import { isLocalSite, siteUrl } from '@/lib/site'
 import { webcalFeedUrl } from '@/lib/calendar'
 import { getLaunches } from '@/lib/launches'
+import { getPads } from '@/lib/pads'
 import { filterLaunches, isStillAhead } from '@/lib/schedule'
 
 export const metadata: Metadata = {
@@ -15,13 +16,15 @@ export const metadata: Metadata = {
 export default async function LaunchesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ who?: string; when?: string }>
+  searchParams: Promise<{ who?: string; when?: string; site?: string }>
 }) {
   const query = await searchParams
   const who = query.who === 'spacex' || query.who === 'crew' ? query.who : undefined
   const when = query.when === 'week' ? query.when : undefined
+  const site = query.site?.toLowerCase() === 'starbase' ? 'starbase' : undefined
   const board = await getLaunches()
-  const filtered = filterLaunches(board.launches, { who, when })
+  const pads = site === 'starbase' ? await getPads() : null
+  const filtered = filterLaunches(board.launches, { who, when, site })
   const ahead = filtered.filter((launch) => isStillAhead(launch))
   const recent = filtered.filter((launch) => !isStillAhead(launch))
   const base = siteUrl()
@@ -33,11 +36,11 @@ export default async function LaunchesPage({
       <p className="kicker">Every provider · SpaceX called out</p>
       <h1>The board</h1>
       <p className="lede">
-        Upcoming launches worldwide. Times refresh about once an hour, which is as often as the free launch feed allows. When a rocket slips, the calendar feed slips with it.
+        Every upcoming launch on the public list, including suborbital flights and test flights. A test flight keeps that label when the listing says so. Times refresh about once an hour. <Link href="/events">Tests and events</Link> are separate from launches.
       </p>
       <SourceNote board={board} />
       <nav className="filters" aria-label="Filter launches">
-        <Link href="/launches" aria-current={!who && !when ? 'page' : undefined}>
+        <Link href="/launches" aria-current={!who && !when && !site ? 'page' : undefined}>
           All
         </Link>
         <Link href="/launches?who=spacex" aria-current={who === 'spacex' ? 'page' : undefined}>
@@ -49,7 +52,26 @@ export default async function LaunchesPage({
         <Link href="/launches?when=week" aria-current={when === 'week' ? 'page' : undefined}>
           This week
         </Link>
+        <Link href="/launches?site=starbase" aria-current={site === 'starbase' ? 'page' : undefined}>
+          Starbase
+        </Link>
       </nav>
+      {site === 'starbase' ? (
+        <section>
+          <h2>Pads on file</h2>
+          {pads?.notice ? <p className="note">{pads.notice}</p> : null}
+          {pads && pads.pads.length === 0 ? <p className="note">No Starbase pad came back from the public list.</p> : null}
+          <ul>
+            {pads?.pads.map((pad) => (
+              <li key={pad.id}>
+                {pad.name}
+                {pad.location ? `, ${pad.location}` : ''} · <a href={pad.sourceUrl}>Launch Library 2</a>
+              </li>
+            ))}
+          </ul>
+          <p className="meta">Pad list last refresh {pads?.fetchedAt ? `${pads.fetchedAt.slice(0, 16).replace('T', ' ')} UTC` : 'not recorded'}.</p>
+        </section>
+      ) : null}
       {ahead.length === 0 ? <p className="note">Nothing in this filter is still ahead.</p> : null}
       <ul className="board">
         {ahead.map((launch) => (

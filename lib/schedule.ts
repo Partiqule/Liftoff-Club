@@ -28,11 +28,19 @@ export function isCrewLaunch(launch: Launch): boolean {
 export type LaunchFilter = {
   who?: string
   when?: string
+  /** `starbase` matches Starbase or Boca Chica. Any other value is matched against the pad text. */
+  site?: string
 }
 
 export function filterLaunches(launches: Launch[], filter: LaunchFilter, now = Date.now()): Launch[] {
   return launches.filter((launch) => {
     if (filter.who === 'spacex' && !launch.featured) return false
+    if (filter.site) {
+      const where = `${launch.padName} ${launch.padLocation ?? ''} ${launch.name}`.toLowerCase()
+      if (filter.site === 'starbase') {
+        if (!/starbase|boca chica/.test(where)) return false
+      } else if (!where.includes(filter.site.toLowerCase())) return false
+    }
     if (filter.who === 'crew' && !isCrewLaunch(launch)) return false
     if (filter.when === 'week') {
       if (!launch.net) return false

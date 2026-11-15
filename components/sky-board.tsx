@@ -5,12 +5,16 @@ import { watchingPlace } from '@/lib/places'
 import { compass8, heightPhrase } from '@/lib/geo'
 import { bestPasses, planForPass } from '@/lib/planner'
 import { Trail } from '@/components/trail'
+import { useActiveZone } from '@/components/use-zone'
 import { formatClock } from '@/lib/time'
+import { zoneAbbrev } from '@/lib/pro/time'
 import { skyAt } from '@/lib/weather'
+import { isVisibleTrain } from '@/lib/trains'
 
 export function SkyBoard() {
   const { settings, passes, skyState, skyNotice, weather } = useClub()
   const place = watchingPlace(settings.location)
+  const zone = useActiveZone()
 
   if (skyState === 'error') {
     return (
@@ -25,6 +29,7 @@ export function SkyBoard() {
   const waiting = skyState === 'loading' || skyState === 'idle'
   const iss = bestPasses(passes, 'iss', 8)
   const starlink = bestPasses(passes, 'starlink', 6)
+  const trains = passes.filter(isVisibleTrain).slice(0, 4)
   return (
     <section className="wrap page">
       <p className="kicker">{place.label}</p>
@@ -37,7 +42,10 @@ export function SkyBoard() {
       </p>
       {skyNotice ? <p className="banner">{skyNotice}</p> : null}
       <h2>Space station</h2>
-      {waiting ? <SkySkeleton /> : <PassList passes={iss} place={place.label} timeZone={place.timezone} weather={weather} empty="No station pass in the next day and a half." />}
+      {waiting ? <SkySkeleton /> : <PassList passes={iss} place={place.label} timeZone={zone} weather={weather} empty="No station pass in the next day and a half." />}
+      <h2>Recent trains</h2>
+      <p className="meta">Approximate. Satellites from launches in the last few days, in a dark sky, with the satellites in sunlight. Not the full Starlink list.</p>
+      {waiting ? <SkySkeleton /> : <PassList passes={trains} place={place.label} timeZone={zone} weather={weather} empty="No recent train clears the dark sky and cloud check." />}
       <h2>Starlink sample</h2>
       {waiting ? (
         <SkySkeleton />
@@ -45,7 +53,7 @@ export function SkyBoard() {
         <PassList
           passes={starlink}
           place={place.label}
-          timeZone={place.timezone}
+          timeZone={zone}
           weather={weather}
           empty="No Starlink pass cleared the faint-and-low filter tonight."
         />
@@ -81,7 +89,7 @@ function PassList({
   return (
     <ul className="pass-list">
       {passes.map((pass) => {
-        const clock = formatClock(pass.start, timeZone)
+        const clock = `${formatClock(pass.start, timeZone)} ${zoneAbbrev(timeZone)}`
         const plan = planForPass(pass, place, clock)
         const judgement = skyAt(weather, pass.peak)
         const glow = judgement.call === 'nogo' || pass.grade === 'poor' ? 'fade' : pass.grade === 'great' || pass.grade === 'good' ? 'strong' : 'mid'

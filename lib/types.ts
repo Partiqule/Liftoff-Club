@@ -65,6 +65,10 @@ export type Launch = {
   statusName: string
   statusAbbrev: string
   statusDescription: string | null
+  /** From Launch Library only. Empty when the listing has no reason. */
+  failReason: string | null
+  holdReason: string | null
+  launchDesignator: string | null
   webcastUrl: string | null
   webcastTitle: string | null
   webcasts: { title: string; url: string }[]
@@ -87,6 +91,8 @@ export type Launch = {
   spacecraftDestination: string | null
   payloadHints: PayloadHint[]
   manifest: ManifestItem[]
+  /** Program names from Launch Library 2, when the listing has any. */
+  programs: string[]
   featured: boolean
 }
 
@@ -182,6 +188,8 @@ export type NotificationSettings = {
   providers: string[]
   visibleOnly: boolean
   includeSky: boolean
+  /** Opt in. Recent Starlink trains only, not the full catalog. */
+  starlinkTrains: boolean
   rules: AlertRules
 }
 
@@ -192,6 +200,9 @@ export type Settings = {
   quietEnd: string
   notifications: NotificationSettings
   location: Place | null
+  /** auto uses the device zone. chosen uses `zone`. */
+  zoneMode: 'auto' | 'chosen'
+  zone: string
 }
 
 export type AlertCandidate = {

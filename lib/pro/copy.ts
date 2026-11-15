@@ -5,8 +5,9 @@
 export const PRO_COPY = {
   title: 'Liftoff Club Pro',
   lede: 'A desk for space industry teams who need launch, manifest, and constellation intel. The family site stays free. This desk is the pilot.',
-  pricing: 'Pilot pricing on request.',
-  footerLine: 'Independent project. Not affiliated with any company shown.',
+  offer: 'Free during early access.',
+  footerLine:
+    'Independent project. Liftoff Club is not affiliated with or endorsed by any launch provider or agency. Company and agency names only identify launches and belong to their owners.',
   companyTitle: 'Company desks',
   companyBody: 'For teams at small satellite companies, working business development and strategy.',
   companyPoints: [
@@ -23,6 +24,6 @@ export const PRO_COPY = {
     'Saved target accounts, constellations, rockets, and launch sites in this browser.',
   ],
   accessTitle: 'Request early access',
-  accessBody: 'Leave your name, work email, company, and role. The note is saved so we can reply. Nothing here is a payment.',
-  savedBody: 'Saved targets and alert rules stay in this browser. A later version can move them to an account. This pilot does not.',
+  accessBody: 'Leave your name, work email, company, and role. Free during early access. A valid note emails a sign in link. The desk opens after you open that link.',
+  savedBody: 'Saved targets and alert rules stay in this browser. The desk opens after you open the sign in link. Free during early access.',
 } as const
