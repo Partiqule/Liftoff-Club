@@ -28,9 +28,7 @@ export function Header() {
             <Logo />
             <span className="brand-words">
               <Wordmark />
-              <span className="tagline">
-                Look up together <span className="flourish">Ad astra</span>
-              </span>
+              <span className="tagline">Look up together</span>
             </span>
           </Link>
           <nav className="top-nav" aria-label="Primary">

@@ -73,6 +73,7 @@ export function Tonight() {
     <section className={`tonight wrap light-${glow}`}>
       <Trail glow={glow} span="hero" />
       <p className="kicker">Tonight over {town}</p>
+      <p className="flourish">Ad astra</p>
       <h1>
         {who}
         <span className="dir">{direction}</span>
