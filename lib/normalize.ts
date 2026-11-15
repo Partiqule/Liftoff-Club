@@ -211,6 +211,7 @@ export function normalizeLaunch(value: unknown): Launch | null {
     payloadHints,
     programs,
     featured: /spacex/i.test(provider.name) || provider.abbrev === 'SpX',
+    historical: false,
   }
 
   return { ...partial, manifest: buildManifest(partial) }

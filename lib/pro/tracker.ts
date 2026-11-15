@@ -4,6 +4,7 @@ import type { ConstellationCounts } from '@/lib/constellation-tally'
 import { aiNotesForCompany } from '@/lib/ai-orbit'
 import { CATALOG_LAG_NOTE, HISTORY_PATTERNS, catalogIsBehind, monthlyCounts, summarizeHistory, type HistoryLaunch } from '@/lib/pro/history'
 import { formatLaunchWhen, formatMountain, mountainYear } from '@/lib/pro/time'
+import { clockIsFuture, isHistorical } from '@/lib/schedule'
 import type { Launch } from '@/lib/types'
 
 export type TrackerSource = {
@@ -172,10 +173,9 @@ function nextLaunch(source: TrackerSource, launches: Launch[], now: number): Lau
     return null
   }
   const matched = launches.filter((launch) => {
+    if (isHistorical(launch)) return false
     if (!pattern.test(`${launch.name} ${launch.missionName ?? ''} ${launch.rocketName}`)) return false
-    if (!launch.net) return true
-    const when = Date.parse(launch.net)
-    return Number.isFinite(when) && when > now - 30 * 60 * 1000
+    return clockIsFuture(launch, now)
   })
   matched.sort((a, b) => (a.net ?? '9999').localeCompare(b.net ?? '9999'))
   return matched[0] ?? null

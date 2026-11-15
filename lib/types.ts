@@ -94,6 +94,8 @@ export type Launch = {
   /** Program names from Launch Library 2, when the listing has any. */
   programs: string[]
   featured: boolean
+  /** True when this row came from the past flight feed, not the upcoming board. */
+  historical?: boolean
 }
 
 export type LaunchBoard = {
@@ -122,6 +124,7 @@ export type LaunchBrief = {
   padLat: number | null
   padLon: number | null
   featured: boolean
+  historical?: boolean
 }
 
 export type PassGrade = 'great' | 'good' | 'fair' | 'poor'

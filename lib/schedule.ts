@@ -1,14 +1,36 @@
 import type { Launch } from '@/lib/types'
 
+export function isHistorical(launch: { historical?: boolean }): boolean {
+  return launch.historical === true
+}
+
+/** A clock that has not ended. History rows and past nets are not ahead. */
+export function clockIsFuture(launch: { net: string | null; windowEnd?: string | null }, now = Date.now()): boolean {
+  const raw = launch.windowEnd || launch.net
+  if (!raw) return false
+  const when = Date.parse(raw)
+  return Number.isFinite(when) && when > now - 30 * 60 * 1000
+}
+
 export function isStillAhead(launch: Launch, now = Date.now()): boolean {
+  if (isHistorical(launch)) return false
   const status = `${launch.statusAbbrev} ${launch.statusName}`.toLowerCase()
   if (status.includes('fail')) return false
   if (status.includes('success')) return false
-  if (status.includes('flight')) return true
-  if (!launch.net) return true
-  const end = Date.parse(launch.windowEnd || launch.net)
-  if (!Number.isFinite(end)) return true
-  return end > now - 30 * 60 * 1000
+  if (!launch.net && !launch.windowEnd) return true
+  return clockIsFuture(launch, now)
+}
+
+/** The soonest launch that is still in the future. Past and history rows never qualify. */
+export function pickNext<T extends { net: string | null; windowEnd?: string | null; historical?: boolean }>(
+  launches: T[],
+  now = Date.now(),
+  prefer?: (item: T) => boolean,
+): T | null {
+  const future = launches.filter((item) => !isHistorical(item) && clockIsFuture(item, now))
+  const pool = prefer ? future.filter(prefer) : future
+  pool.sort((a, b) => Date.parse(a.net || a.windowEnd || '') - Date.parse(b.net || b.windowEnd || ''))
+  return pool[0] ?? null
 }
 
 export function sortLaunches(launches: Launch[]): Launch[] {
@@ -71,5 +93,6 @@ export function toBrief(launch: Launch) {
     padLat: launch.padLat,
     padLon: launch.padLon,
     featured: launch.featured,
+    historical: launch.historical === true,
   }
 }
