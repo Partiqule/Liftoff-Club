@@ -1,55 +1,81 @@
 'use client'
 
+import { track } from '@vercel/analytics'
 import { useState, type FormEvent } from 'react'
-import { accessMailto, accessNote, type AccessDesk } from '@/lib/pro/access'
+import type { AccessDesk } from '@/lib/pro/signups'
 
 export function AccessForm() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
-  const [organization, setOrganization] = useState('')
+  const [company, setCompany] = useState('')
+  const [role, setRole] = useState('')
   const [desk, setDesk] = useState<AccessDesk>('company')
-  const [note, setNote] = useState('')
-  const [ready, setReady] = useState<string | null>(null)
+  const [website, setWebsite] = useState('')
+  const [message, setMessage] = useState<string | null>(null)
+  const [pending, setPending] = useState(false)
 
-  function onSubmit(event: FormEvent) {
+  async function onSubmit(event: FormEvent) {
     event.preventDefault()
-    const input = { name, email, organization, desk, note }
-    const text = accessNote(input)
-    setReady(text)
-    window.location.href = accessMailto(input)
+    setPending(true)
+    setMessage(null)
+    try {
+      const response = await fetch('/api/pro/access', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, company, role, desk, website }),
+      })
+      const payload = (await response.json()) as { ok?: boolean; error?: string }
+      if (!response.ok) {
+        setMessage(payload.error ?? 'The note did not go through.')
+        return
+      }
+      track('pro_signup_submitted')
+      setMessage('Received. Someone will write back if the pilot has room.')
+      setName('')
+      setEmail('')
+      setCompany('')
+      setRole('')
+    } catch {
+      setMessage('The note did not go through.')
+    } finally {
+      setPending(false)
+    }
   }
 
   return (
-    <form className="pro-access" onSubmit={onSubmit}>
+    <form className="pro-access" onSubmit={(event) => void onSubmit(event)}>
       <label>
         Name
-        <input className="field" value={name} required onChange={(event) => setName(event.target.value)} />
+        <input className="field" name="name" value={name} required autoComplete="name" onChange={(event) => setName(event.target.value)} />
       </label>
       <label>
         Work email
-        <input className="field" type="email" value={email} required onChange={(event) => setEmail(event.target.value)} />
+        <input className="field" name="email" type="email" value={email} required autoComplete="email" onChange={(event) => setEmail(event.target.value)} />
       </label>
       <label>
-        Organization
-        <input className="field" value={organization} required onChange={(event) => setOrganization(event.target.value)} />
+        Company
+        <input className="field" name="company" value={company} required autoComplete="organization" onChange={(event) => setCompany(event.target.value)} />
+      </label>
+      <label>
+        Role
+        <input className="field" name="role" value={role} required onChange={(event) => setRole(event.target.value)} />
       </label>
       <label>
         Which desk
-        <select className="pro-select" value={desk} onChange={(event) => setDesk(event.target.value as AccessDesk)}>
+        <select className="pro-select" name="desk" value={desk} onChange={(event) => setDesk(event.target.value as AccessDesk)}>
           <option value="company">Company desk</option>
           <option value="sales">Sales desk</option>
         </select>
       </label>
-      <label>
-        Note
-        <input className="field" value={note} placeholder="What you want to watch" onChange={(event) => setNote(event.target.value)} />
+      <label className="pro-honey" aria-hidden="true">
+        Website
+        <input tabIndex={-1} autoComplete="off" value={website} onChange={(event) => setWebsite(event.target.value)} />
       </label>
-      <button className="btn" type="submit">
-        Open in my mail app
+      <button className="btn" type="submit" disabled={pending}>
+        {pending ? 'Sending' : 'Request early access'}
       </button>
-      {ready ? (
-        <pre className="pro-note-preview">{ready}</pre>
-      ) : null}
+      <p className="note">Your name, work email, company, and role are saved so we can reply. They are not sold. This desk does not take payment.</p>
+      {message ? <p className="meta">{message}</p> : null}
     </form>
   )
 }

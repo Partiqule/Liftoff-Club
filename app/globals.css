@@ -731,6 +731,7 @@ html:not([data-voice]) .when-adult { display: none; }
 .pro-facts dd { overflow-wrap: anywhere; }
 .pro-table .btn { width: auto; justify-self: start; }
 .pro-filters, .pro-add, .pro-access { display: grid; gap: 0.8rem; margin: 1rem 0; }
+.pro-honey { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
 .pro-select, .pro-access select {
   display: block;
   width: 100%;
