@@ -2,7 +2,9 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { LocalTime } from '@/components/local-time'
+import { AiOrbit } from '@/components/ai-orbit'
 import { FollowList, type FollowRosterItem } from '@/components/follow-list'
+import { aiNotesForCompany } from '@/lib/ai-orbit'
 import { companyPage, companiesOnBoard } from '@/lib/company-board'
 import { listCatalog } from '@/lib/companies'
 import { getLaunches } from '@/lib/launches'
@@ -62,6 +64,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
       <h1>{company.name}</h1>
       <p className="story when-kid">{company.kid}</p>
       <p className="story when-adult">{company.brief}</p>
+      <AiOrbit notes={aiNotesForCompany(company.slug)} />
       <div className="job-links">
         {company.careersUrl ? (
           <a href={company.careersUrl} rel="noreferrer">

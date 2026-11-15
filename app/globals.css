@@ -394,6 +394,8 @@ dialog.term-card .kicker { font-size: 0.95rem; margin: 0; }
   margin: 0.8rem 0 0;
   color: var(--cold);
 }
+.capacity-line { height: 2px; background: rgba(197, 210, 226, 0.22); margin: 0.55rem 0 0.35rem; }
+.capacity-line span { display: block; height: 100%; background: linear-gradient(90deg, transparent, var(--core)); box-shadow: 0 0 10px rgba(243, 215, 176, 0.75); }
 .plate dt { color: var(--nebula); }
 .plate dd { margin: 0; color: var(--ink); }
 .jobs { list-style: none; margin: 0.8rem 0 0; padding: 0; }

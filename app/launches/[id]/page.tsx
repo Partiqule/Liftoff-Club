@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { AiOrbit } from '@/components/ai-orbit'
 import { AskLaunch } from '@/components/ask-launch'
 import { GlossaryText } from '@/components/glossary-text'
 import { CalendarLinks } from '@/components/calendar-links'
@@ -10,6 +11,7 @@ import { LocalTime } from '@/components/local-time'
 import { Patch } from '@/components/patch'
 import { StatusStamp } from '@/components/status-stamp'
 import { VisibilityCard } from '@/components/visibility-card'
+import { aiNotesForLaunch } from '@/lib/ai-orbit'
 import { explainLaunch } from '@/lib/explain'
 import { getLaunch, getLaunches } from '@/lib/launches'
 import { siteUrl } from '@/lib/site'
@@ -36,6 +38,7 @@ export default async function LaunchPage({ params }: { params: Promise<{ id: str
   const launch = await getLaunch(id)
   if (!launch) notFound()
   const story = await explainLaunch(launch)
+  const aiNotes = aiNotesForLaunch(launch)
   const loose = /day|month|year|quarter|week/i.test(launch.precision ?? '')
   return (
     <main id="content" className="wrap page">
@@ -48,6 +51,7 @@ export default async function LaunchPage({ params }: { params: Promise<{ id: str
           <StatusStamp abbrev={launch.statusAbbrev} name={launch.statusName} />
         </div>
         <h1>{launch.name}</h1>
+        <AiOrbit notes={aiNotes} />
         <Countdown net={launch.net} size="lg" />
         <p className="day-link">
           <Link className="btn" href={`/launches/${launch.id}/day`}>
