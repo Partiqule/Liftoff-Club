@@ -1,6 +1,6 @@
 import { getLaunch, getLaunches } from '@/lib/launches'
 import { cronAuthorized, pushConfigured } from '@/lib/push/config'
-import { bearerToken, githubOidcAllows } from '@/lib/push/github-oidc'
+import { alertCallerAllowed } from '@/lib/push/github-oidc'
 import { applyNotices, planNotices, type LaunchSnap } from '@/lib/push/plan'
 import { isQuietHour } from '@/lib/quiet'
 import { listPushes, removePush, replacePush } from '@/lib/push/redis'
@@ -27,7 +27,7 @@ function snap(launch: Launch): LaunchSnap {
 export async function GET(request: Request) {
   if (!pushConfigured()) return Response.json({ ok: true, skipped: 'push not configured' })
   const authorization = request.headers.get('authorization')
-  const allowed = cronAuthorized(authorization) || (await githubOidcAllows(bearerToken(authorization)))
+  const allowed = await alertCallerAllowed(authorization, cronAuthorized(authorization))
   if (!allowed) return Response.json({ error: 'Unauthorized' }, { status: 401 })
   const board = await getLaunches()
   const byId = new Map(board.launches.map((launch) => [launch.id, snap(launch)]))

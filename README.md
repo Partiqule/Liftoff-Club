@@ -76,7 +76,7 @@ Open [http://localhost:3000](http://localhost:3000). Kids mode is already on. Pa
 
 ## Phone alerts
 
-GitHub Actions calls `/api/push/cron` every 10 minutes with an OIDC token. No GitHub secret is required. Vercel calls it once a day with `CRON_SECRET`, because a Hobby account cannot schedule a cron more often than that. The one hour note is sent inside a window, and Redis remembers the send. The controls stay hidden until these are set. See `.env.example`.
+GitHub Actions calls `/api/push/cron` every 10 minutes with an OIDC token. No GitHub secret is required. Vercel calls it once a day with `CRON_SECRET`, because a Hobby account cannot schedule a cron more often than that. The one hour note is sent inside a window, and Redis remembers the send. The same check also sends a note when a followed clock moves or a status scrubs, and it includes a reason only when Launch Library published one. A recent Starlink train is a separate opt in on the device. A bad token is rejected. The controls stay hidden until these are set. See `.env.example`.
 
 - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT`
 - `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`, or the Vercel KV pair

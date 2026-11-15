@@ -1,7 +1,7 @@
 import { generateKeyPairSync, sign, type KeyObject } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import { cronAuthorized, pushConfigured, readPushEnv } from '@/lib/push/config'
-import { GITHUB_OIDC_AUD, GITHUB_OIDC_ISS, GITHUB_OIDC_REF, GITHUB_OIDC_REPO, oidcClaimsAllow, verifyOidcSignature } from '@/lib/push/github-oidc'
+import { GITHUB_OIDC_AUD, GITHUB_OIDC_ISS, GITHUB_OIDC_REF, GITHUB_OIDC_REPO, alertCallerAllowed, oidcClaimsAllow, verifyOidcSignature } from '@/lib/push/github-oidc'
 import { applyNotices, planNotices, type PushRecord } from '@/lib/push/plan'
 import { parseSubscribe } from '@/lib/push/record'
 
@@ -47,6 +47,20 @@ describe('phone alert plan', () => {
     expect(planNotices(Date.parse('2026-11-16T18:05:00Z'), next, [moved]).some((item) => item.kind === 'moved')).toBe(false)
   })
 
+  it('puts a published scrub reason in the phone note, and says when none was published', () => {
+    const scrubbed = {
+      ...launch,
+      statusName: 'Scrubbed',
+      failReason: 'High winds.',
+    }
+    const withHistory = { ...base, statuses: { flight: 'Go' } }
+    const noted = planNotices(Date.parse('2026-11-16T18:00:00Z'), withHistory, [scrubbed])
+    expect(noted[0]?.body).toContain('Status is now Scrubbed.')
+    expect(noted[0]?.body).toContain('Reason: High winds.')
+    const quiet = planNotices(Date.parse('2026-11-16T18:00:00Z'), withHistory, [{ ...scrubbed, failReason: null }])
+    expect(quiet[0]?.body).toContain('No reason was published.')
+  })
+
   it('stays quiet for kids mode and for bedtime', () => {
     expect(planNotices(Date.parse('2026-11-16T19:10:00Z'), { ...base, paused: true }, [launch])).toEqual([])
     expect(planNotices(Date.parse('2026-11-17T05:00:00Z'), base, [{ ...launch, net: '2026-11-17T05:30:00Z' }])).toEqual([])
@@ -82,7 +96,7 @@ describe('phone alert setup', () => {
     expect(cronAuthorized('Bearer secret', { CRON_SECRET: 'secret' })).toBe(true)
   })
 
-  it('accepts a GitHub Actions token for this repo on main and rejects the others', () => {
+  it('accepts a GitHub Actions token for this repo on main and rejects the others', async () => {
     const { publicKey, privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 })
     const jwk = publicKey.export({ format: 'jwk' })
     const now = Date.parse('2026-11-15T20:00:00Z')
@@ -101,6 +115,9 @@ describe('phone alert setup', () => {
     expect(oidcClaimsAllow({ ...claims, aud: 'https://example.com' }, now)).toBe(false)
     expect(oidcClaimsAllow({ ...claims, exp: Math.floor(now / 1000) - 10 }, now)).toBe(false)
     expect(verifyOidcSignature(`${token}x`, jwk)).toBe(false)
+    await expect(alertCallerAllowed('Bearer not-a-token', false, now)).resolves.toBe(false)
+    await expect(alertCallerAllowed(null, false, now)).resolves.toBe(false)
+    await expect(alertCallerAllowed('Bearer secret', true, now)).resolves.toBe(true)
   })
 
   it('stores a paused subscription while kids mode is on', () => {

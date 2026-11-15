@@ -69,3 +69,13 @@ export function bearerToken(header: string | null): string {
   if (!header?.startsWith('Bearer ')) return ''
   return header.slice('Bearer '.length).trim()
 }
+
+/** A shared cron secret or a valid GitHub token. A bad token, or a key lookup that fails, is a rejection. */
+export async function alertCallerAllowed(header: string | null, secretAllows: boolean, now = Date.now()): Promise<boolean> {
+  if (secretAllows) return true
+  try {
+    return await githubOidcAllows(bearerToken(header), now)
+  } catch {
+    return false
+  }
+}
