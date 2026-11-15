@@ -84,7 +84,17 @@ GitHub Actions calls `/api/push/cron` every 10 minutes. Vercel calls it once a d
 
 ## Pro
 
-`/pro` is a desk for space industry teams: a watchlist, a cited constellation tracker, manifest filters with CSV export, local alert rules, and a one page brief. It does not take payment. Saved targets stay in the browser. The family site stays free.
+`/pro` is a desk for space industry teams: a watchlist, a cited constellation tracker, manifest filters with CSV export, local alert rules, and a one page brief. Free during early access. Saved targets stay in the browser. The family site stays account free.
+
+Signed out visitors and people who are not approved see a preview. Full desks open after a passwordless email sign in for an email an admin has approved. Early access notes land as pending.
+
+Set these on Vercel before sign in works. Do not commit the secret values.
+
+- `PRO_SESSION_SECRET`, a long random string that signs the session cookie
+- `RESEND_API_KEY` and `RESEND_FROM` on the verified liftoffclub.app sender
+- `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`, or the Vercel KV pair, for sessions, magic links, and the approval list
+- `ADMIN_TOKEN` to unlock `/pro/admin`, and optionally `ADMIN_EMAILS` as a comma-separated list of signed-in admin emails
+- `PRO_NOTIFY_EMAIL` if you also want a copy when someone requests early access
 
 ## Tests
 

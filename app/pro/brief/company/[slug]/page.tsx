@@ -5,6 +5,7 @@ import { companiesOnBoard } from '@/lib/company-board'
 import { getCatalogCompany } from '@/lib/companies'
 import { companyBrief } from '@/lib/pro/brief'
 import { loadProBoard } from '@/lib/pro/load'
+import { readViewer } from '@/lib/pro/viewer'
 import { maybeRewriteTalk } from '@/lib/pro/talk-model'
 
 export const revalidate = 3600
@@ -17,6 +18,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function CompanyBriefPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
+  const viewer = await readViewer()
   const { board, sources, day, now, history } = await loadProBoard()
   const company = getCatalogCompany(slug) ?? companiesOnBoard(board.launches).find((item) => item.slug === slug) ?? null
   if (!company) notFound()
@@ -25,7 +27,7 @@ export default async function CompanyBriefPage({ params }: { params: Promise<{ s
   const talk = await maybeRewriteTalk(brief.facts, brief.talk)
   return (
     <main id="content" className="wrap page">
-      <BriefView brief={brief} talk={talk.lines} source={talk.source} />
+      <BriefView brief={brief} talk={talk.lines} source={talk.source} preview={viewer.level !== 'full'} />
     </main>
   )
 }

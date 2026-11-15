@@ -74,7 +74,7 @@ export function AccessForm() {
       <button className="btn" type="submit" disabled={pending}>
         {pending ? 'Sending' : 'Request early access'}
       </button>
-      <p className="note">Your name, work email, company, and role are saved so we can reply. They are not sold. This desk does not take payment.</p>
+      <p className="note">Your name, work email, company, and role are saved so we can reply. They are not sold. Free during early access.</p>
       {message ? <p className="meta">{message}</p> : null}
     </form>
   )

@@ -2,8 +2,10 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { AccessForm } from '@/components/pro/access-form'
 import { TrackerTable } from '@/components/pro/tracker-table'
+import { previewSlice } from '@/lib/pro/access-gate'
 import { PRO_COPY } from '@/lib/pro/copy'
 import { loadProBoard } from '@/lib/pro/load'
+import { readViewer } from '@/lib/pro/viewer'
 
 export const revalidate = 3600
 
@@ -13,13 +15,15 @@ export const metadata: Metadata = {
 }
 
 export default async function ProHome() {
+  const viewer = await readViewer()
   const { rows } = await loadProBoard()
+  const shown = previewSlice(rows, viewer.level, 2)
   return (
     <main id="content" className="wrap page pro-home">
       <p className="kicker">Industry desk</p>
       <h1>{PRO_COPY.title}</h1>
       <p className="lede">{PRO_COPY.lede}</p>
-      <p className="meta">{PRO_COPY.pricing}</p>
+      <p className="meta">{PRO_COPY.offer}</p>
       <div className="pro-personas">
         <section className="pro-card">
           <h2>{PRO_COPY.companyTitle}</h2>
@@ -52,13 +56,13 @@ export default async function ProHome() {
       </div>
       <h2>Sample of the tracker</h2>
       <p className="lede">These rows are the live public records. A blank cell means we do not have a sourced figure. A brief is a one page sheet you choose from the list.</p>
-      <TrackerTable rows={rows} />
+      <TrackerTable rows={shown} />
       <p>
         <Link href="/pro/tracker">Open the full tracker</Link>
       </p>
-      <h2>{PRO_COPY.accessTitle}</h2>
+      <h2 id="access">{PRO_COPY.accessTitle}</h2>
       <p>{PRO_COPY.accessBody}</p>
-      <p className="meta">{PRO_COPY.pricing}</p>
+      <p className="meta">{PRO_COPY.offer}</p>
       <AccessForm />
       <p className="note">{PRO_COPY.savedBody}</p>
     </main>

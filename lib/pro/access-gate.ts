@@ -1,0 +1,98 @@
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
+
+export const FREE_LINE = 'Free during early access.'
+export const SESSION_COOKIE = 'pro_session'
+export const ADMIN_COOKIE = 'pro_admin'
+export const SESSION_SECONDS = 60 * 60 * 24 * 30
+export const MAGIC_SECONDS = 60 * 20
+
+export type AccessStatus = 'pending' | 'approved' | 'revoked'
+export type AccessLevel = 'full' | 'preview'
+
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+export function sessionSecret(env: Record<string, string | undefined> = process.env): string {
+  return env.PRO_SESSION_SECRET?.trim() ?? ''
+}
+
+export function adminEmailList(env: Record<string, string | undefined> = process.env): string[] {
+  return (env.ADMIN_EMAILS ?? '')
+    .split(',')
+    .map((item) => item.trim().toLowerCase())
+    .filter((item) => EMAIL.test(item))
+}
+
+export function isAdminEmail(email: string | null, env: Record<string, string | undefined> = process.env): boolean {
+  if (!email) return false
+  return adminEmailList(env).includes(email.trim().toLowerCase())
+}
+
+export function accessLevel(status: AccessStatus | null): AccessLevel {
+  return status === 'approved' ? 'full' : 'preview'
+}
+
+export function previewSlice<T>(items: T[], level: AccessLevel, count = 3): T[] {
+  return level === 'full' ? items : items.slice(0, count)
+}
+
+export function normalizeEmail(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const email = value.trim().toLowerCase()
+  return EMAIL.test(email) && email.length <= 120 ? email : null
+}
+
+export function signValue(value: string, secret: string): string | null {
+  if (!secret) return null
+  const mac = createHmac('sha256', secret).update(value).digest('base64url')
+  return `${value}.${mac}`
+}
+
+export function readSigned(token: string, secret: string): string | null {
+  if (!secret || !token) return null
+  const cut = token.lastIndexOf('.')
+  if (cut <= 0) return null
+  const value = token.slice(0, cut)
+  const mac = token.slice(cut + 1)
+  const expected = createHmac('sha256', secret).update(value).digest('base64url')
+  const left = Buffer.from(mac)
+  const right = Buffer.from(expected)
+  if (left.length !== right.length || !timingSafeEqual(left, right)) return null
+  return value
+}
+
+export function newToken(): string {
+  return randomBytes(24).toString('base64url')
+}
+
+export function feedToken(email: string, secret: string, expSeconds: number): string | null {
+  return signValue(`${email}|${expSeconds}`, secret)
+}
+
+export function readFeedToken(token: string, secret: string, nowSeconds = Math.floor(Date.now() / 1000)): string | null {
+  const value = readSigned(token, secret)
+  if (!value) return null
+  const cut = value.lastIndexOf('|')
+  if (cut <= 0) return null
+  const email = normalizeEmail(value.slice(0, cut))
+  const exp = Number(value.slice(cut + 1))
+  if (!email || !Number.isFinite(exp) || exp < nowSeconds) return null
+  return email
+}
+
+export function signInMail(link: string): { subject: string; text: string } {
+  return {
+    subject: 'Sign in to Liftoff Club Pro',
+    text: [`Sign in to Liftoff Club Pro`, FREE_LINE, '', 'Open this link. It works once and expires in 20 minutes.', link, '', 'Full desks open after approval. The family site does not use an account.'].join('\n'),
+  }
+}
+
+export function approvalMail(link: string): { subject: string; text: string } {
+  return {
+    subject: 'Your Liftoff Club Pro desk is open',
+    text: [`Your Liftoff Club Pro desk is open`, FREE_LINE, '', 'Sign in with this link. It works once and expires in 20 minutes.', link].join('\n'),
+  }
+}
+
+export function commerceFree(text: string): boolean {
+  return !/\b(price|prices|payment|payments|\$\d)/i.test(text)
+}
