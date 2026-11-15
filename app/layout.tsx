@@ -22,11 +22,13 @@ export const metadata: Metadata = {
   applicationName: 'Liftoff Club',
   manifest: '/manifest.webmanifest',
   appleWebApp: { capable: true, title: 'Liftoff Club', statusBarStyle: 'black-translucent' },
+  alternates: { canonical: '/' },
   openGraph: {
     title: 'Liftoff Club',
     description: 'Look up together. Launches, the night sky, and a plain answer about whether you can see it from your town.',
     type: 'website',
     siteName: 'Liftoff Club',
+    url: '/',
   },
   twitter: {
     card: 'summary_large_image',

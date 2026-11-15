@@ -1,10 +1,10 @@
-export function siteUrl(): string {
-  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim()
+export const CANONICAL_ORIGIN = 'https://liftoffclub.app'
+
+export function siteUrl(env: Record<string, string | undefined> = process.env): string {
+  const configured = env.NEXT_PUBLIC_SITE_URL?.trim()
   if (configured) return trim(configured)
-  const production = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim()
-  if (production) return `https://${trim(production)}`
-  const preview = process.env.VERCEL_URL?.trim()
-  if (preview) return `https://${trim(preview)}`
+  if (env.VERCEL_ENV === 'preview' && env.VERCEL_URL?.trim()) return `https://${trim(env.VERCEL_URL)}`
+  if (env.VERCEL_ENV === 'production') return CANONICAL_ORIGIN
   return 'http://localhost:3000'
 }
 
