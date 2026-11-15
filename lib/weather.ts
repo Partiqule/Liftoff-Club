@@ -42,7 +42,7 @@ export function judgeSky(input: { cloud: number | null; precip: number | null; c
     return {
       call: 'go',
       label: 'Go',
-      reason: `About ${Math.round(cloud)}% cloud. A clear enough sky for a naked-eye pass.`,
+      reason: `About ${Math.round(cloud)}% cloud. A clear enough sky to see it with your eyes.`,
       cloud: input.cloud,
     }
   }

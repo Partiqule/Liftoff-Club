@@ -75,11 +75,15 @@ export function LaunchDayScreen({ launch }: { launch: Launch }) {
         <p className="kicker">What is happening</p>
         {script.steps.length === 0 ? <p>Waiting on a published clock.</p> : null}
         <ol className="day-steps">
-          {script.steps.map((step) => (
-            <li key={`${step.abbrev}-${step.offsetSec}`} data-state={step.state}>
-              {formatOffset(step.offsetSec)} {step.abbrev}
-            </li>
-          ))}
+          {script.steps.map((step) => {
+            const offset = formatOffset(step.offsetSec)
+            return (
+              <li key={`${step.abbrev}-${step.offsetSec}`} data-state={step.state}>
+                {offset ? `${offset} ` : ''}
+                {step.abbrev}
+              </li>
+            )
+          })}
         </ol>
       </aside>
       <div className="day-foot">
@@ -102,5 +106,6 @@ function formatOffset(seconds: number): string {
     span = mins ? `${hours}h ${mins}m` : `${hours}h`
   } else if (minutes > 0 && remain === 0) span = `${minutes}m`
   else if (minutes > 0) span = `${minutes}m ${remain}s`
-  return relation === 'liftoff' ? 'Liftoff' : `${span} ${relation}`
+  if (relation === 'liftoff') return ''
+  return `${span} ${relation}`
 }
