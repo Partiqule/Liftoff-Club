@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { siteUrl } from '@/lib/site'
+import { magicConfirmUrl } from '@/lib/site'
 import {
   FREE_LINE,
   MAGIC_SECONDS,
@@ -111,7 +111,7 @@ export async function signInLimited(email: string, ip: string): Promise<boolean>
 }
 
 export function signInLink(token: string): string {
-  return `${siteUrl()}/api/pro/sign-in/confirm?token=${encodeURIComponent(token)}`
+  return magicConfirmUrl(token)
 }
 
 export async function sendProMail(to: string, message: { subject: string; text: string }): Promise<boolean> {
