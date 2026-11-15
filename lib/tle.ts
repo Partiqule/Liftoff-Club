@@ -39,19 +39,24 @@ async function loadTles(): Promise<TleBundle> {
   try {
     const issText = await celestrakText(ISS_GP_URL)
     const iss = (issText ? parseGpJson(JSON.parse(issText))[0] : null) ?? ISS_FALLBACK
-    const designator = await latestStarlinkDesignator()
-    const starlinkUrl = designator ? starlinkLaunchUrl(designator) : null
-    const starlinkText = starlinkUrl ? await celestrakText(starlinkUrl) : null
-    const starlink = selectStarlink(starlinkText ? parseGpJson(JSON.parse(starlinkText)) : []).map((sat) => ({
-      ...sat,
-      kind: 'starlink' as const,
-    }))
+    const sats: ParsedTle[] = []
+    for (const designator of await recentStarlinkDesignators()) {
+      const url = starlinkLaunchUrl(designator)
+      if (!url) continue
+      const text = await celestrakText(url)
+      if (!text) break
+      sats.push(...parseGpJson(JSON.parse(text)))
+    }
+    const starlink = selectStarlink(sats).map((sat) => ({ ...sat, kind: 'starlink' as const }))
     const bundle: TleBundle = {
       iss: { ...iss, kind: 'iss' },
       starlink,
       fetchedAt: new Date().toISOString(),
       source: 'live',
-      notice: starlink.length === 0 ? 'Starlink orbits did not parse. Station times are still here.' : null,
+      notice:
+        starlink.length === 0
+          ? 'No recent Starlink launch group was available. Station times are still here. Pass times are approximate.'
+          : 'Starlink passes use satellites from recent launches only. Times are approximate.',
     }
     await writeCache(bundle)
     memory = { expires: Date.now() + FRESH_MS, bundle }
@@ -79,19 +84,29 @@ async function loadTles(): Promise<TleBundle> {
   }
 }
 
-async function latestStarlinkDesignator(): Promise<string | null> {
+async function recentStarlinkDesignators(): Promise<string[]> {
   try {
-    const response = await fetch('https://ll.thespacedevs.com/2.3.0/launches/previous/?search=Starlink&limit=1&mode=list', {
+    const response = await fetch('https://ll.thespacedevs.com/2.3.0/launches/previous/?search=Starlink&limit=8&mode=list', {
       headers: { Accept: 'application/json', 'User-Agent': 'LiftoffClub/1.0 (family sky; cache 24h; +https://liftoffclub.app)' },
       signal: AbortSignal.timeout(12_000),
       cache: 'no-store',
     })
-    if (!response.ok) return null
-    const body = (await response.json()) as { results?: Array<{ launch_designator?: string }> }
-    const designator = body.results?.[0]?.launch_designator
-    return typeof designator === 'string' ? designator : null
+    if (!response.ok) return []
+    const body = (await response.json()) as { results?: Array<{ name?: string; net?: string; status?: { name?: string }; launch_designator?: string }> }
+    const now = Date.now()
+    const found: string[] = []
+    for (const row of body.results ?? []) {
+      const designator = row.launch_designator
+      if (!designator || !/starlink/i.test(row.name ?? '')) continue
+      if (!/success/i.test(row.status?.name ?? '')) continue
+      const when = row.net ? Date.parse(row.net) : NaN
+      if (!Number.isFinite(when) || when > now || now - when > 4 * 24 * 60 * 60 * 1000) continue
+      if (!found.includes(designator)) found.push(designator)
+      if (found.length >= 3) break
+    }
+    return found
   } catch {
-    return null
+    return []
   }
 }
 

@@ -6,6 +6,7 @@ import { useNow } from '@/components/use-now'
 import { skyAt } from '@/lib/weather'
 import { compass8, heightPhrase } from '@/lib/geo'
 import { leadPass } from '@/lib/planner'
+import { isVisibleTrain } from '@/lib/trains'
 import { watchingPlace } from '@/lib/places'
 import { Trail } from '@/components/trail'
 import { LocalTime } from '@/components/local-time'
@@ -67,6 +68,12 @@ export function Tonight() {
               <LocalTime iso={next.net} />
             </span>
           ) : null}
+        </p>
+      ) : null}
+      {passes.some(isVisibleTrain) ? (
+        <p className="note">
+          A recent Starlink train may be visible. Times are approximate.{' '}
+          <Link href="/sky">See the sky chart</Link>
         </p>
       ) : null}
       {skyNotice ? <p className="note">{skyNotice}</p> : null}

@@ -1,4 +1,5 @@
 import { isQuietHour } from '@/lib/quiet'
+import { isVisibleTrain } from '@/lib/trains'
 import type { AlertCandidate, LaunchBrief, Settings, SkyPass } from '@/lib/types'
 import { seeLaunch } from '@/lib/visibility'
 import { skyAt, type WeatherBundle } from '@/lib/weather'
@@ -68,6 +69,26 @@ export function dueAlerts(input: {
       url: `/launches/${launch.id}/day`,
       when,
     })
+  }
+
+  if (notes.starlinkTrains) {
+    for (const pass of input.passes) {
+      if (!isVisibleTrain(pass)) continue
+      const when = Date.parse(pass.start)
+      const delta = when - input.now
+      if (delta < 0 || delta > lead) continue
+      const id = `train:${pass.id}`
+      if (input.already.has(id)) continue
+      const sky = input.weather ? skyAt(input.weather, pass.peak) : null
+      if (sky?.call === 'nogo') continue
+      alerts.push({
+        id,
+        title: 'Approximate Starlink train',
+        body: `Approximate. ${pass.gradeReason}${sky ? ` ${sky.label}` : ''}`,
+        url: '/sky',
+        when,
+      })
+    }
   }
 
   if (notes.includeSky) {
