@@ -797,7 +797,11 @@ html:not([data-voice]) .when-adult { display: none; }
   body:has(.pro-brief) { background: white; color: black; }
   body:has(.pro-brief) .galaxy,
   body:has(.pro-brief) .pro-bar,
-  body:has(.pro-brief) .pro-print-hide { display: none !important; }
+  body:has(.pro-brief) .topbar,
+  body:has(.pro-brief) .tabbar,
+  body:has(.pro-brief) .site-footer,
+  body:has(.pro-brief) .pro-print-hide,
+  body:has(.pro-brief) .review-controls { display: none !important; }
   body:has(.pro-brief) .pro-brief,
   body:has(.pro-brief) .pro-brief a { color: black; }
 }

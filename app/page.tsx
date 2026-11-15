@@ -1,4 +1,5 @@
 import { FlightStrip } from '@/components/flight-strip'
+import { TierCompare } from '@/components/tier-compare'
 import Link from 'next/link'
 import { SourceNote } from '@/components/source-note'
 import { Tonight } from '@/components/tonight'
@@ -38,6 +39,7 @@ export default async function HomePage() {
             ))}
           </ul>
         </section>
+        <TierCompare />
       </div>
     </main>
   )

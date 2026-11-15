@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { OpenAccessButton } from '@/components/pro/open-access'
+import { TierCompare } from '@/components/tier-compare'
 import { TrackerTable } from '@/components/pro/tracker-table'
 import { previewSlice } from '@/lib/pro/access-gate'
 import { PRO_COPY } from '@/lib/pro/copy'
@@ -24,6 +25,7 @@ export default async function ProHome() {
       <h1>{PRO_COPY.title}</h1>
       <p className="lede">{PRO_COPY.lede}</p>
       <p className="meta">{PRO_COPY.offer}</p>
+      <TierCompare />
       {viewer.level === 'full' ? (
         <p className="meta">You are signed in. {PRO_COPY.offer}</p>
       ) : (
