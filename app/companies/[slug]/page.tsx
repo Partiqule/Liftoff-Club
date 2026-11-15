@@ -76,6 +76,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
         ) : (
           <span className="meta">No public careers page on file</span>
         )}
+        <Link href={`/pro/company/${company.slug}`}>Industry timeline</Link>
         {company.siteUrl ? (
           <a href={company.siteUrl} rel="noreferrer">
             Company site

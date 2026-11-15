@@ -103,7 +103,7 @@ export function WatchlistDesk({
           return (
             <li key={targetKey(target)} className="pro-card">
               <p className="kicker">{labelKind(target.kind)}</p>
-              <h2>{target.label}</h2>
+              <h2>{target.kind === 'company' ? <Link href={`/pro/company/${target.id}`}>{target.label}</Link> : target.label}</h2>
               <p>
                 <strong>Next. </strong>
                 {next ? (

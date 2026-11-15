@@ -98,6 +98,13 @@ export function ManifestDesk({
             <h2>
               <Link href={`/launches/${launch.id}`}>{launch.name}</Link>
             </h2>
+            <p className="pro-links">
+              {uniqueCompanies(launch).map((item) => (
+                <Link key={item.slug} href={`/pro/company/${item.slug}`}>
+                  {item.name}
+                </Link>
+              ))}
+            </p>
             <p className="pro-time">
               {formatMountain(launch.net, zone)} · {launch.rocketName}
             </p>
@@ -145,4 +152,12 @@ export function ManifestDesk({
       ) : null}
     </div>
   )
+}
+
+function uniqueCompanies(launch: Launch): { slug: string; name: string }[] {
+  const seen = new Map<string, string>()
+  for (const item of launch.manifest) {
+    if (item.companySlug && !seen.has(item.companySlug)) seen.set(item.companySlug, item.company)
+  }
+  return [...seen.entries()].slice(0, 4).map(([slug, name]) => ({ slug, name }))
 }
