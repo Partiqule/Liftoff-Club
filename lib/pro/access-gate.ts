@@ -17,6 +17,43 @@ export function sessionSecret(env: Record<string, string | undefined> = process.
 
 export const SIGN_IN_READY = 'Check your email for your sign in link.'
 
+export const WELCOME_COPY = {
+  title: "You're in",
+  body: 'The desk is open. Free during early access.',
+  close: 'Open the desk',
+} as const
+
+export const EXPIRED_COPY = {
+  title: 'This link is finished',
+  body: 'It was already used, or it is too old. Send a fresh link to your email.',
+  button: 'Email a fresh link',
+} as const
+
+/** Signed in visitors see the desk. Everyone else can request access. */
+export function deskChrome(level: AccessLevel): { requestAccess: boolean; signOut: boolean } {
+  return level === 'full' ? { requestAccess: false, signOut: true } : { requestAccess: true, signOut: false }
+}
+
+/** A confirm click on a preview host is sent to the live site before the token is used. */
+export function forwardMagicLink(requestUrl: string): string | null {
+  let url: URL
+  try {
+    url = new URL(requestUrl)
+  } catch {
+    return null
+  }
+  if (/localhost|127\.0\.0\.1/i.test(url.hostname) || url.hostname === 'liftoffclub.app') return null
+  const forward = new URL('https://liftoffclub.app/api/pro/sign-in/confirm')
+  const token = url.searchParams.get('token')
+  if (token) forward.searchParams.set('token', token)
+  return forward.toString()
+}
+
+export function signInResult(input: { email: string | null; saved: boolean; signed: string | null }): { path: string; cookie: boolean } {
+  if (input.email && input.saved && input.signed) return { path: '/pro?in=1', cookie: true }
+  return { path: '/pro?in=expired', cookie: false }
+}
+
 /** Unset means auto approve. Set to false, 0, no, or off to hold new notes for the admin page. */
 export function autoApprove(env: Record<string, string | undefined> = process.env): boolean {
   const raw = env.PRO_AUTO_APPROVE?.trim().toLowerCase()

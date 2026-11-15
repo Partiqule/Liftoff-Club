@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 export default async function ProLayout({ children }: { children: ReactNode }) {
   const viewer = await readViewer()
   return (
-    <ProShell>
+    <ProShell level={viewer.level} email={viewer.email}>
       <PreviewBanner level={viewer.level} email={viewer.email} />
       {children}
     </ProShell>
