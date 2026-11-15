@@ -1,4 +1,5 @@
 import { formatLaunchWhen } from '@/lib/pro/time'
+import { publishedReason, slipSentence } from '@/lib/slip'
 import { isQuietHour } from '@/lib/quiet'
 
 /**
@@ -18,11 +19,17 @@ export type LaunchSnap = {
   net: string | null
   precision: string | null
   statusName?: string | null
+  failReason?: string | null
+  holdReason?: string | null
+  weatherConcerns?: string | null
+  infoUrl?: string | null
+  updates?: { text: string }[]
 }
 
 export type PushRecord = {
   launchIds: string[]
   nets: Record<string, string | null>
+  statuses?: Record<string, string | null>
   sent: Record<string, string[]>
   quietStart: string
   quietEnd: string
@@ -60,10 +67,23 @@ export function planNotices(now: number, record: PushRecord, launches: LaunchSna
   const notices: PushNotice[] = []
   for (const launch of launches) {
     if (!wanted.has(launch.id)) continue
-    const when = formatLaunchWhen(launch.net, launch.precision, launch.statusName)
+    const when = formatLaunchWhen(launch.net, launch.precision, launch.statusName, record.timezone)
     const previous = record.nets[launch.id]
-    if (previous && launch.net && previous !== launch.net && !already(record, launch.id, `moved:${launch.net}`)) {
-      notices.push(notice(launch, 'moved', `New time: ${launch.name}`, `${when}. The public clock moved.`, `moved:${launch.net}`))
+    const previousStatus = record.statuses?.[launch.id] ?? null
+    const timeChanged = Boolean(previous && launch.net && previous !== launch.net)
+    const statusChanged = Boolean(previousStatus && launch.statusName && previousStatus !== launch.statusName)
+    if (timeChanged || statusChanged) {
+      const mark = timeChanged ? `moved:${launch.net}` : `status:${launch.statusName}`
+      if (!already(record, launch.id, mark)) {
+        const body = slipSentence({
+          statusName: launch.statusName ?? 'Unknown',
+          previousStatus,
+          timeLabel: when,
+          timeChanged,
+          reason: publishedReason(launch),
+        })
+        notices.push(notice(launch, 'moved', `Change: ${launch.name}`, body, mark))
+      }
     }
     if (!clockIsSet(launch) || !launch.net) continue
     const delta = Date.parse(launch.net) - now
@@ -93,14 +113,18 @@ function notice(launch: LaunchSnap, kind: PushNotice['kind'], title: string, bod
 
 export function applyNotices(record: PushRecord, notices: PushNotice[], launches: LaunchSnap[]): PushRecord {
   const nets = { ...record.nets }
+  const statuses = { ...(record.statuses ?? {}) }
   const sent = { ...record.sent }
   for (const launch of launches) {
-    if (record.launchIds.includes(launch.id)) nets[launch.id] = launch.net
+    if (record.launchIds.includes(launch.id)) {
+      nets[launch.id] = launch.net
+      statuses[launch.id] = launch.statusName ?? null
+    }
   }
   for (const item of notices) {
     const marks = new Set(sent[item.launchId] ?? [])
     marks.add(item.mark)
     sent[item.launchId] = [...marks]
   }
-  return { ...record, nets, sent }
+  return { ...record, nets, statuses, sent }
 }

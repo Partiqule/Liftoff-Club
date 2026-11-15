@@ -65,6 +65,10 @@ export type Launch = {
   statusName: string
   statusAbbrev: string
   statusDescription: string | null
+  /** From Launch Library only. Empty when the listing has no reason. */
+  failReason: string | null
+  holdReason: string | null
+  launchDesignator: string | null
   webcastUrl: string | null
   webcastTitle: string | null
   webcasts: { title: string; url: string }[]
@@ -184,6 +188,8 @@ export type NotificationSettings = {
   providers: string[]
   visibleOnly: boolean
   includeSky: boolean
+  /** Opt in. Recent Starlink trains only, not the full catalog. */
+  starlinkTrains: boolean
   rules: AlertRules
 }
 

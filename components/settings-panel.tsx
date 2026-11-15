@@ -150,6 +150,14 @@ export function SettingsPanel({ providers }: { providers: string[] }) {
           />
           <span>Include space station and Starlink passes</span>
         </label>
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={notes.starlinkTrains}
+            onChange={(event) => updateSettings({ ...settings, notifications: { ...notes, starlinkTrains: event.target.checked } })}
+          />
+          <span>Alert me about a recent Starlink train. Times are approximate.</span>
+        </label>
         <p className="kicker">Saved rules</p>
         <label className="check">
           <input

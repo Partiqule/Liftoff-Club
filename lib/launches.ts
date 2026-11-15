@@ -6,6 +6,7 @@ import { cache } from 'react'
 import { resolveCompany } from '@/lib/companies'
 import { upcomingPageUrl } from '@/lib/launch-query'
 import { normalizeLaunch, normalizeLaunches } from '@/lib/normalize'
+import { recordSlips } from '@/lib/slip-store'
 import type { Launch, LaunchBoard } from '@/lib/types'
 
 const USER_AGENT = 'LiftoffClub/1.0 (family launch companion; cache 1h; +https://thespacedevs.com)'
@@ -49,7 +50,9 @@ export const getLaunches = cache(async (): Promise<LaunchBoard> => {
       pending = null
     })
   }
-  return pending
+  const board = await pending
+  await recordSlips(board.launches)
+  return board
 })
 
 const singleCache = new Map<string, Launch>()
@@ -228,6 +231,9 @@ function repairLaunch(launch: Launch): Launch {
     },
     webcasts: launch.webcasts ?? (launch.webcastUrl ? [{ title: launch.webcastTitle ?? 'Webcast', url: launch.webcastUrl }] : []),
     updates: launch.updates ?? [],
+    failReason: launch.failReason ?? null,
+    holdReason: launch.holdReason ?? null,
+    launchDesignator: launch.launchDesignator ?? null,
     boosterReused: launch.boosterReused ?? null,
     boosterCareerFlights: launch.boosterCareerFlights ?? null,
     boosterSuccessfulLandings: launch.boosterSuccessfulLandings ?? null,

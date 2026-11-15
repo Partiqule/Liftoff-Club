@@ -9,7 +9,18 @@ import type { Launch } from '@/lib/types'
 export const maxDuration = 60
 
 function snap(launch: Launch): LaunchSnap {
-  return { id: launch.id, name: launch.name, net: launch.net, precision: launch.precision, statusName: launch.statusName }
+  return {
+    id: launch.id,
+    name: launch.name,
+    net: launch.net,
+    precision: launch.precision,
+    statusName: launch.statusName,
+    failReason: launch.failReason,
+    holdReason: launch.holdReason,
+    weatherConcerns: launch.weatherConcerns,
+    infoUrl: launch.infoUrl,
+    updates: launch.updates,
+  }
 }
 
 export async function GET(request: Request) {

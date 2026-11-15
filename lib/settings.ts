@@ -13,6 +13,7 @@ export const defaultNotifications: NotificationSettings = {
   providers: [],
   visibleOnly: false,
   includeSky: true,
+  starlinkTrains: false,
   rules: { starship: false, visibleFromHere: false, hourWithWeather: false },
 }
 
@@ -67,6 +68,7 @@ export function sanitizeSettings(value: unknown): Settings {
       providers: Array.isArray(notes.providers) ? notes.providers.filter((item) => typeof item === 'string').slice(0, 24) : [],
       visibleOnly: notes.visibleOnly === true,
       includeSky: notes.includeSky !== false,
+      starlinkTrains: notes.starlinkTrains === true,
       rules: {
         starship: notes.rules?.starship === true,
         visibleFromHere: notes.rules?.visibleFromHere === true,

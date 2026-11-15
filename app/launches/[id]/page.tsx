@@ -16,6 +16,9 @@ import { VisibilityCard } from '@/components/visibility-card'
 import { aiNotesForLaunch } from '@/lib/ai-orbit'
 import { explainLaunch } from '@/lib/explain'
 import { getLaunch, getLaunches, launchesToPrerender } from '@/lib/launches'
+import { publishedReason } from '@/lib/slip'
+import { slipsFor } from '@/lib/slip-store'
+import { spotsForLaunch } from '@/lib/viewing-spots'
 import { rocketId } from '@/lib/rocket-photos'
 import { siteUrl } from '@/lib/site'
 
@@ -43,6 +46,9 @@ export default async function LaunchPage({ params }: { params: Promise<{ id: str
   const story = await explainLaunch(launch)
   const aiNotes = aiNotesForLaunch(launch)
   const loose = /day|month|year|quarter|week/i.test(launch.precision ?? '')
+  const history = await slipsFor(launch.id)
+  const reason = publishedReason(launch)
+  const spots = spotsForLaunch(launch.padName, launch.padLocation)
   return (
     <main id="content" className="wrap page">
       <LaunchViewed />
@@ -170,6 +176,41 @@ export default async function LaunchPage({ params }: { params: Promise<{ id: str
                 ))}
               </div>
             ) : null}
+            <h2>What changed</h2>
+            <p>
+              Status is {launch.statusName}. The clock below uses the time zone saved on this device.
+            </p>
+            {launch.net ? (
+              <p className="meta">
+                <LocalTime iso={launch.net} />
+              </p>
+            ) : (
+              <p className="meta">Time not set</p>
+            )}
+            <p>{reason ? `Reason: ${reason}` : 'No reason was published.'}</p>
+            {launch.infoUrl ? (
+              <p className="meta">
+                <a href={launch.infoUrl}>Source page</a>
+              </p>
+            ) : null}
+            {history.length > 1 ? (
+              <ul className="jobs">
+                {history.slice(1).map((point) => (
+                  <li key={`${point.at}-${point.status}`}>
+                    <p>
+                      {point.status}
+                      {point.net ? (
+                        <>
+                          {' · '}
+                          <LocalTime iso={point.net} />
+                        </>
+                      ) : null}
+                    </p>
+                    <p className="meta">{point.reason ? `Reason: ${point.reason}` : 'No reason was published.'}</p>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
             <h2>Clock changes</h2>
             {(launch.updates ?? []).length === 0 ? <p className="note">No public note of a scrub or delay.</p> : null}
             <ul className="jobs">
@@ -201,6 +242,27 @@ export default async function LaunchPage({ params }: { params: Promise<{ id: str
           </div>
         </aside>
       </div>
+      {spots.length > 0 ? (
+        <section>
+          <p className="kicker">Public places</p>
+          <h2>Viewing spots</h2>
+          <p className="lede">Places run by a park or a visitor center near this site. A listing is not a promise you can see the rocket from there.</p>
+          <ul className="jobs">
+            {spots.map((spot) => (
+              <li key={spot.id}>
+                <h3>{spot.name}</h3>
+                <p>{spot.note}</p>
+                <p className="meta">{spot.access === 'paid' ? 'Paid' : 'Free'}</p>
+                <p className="meta">
+                  <a href={spot.mapsUrl}>Directions</a>
+                  {' · '}
+                  <a href={spot.sourceUrl}>{spot.sourceTitle}</a>
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
       {launch.timeline.length > 0 ? (
         <section>
           <p className="kicker">Timeline</p>
