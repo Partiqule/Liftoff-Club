@@ -827,8 +827,8 @@ body:has(.pro-app) { padding-bottom: 0; }
   line-height: 1.05;
   margin: 0 0 1rem;
 }
-.mission-globe { margin: 0; text-align: center; }
-.mission-globe svg { width: min(100%, 28rem); height: auto; }
+.mission-globe { margin: 0 auto; text-align: center; width: min(100%, 32rem); }
+.mission-globe svg { width: 100%; height: auto; display: block; }
 .mission-photo {
   display: block;
   width: auto;
@@ -909,7 +909,8 @@ body:has(.pro-app) { padding-bottom: 0; }
   .mission-clock-block { grid-column: 1 / -1; grid-row: 1; }
   .mission-grid { grid-template-rows: auto auto auto; }
   .mission-center { order: -1; }
-  .mission-globe svg { width: min(100%, 16rem); }
+  .mission-globe { width: 100%; min-width: 0; max-width: 22rem; }
+  .mission-globe svg { min-height: 14rem; }
 }
 @media (min-width: 900px) {
   .mission-grid { grid-template-columns: minmax(10rem, 16rem) minmax(0, 1fr) minmax(14rem, 20rem); }
