@@ -148,7 +148,9 @@ export function snapshotTarget(
   constellations: ConstellationRef[],
   now = Date.now(),
 ): SeenState {
-  const matching = launches.filter((launch) => launchMatches(target, launch, constellations) && stillAhead(launch, now))
+  const matching = launches
+    .filter((launch) => launchMatches(target, launch, constellations) && stillAhead(launch, now))
+    .sort((a, b) => (a.net ?? '9999').localeCompare(b.net ?? '9999'))
   const next = matching[0] ?? null
   const names = new Set<string>()
   for (const launch of matching) {

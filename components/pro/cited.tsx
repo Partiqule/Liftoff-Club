@@ -1,0 +1,15 @@
+import type { TrackerCell } from '@/lib/pro/tracker'
+
+export function Cited({ cell }: { cell: TrackerCell }) {
+  return (
+    <span className="pro-cell">
+      <span>{cell.text}</span>
+      {cell.sourceUrl && cell.asOf ? (
+        <a className="pro-cite" href={cell.sourceUrl} title={cell.note ?? undefined}>
+          <span>{cell.sourceTitle}</span>
+          <span className="pro-asof">as of {cell.asOf}</span>
+        </a>
+      ) : null}
+    </span>
+  )
+}

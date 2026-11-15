@@ -132,14 +132,16 @@ The look is one system: a deep field and a launch trail. Principles, including t
 
 Company pages live at `/companies` and `/companies/[slug]`. A slug is the company id (`spacex`, `united-launch-alliance`). “ULA” and “United Launch Alliance” are the same id. Starlink is a payload name on SpaceX, not a second company. Pages are public and unclaimed: `claimedBy` is always null. There is no company login. Vercel Web Analytics, if you turn it on, counts page views in aggregate and the app strips query strings first. It does not keep a profile of who looked.
 
-## Roadmap (not built)
+## What is not built yet
 
-The family app stays free and ad-free. A later paid product in this same repo, working title **Liftoff Club Pro**, would be a second app for small space companies’ business teams: company profiles they can claim, who flies with whom, manifest trends, watchlists, alerts on new launches or contracts, and CSV export. It is not in this version. The seams that make it possible are already here:
+The family app stays free and ad-free. **Liftoff Club Pro** v1 is a desk at `/pro` for industry teams: a watchlist, a cited constellation tracker, manifest filters with CSV export, local alert rules, a calendar feed, and a one page brief with a talk track. It does not take payment. Pilot pricing is on request. Saved targets stay in the browser.
+
+Still not built, and not part of this pilot: company profiles they can claim, accounts, who flies with whom as a private graph, or a paid checkout. The seams that make a later account possible are already here:
 
 - Launch, payload, and company records are plain data in `lib/`, not buried in components.
 - Every company has a stable id and slug, including names that only appear in the live feed.
 - Each company already has a public profile route a business could later claim, without inventing a new URL.
-- Alerts already have a filter object. Pro would add a different audience, not a new idea of “what changed.”
+- Family alerts already have a filter object. Pro rules are a separate list in the browser.
 - View counts stay aggregate and anonymous. Do not add accounts, cookies, or a person attached to a company view when Pro is built on top.
 
 Also not built, for the family app:

@@ -1,4 +1,6 @@
 import type { CitedFigure } from '@/lib/cited'
+import type { ConstellationProfile } from '@/lib/constellation-data'
+import type { ConstellationCounts } from '@/lib/constellation-tally'
 import { aiNotesForCompany } from '@/lib/ai-orbit'
 import type { Launch } from '@/lib/types'
 
@@ -47,6 +49,28 @@ const LL2 = 'https://thespacedevs.com/llapi'
 
 export function blankCell(): TrackerCell {
   return { text: BLANK, sort: null, sourceUrl: null, sourceTitle: null, asOf: null, note: null }
+}
+
+export function sourceFromProfile(
+  profile: ConstellationProfile,
+  counts: ConstellationCounts | null,
+  fetchedAt: string | null,
+): TrackerSource {
+  const day = fetchedAt?.slice(0, 10) ?? null
+  return {
+    id: profile.id,
+    name: profile.name,
+    operator: profile.operator,
+    companySlug: profile.companySlug,
+    pattern: profile.launchPattern,
+    group: profile.celestrakGroup,
+    inOrbit: counts ? counts.inOrbit : null,
+    launchesThisYear: counts ? counts.launchesThisYear : null,
+    latestLaunchDate: counts?.latestLaunchDate ?? null,
+    catalogAsOf: day && /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : null,
+    authorized: profile.satellites,
+    capacity: profile.bandwidth,
+  }
 }
 
 export function trackerRows(sources: TrackerSource[], launches: Launch[], boardAsOf: string | null, now = Date.now()): TrackerRow[] {
