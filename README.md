@@ -31,9 +31,9 @@ Night sky, solid type, and a launch trail. Text does not glow. Mission marks are
 ## Data sources
 
 - [The Space Devs, Launch Library 2](https://thespacedevs.com/llapi) for launches, pads, timelines, and descriptions. Cached for about an hour. A saved board is used if the feed is resting.
-- [CelesTrak](https://celestrak.org) for public orbital elements and in orbit counts.
+- [CelesTrak](https://celestrak.org) for public orbital elements and in orbit counts. The app requests JSON or CSV, caches for a day, and stops when CelesTrak returns an error or a 403. It does not download the full Starlink list. Passes use the station and, when the public record has one, a single recent launch.
 - [Natural Earth](https://www.naturalearthdata.com/) land for the mission view globe. The path is labeled approximate.
-- [Open-Meteo](https://open-meteo.com) for geocoding and cloud cover. No key.
+- [Open-Meteo](https://open-meteo.com) for geocoding and cloud cover. No key. The free API is not for commercial use. A paid plan is required before Pro ever charges.
 - Rocket photos only under public domain, CC0, CC BY, or CC BY-SA, each with author, license, and source. Other rockets use a drawn trail.
 
 A number is shown only with a source and a date. Otherwise the line says no public figure yet. A coarse launch time says the clock is not set instead of inventing an hour.

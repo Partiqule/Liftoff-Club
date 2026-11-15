@@ -22,12 +22,53 @@ function clean(value: string | null | undefined): string | null {
 export function readCatalogObject(value: unknown): CatalogObject | null {
   if (!value || typeof value !== 'object') return null
   const record = value as Record<string, unknown>
-  return {
-    objectType: clean(typeof record.OBJECT_TYPE === 'string' ? record.OBJECT_TYPE : null),
-    objectId: clean(typeof record.OBJECT_ID === 'string' ? record.OBJECT_ID : null),
-    launchDate: clean(typeof record.LAUNCH_DATE === 'string' ? record.LAUNCH_DATE : null),
-    decayDate: clean(typeof record.DECAY_DATE === 'string' ? record.DECAY_DATE : null),
+  const text = (key: string) => {
+    const raw = record[key]
+    return typeof raw === 'string' ? raw : null
   }
+  return {
+    objectType: clean(text('OBJECT_TYPE')),
+    objectId: clean(text('OBJECT_ID')),
+    launchDate: clean(text('LAUNCH_DATE')),
+    decayDate: clean(text('DECAY_DATE')),
+  }
+}
+
+export function parseCatalogCsv(text: string): CatalogObject[] {
+  const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0)
+  const header = splitCsv(lines[0] ?? '').map((cell) => cell.trim())
+  const records: CatalogObject[] = []
+  for (const line of lines.slice(1)) {
+    const cells = splitCsv(line)
+    const row: Record<string, string> = {}
+    header.forEach((key, index) => {
+      row[key] = cells[index] ?? ''
+    })
+    const parsed = readCatalogObject(row)
+    if (parsed) records.push(parsed)
+  }
+  return records
+}
+
+function splitCsv(line: string): string[] {
+  const cells: string[] = []
+  let current = ''
+  let quoted = false
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index]
+    if (char === '"') {
+      quoted = !quoted
+      continue
+    }
+    if (char === ',' && !quoted) {
+      cells.push(current)
+      current = ''
+      continue
+    }
+    current += char
+  }
+  cells.push(current)
+  return cells
 }
 
 function launchKey(object: CatalogObject): string | null {

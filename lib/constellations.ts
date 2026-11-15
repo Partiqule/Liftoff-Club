@@ -2,11 +2,11 @@ import 'server-only'
 
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
+import { CELESTRAK_FRESH_MS, catalogCsvUrl, catalogGroupAllowed, celestrakHalted, celestrakText } from '@/lib/celestrak'
 import { CONSTELLATIONS, type ConstellationProfile } from '@/lib/constellation-data'
-import { countAheadThisYear, readCatalogObject, tallyCatalog, type AheadLaunch, type ConstellationCounts } from '@/lib/constellation-tally'
+import { countAheadThisYear, parseCatalogCsv, tallyCatalog, type AheadLaunch, type ConstellationCounts } from '@/lib/constellation-tally'
 
-const FRESH_MS = 12 * 60 * 60 * 1000
-const USER_AGENT = 'LiftoffClub/1.0 (family constellation counts; cache 12h; celestrak.org)'
+const FRESH_MS = CELESTRAK_FRESH_MS
 
 export type ConstellationCard = {
   profile: ConstellationProfile
@@ -35,16 +35,11 @@ async function readCache(): Promise<CacheFile | null> {
 }
 
 async function fetchGroup(group: string, year: number): Promise<ConstellationCounts | null> {
-  const url = `https://celestrak.org/satcat/records.php?GROUP=${encodeURIComponent(group)}&FORMAT=JSON`
-  const response = await fetch(url, {
-    headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
-    cache: 'no-store',
-    signal: AbortSignal.timeout(25_000),
-  })
-  if (!response.ok) return null
-  const body = (await response.json()) as unknown
-  if (!Array.isArray(body)) return null
-  const records = body.map(readCatalogObject).filter((record): record is NonNullable<typeof record> => Boolean(record))
+  if (!catalogGroupAllowed(group) || celestrakHalted()) return null
+  const text = await celestrakText(catalogCsvUrl(group))
+  if (!text) return null
+  const records = parseCatalogCsv(text)
+  if (records.length === 0) return null
   return tallyCatalog(records, year)
 }
 
@@ -61,16 +56,16 @@ async function loadCounts(year: number): Promise<{ groups: Record<string, Conste
     return { groups: cached.groups, fetchedAt: cached.fetchedAt }
   }
   const groups: Record<string, ConstellationCounts> = {}
-  await Promise.all(
-    CONSTELLATIONS.map(async (profile) => {
-      try {
-        const counts = await fetchGroup(profile.celestrakGroup, year)
-        if (counts) groups[profile.id] = counts
-      } catch {
-        // Leave the group blank. A failed catalog is not a count of zero.
-      }
-    }),
-  )
+  for (const profile of CONSTELLATIONS) {
+    if (celestrakHalted()) break
+    try {
+      const counts = await fetchGroup(profile.celestrakGroup, year)
+      if (counts) groups[profile.id] = counts
+    } catch {
+      // Leave the group blank. A failed catalog is not a count of zero.
+      break
+    }
+  }
   if (Object.keys(groups).length === 0) return { groups: cached?.groups ?? {}, fetchedAt: cached?.fetchedAt ?? null }
   const file: CacheFile = { fetchedAt: new Date().toISOString(), groups: { ...cached?.groups, ...groups } }
   try {
