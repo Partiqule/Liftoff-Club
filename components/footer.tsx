@@ -14,7 +14,7 @@ export function Footer() {
         </p>
         <p>No ads. No accounts. Your town stays in this browser. Bedtime quiet hours apply to alerts, not to the countdown itself.</p>
         <p>
-          <Link href="/pro">Liftoff Club Pro</Link> is a separate desk for space industry teams. The family site stays free.
+          <Link href="/pro">Liftoff Club Pro</Link> is a separate desk for space industry teams. The family site stays free. <Link href="/about/build">How it is built</Link>
         </p>
         <p>{PRO_COPY.footerLine}</p>
       </div>
