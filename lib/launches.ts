@@ -4,7 +4,7 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import path from 'node:path'
 import { cache } from 'react'
 import { resolveCompany } from '@/lib/companies'
-import { normalizeLaunches } from '@/lib/normalize'
+import { normalizeLaunch, normalizeLaunches } from '@/lib/normalize'
 import type { Launch, LaunchBoard } from '@/lib/types'
 
 const USER_AGENT = 'LiftoffClub/1.0 (family launch companion; cache 1h; +https://thespacedevs.com)'
@@ -26,9 +26,30 @@ export const getLaunches = cache(async (): Promise<LaunchBoard> => {
   return pending
 })
 
+const singleCache = new Map<string, Launch>()
+
 export async function getLaunch(id: string): Promise<Launch | null> {
   const board = await getLaunches()
-  return board.launches.find((launch) => launch.id === id) ?? null
+  const listed = board.launches.find((launch) => launch.id === id)
+  if (listed) return listed
+  if (singleCache.has(id)) return singleCache.get(id) ?? null
+  try {
+    const headers: Record<string, string> = { Accept: 'application/json', 'User-Agent': USER_AGENT }
+    const token = process.env.LL2_API_TOKEN?.trim()
+    if (token) headers.Authorization = `Token ${token}`
+    const response = await fetch(`https://ll.thespacedevs.com/2.3.0/launches/${id}/?mode=detailed`, {
+      headers,
+      signal: AbortSignal.timeout(20_000),
+      next: { revalidate: 3600 },
+    })
+    if (!response.ok) return null
+    const launch = normalizeLaunch(await response.json())
+    if (!launch) return null
+    singleCache.set(id, launch)
+    return launch
+  } catch {
+    return null
+  }
 }
 
 async function loadBoard(): Promise<LaunchBoard> {
