@@ -1,7 +1,7 @@
 'use client'
 
 import { useClub } from '@/components/club-provider'
-import { LocationEditor } from '@/components/location-editor'
+import { watchingPlace } from '@/lib/places'
 import { compass8, heightPhrase } from '@/lib/geo'
 import { bestPasses, planForPass } from '@/lib/planner'
 import { Trail } from '@/components/trail'
@@ -9,36 +9,9 @@ import { formatClock } from '@/lib/time'
 import { skyAt } from '@/lib/weather'
 
 export function SkyBoard() {
-  const { settings, hydrated, passes, skyState, skyNotice, weather } = useClub()
-  const place = settings.location
+  const { settings, passes, skyState, skyNotice, weather } = useClub()
+  const place = watchingPlace(settings.location)
 
-  if (!hydrated) {
-    return (
-      <section className="wrap page">
-        <p className="kicker">Sky</p>
-        <h1>Opening the chart.</h1>
-      </section>
-    )
-  }
-  if (!place) {
-    return (
-      <section className="wrap page">
-        <p className="kicker">Sky</p>
-        <h1>A town, then a direction.</h1>
-        <LocationEditor heading={false} />
-      </section>
-    )
-  }
-  if (skyState === 'loading' || skyState === 'idle') {
-    return (
-      <section className="wrap page" aria-busy="true">
-        <Trail glow="mid" span="load" />
-        <p className="kicker">{place.label}</p>
-        <h1>Plotting passes.</h1>
-        <p className="lede">Station first, then a sample of Starlink. We do not propagate every satellite in the constellation.</p>
-      </section>
-    )
-  }
   if (skyState === 'error') {
     return (
       <section className="wrap page">
@@ -49,6 +22,7 @@ export function SkyBoard() {
     )
   }
 
+  const waiting = skyState === 'loading' || skyState === 'idle'
   const iss = bestPasses(passes, 'iss', 8)
   const starlink = bestPasses(passes, 'starlink', 6)
   return (
@@ -63,16 +37,30 @@ export function SkyBoard() {
       </p>
       {skyNotice ? <p className="banner">{skyNotice}</p> : null}
       <h2>Space station</h2>
-      <PassList passes={iss} place={place.label} timeZone={place.timezone} weather={weather} empty="No station pass in the next day and a half." />
+      {waiting ? <SkySkeleton /> : <PassList passes={iss} place={place.label} timeZone={place.timezone} weather={weather} empty="No station pass in the next day and a half." />}
       <h2>Starlink sample</h2>
-      <PassList
-        passes={starlink}
-        place={place.label}
-        timeZone={place.timezone}
-        weather={weather}
-        empty="No Starlink pass cleared the faint-and-low filter tonight."
-      />
+      {waiting ? (
+        <SkySkeleton />
+      ) : (
+        <PassList
+          passes={starlink}
+          place={place.label}
+          timeZone={place.timezone}
+          weather={weather}
+          empty="No Starlink pass cleared the faint-and-low filter tonight."
+        />
+      )}
     </section>
+  )
+}
+
+function SkySkeleton() {
+  return (
+    <div className="sky-skeleton" aria-busy="true" aria-label="Passes are on the way">
+      <span className="bone" />
+      <span className="bone" />
+      <span className="bone bone-short" />
+    </div>
   )
 }
 

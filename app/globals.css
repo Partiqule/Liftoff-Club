@@ -146,7 +146,7 @@ a:hover { color: var(--core); }
   text-decoration: none;
   color: var(--ink);
 }
-.logo-mark { display: block; flex: none; border-radius: 50%; height: auto; }
+.logo-mark { display: block; flex: none; width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
 html[data-night="red"] .logo-mark { filter: sepia(0.5) hue-rotate(-32deg) saturate(1.25) brightness(0.9); }
 .wordmark { letter-spacing: -0.03em; font-size: 1.35rem; }
 .top-nav { display: none; gap: 1.25rem; }
@@ -216,10 +216,25 @@ h3 { font-size: 1.25rem; line-height: 1.2; }
 .section-head h2 { margin: 0; }
 .section-head a { color: var(--cold); text-decoration: none; }
 
-.tonight { padding: 2.2rem 0 1rem; min-height: 70vh; display: flex; flex-direction: column; justify-content: flex-end; }
+.tonight { padding: 7.5rem 0 0.5rem; min-height: 0; display: flex; flex-direction: column; justify-content: flex-end; }
 .tonight h1 .dir { display: block; color: var(--core); font-weight: 500; }
 .tonight h1 .when { display: block; }
 .hero-actions { display: flex; flex-wrap: wrap; gap: 1.25rem; align-items: center; margin-top: 1.4rem; }
+.hero-next { margin: 0.8rem 0 0; max-width: var(--measure); }
+.hero-next a { text-decoration: none; }
+.sky-skeleton { display: grid; gap: 0.7rem; margin: 0.6rem 0 1rem; max-width: 28rem; }
+.bone {
+  display: block;
+  height: 0.85rem;
+  width: 100%;
+  border-radius: 0;
+  background: linear-gradient(90deg, rgba(197, 210, 226, 0.08), rgba(243, 215, 176, 0.28), rgba(197, 210, 226, 0.08));
+  background-size: 200% 100%;
+  animation: sheen 1.6s ease-in-out infinite;
+}
+.bone-title { height: 2.4rem; width: 86%; }
+.bone-short { width: 55%; }
+@keyframes sheen { 50% { background-position: 100% 0; } }
 
 .btn, .ticket, .btn-quiet {
   display: inline-flex;
@@ -596,7 +611,8 @@ html:not([data-voice]) .when-adult { display: none; }
   .top-nav, .place-chip { display: flex; }
   .tabbar { display: none; }
   body { padding-bottom: 0; }
-  .tonight { min-height: 78vh; }
+  .tonight { padding-top: 11rem; }
+  .logo-mark { width: 40px; height: 40px; }
   .strip-link { grid-template-columns: auto 1fr auto; }
   .strip-count { grid-column: auto; text-align: right; }
   .detail-grid { grid-template-columns: minmax(0, 1.4fr) minmax(16rem, 0.7fr); align-items: start; }

@@ -1,5 +1,18 @@
 import type { Place } from '@/lib/types'
 
+/** Home town for first paint, before a saved place or a tap on Use my location. */
+export const CENTENNIAL: Place = {
+  label: 'Centennial, Colorado',
+  lat: 39.5807,
+  lon: -104.8772,
+  timezone: 'America/Denver',
+  source: 'search',
+}
+
+export function watchingPlace(place: Place | null | undefined): Place {
+  return place ?? CENTENNIAL
+}
+
 type GeoResult = {
   name?: string
   admin1?: string

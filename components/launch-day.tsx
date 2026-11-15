@@ -38,7 +38,7 @@ export function LaunchDayScreen({ launch }: { launch: Launch }) {
       </svg>
       <div className="day-top">
         <Link className="brand" href={`/launches/${launch.id}`}>
-          <Logo size={48} />
+          <Logo />
           <span className="meta">Back to the mission</span>
         </Link>
         <button
