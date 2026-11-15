@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { PRO_COPY } from '@/lib/pro/copy'
-import { accessNote } from '@/lib/pro/access'
+import { signupCsv, signupNote, validateSignup } from '@/lib/pro/signups'
 import { companyBrief, constellationBrief, talkStaysInside, talkTrack } from '@/lib/pro/brief'
 import { filterManifest, isRideshareLaunch, manifestCsv, manifestFacts, rideshareSlot } from '@/lib/pro/manifest-intel'
 import { CATALOG_LAG_NOTE, isFlownSuccess, monthlyCounts, summarizeHistory, type HistoryLaunch } from '@/lib/pro/history'
@@ -259,11 +259,15 @@ describe('placeholder launch times', () => {
   })
 })
 
-describe('pro access note', () => {
-  it('composes a request and does not pretend it was stored', () => {
-    const note = accessNote({ name: 'Ada', email: 'ada@example.com', organization: 'Example Satellites', desk: 'company', note: 'Please write when the pilot opens.' })
-    expect(note).toMatch(/was not saved/)
-    expect(note).toMatch(/Pilot pricing on request/)
-    expect(note).toMatch(/Company desk/)
+describe('pro early access', () => {
+  it('accepts a complete note, ignores a honeypot, and writes a csv row', () => {
+    const good = validateSignup({ name: 'Ada', email: 'ada@example.com', company: 'Example Satellites', role: 'Strategy', desk: 'company' }, '')
+    expect(good.ok).toBe(true)
+    if (!good.ok || 'ignored' in good) return
+    const row = { ...good.value, createdAt: '2026-11-15T19:00:00.000Z' }
+    expect(signupNote(row)).toMatch(/Company desk/)
+    expect(signupCsv([row])).toContain('ada@example.com')
+    expect(validateSignup(good.value, 'https://spam.example')).toEqual({ ok: true, ignored: true })
+    expect(validateSignup({ ...good.value, email: 'not-an-email' }, '').ok).toBe(false)
   })
 })
