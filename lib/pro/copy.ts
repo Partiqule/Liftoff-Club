@@ -23,6 +23,6 @@ export const PRO_COPY = {
     'Saved target accounts, constellations, rockets, and launch sites in this browser.',
   ],
   accessTitle: 'Request early access',
-  accessBody: 'Leave your name, work email, company, and role. The note is saved so we can reply. Free during early access.',
-  savedBody: 'Saved targets and alert rules stay in this browser. Full desks open after an approved sign in. Free during early access.',
+  accessBody: 'Leave your name, work email, company, and role. Free during early access. A valid note emails a sign in link. The desk opens after you open that link.',
+  savedBody: 'Saved targets and alert rules stay in this browser. The desk opens after you open the sign in link. Free during early access.',
 } as const

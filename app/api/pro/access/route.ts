@@ -1,4 +1,4 @@
-import { markPending } from '@/lib/pro/access-store'
+import { openSignup } from '@/lib/pro/access-store'
 import { notifySignup, rememberSignup, validateSignup, type SignupRecord } from '@/lib/pro/signups'
 
 export async function POST(request: Request) {
@@ -21,7 +21,9 @@ export async function POST(request: Request) {
   } catch {
     return Response.json({ error: 'The signup store did not answer.' }, { status: 503 })
   }
-  await markPending(row.email)
+  const opened = await openSignup(row.email)
   await notifySignup(row)
-  return Response.json({ ok: true })
+  if (opened === 'closed') return Response.json({ error: 'This email is closed for the desk.' }, { status: 403 })
+  if (opened === 'unconfigured') return Response.json({ error: 'The sign in mail is not set up on this copy yet.' }, { status: 503 })
+  return Response.json({ ok: true, mailed: opened === 'mailed' })
 }

@@ -15,11 +15,22 @@ export function sessionSecret(env: Record<string, string | undefined> = process.
   return env.PRO_SESSION_SECRET?.trim() ?? ''
 }
 
+export const SIGN_IN_READY = 'Check your email for your sign in link.'
+
+/** Unset means auto approve. Set to false, 0, no, or off to hold new notes for the admin page. */
+export function autoApprove(env: Record<string, string | undefined> = process.env): boolean {
+  const raw = env.PRO_AUTO_APPROVE?.trim().toLowerCase()
+  if (!raw) return true
+  return !['0', 'false', 'no', 'off'].includes(raw)
+}
+
 export function adminEmailList(env: Record<string, string | undefined> = process.env): string[] {
-  return (env.ADMIN_EMAILS ?? '')
+  const listed = (env.ADMIN_EMAILS ?? '')
     .split(',')
     .map((item) => item.trim().toLowerCase())
     .filter((item) => EMAIL.test(item))
+  const notify = normalizeEmail(env.PRO_NOTIFY_EMAIL)
+  return notify && !listed.includes(notify) ? [...listed, notify] : listed
 }
 
 export function isAdminEmail(email: string | null, env: Record<string, string | undefined> = process.env): boolean {

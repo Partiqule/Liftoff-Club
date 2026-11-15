@@ -17,7 +17,7 @@ export function PreviewBanner({ level, email }: { level: AccessLevel; email: str
   }
   return (
     <p className="wrap note">
-      Preview. {FREE_LINE} Full desks open after approval.{' '}
+      Preview. {FREE_LINE} Full desks open after you open the sign in link.{' '}
       <Link href="/pro#access">Request early access</Link>
       {' · '}
       <Link href="/pro/sign-in">Sign in</Link>

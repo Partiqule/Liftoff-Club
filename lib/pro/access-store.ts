@@ -6,6 +6,7 @@ import {
   MAGIC_SECONDS,
   SESSION_SECONDS,
   approvalMail,
+  autoApprove,
   newToken,
   normalizeEmail,
   signInMail,
@@ -50,8 +51,22 @@ export async function accessStatus(email: string): Promise<AccessStatus | null> 
 
 export async function markPending(email: string): Promise<void> {
   const current = await accessStatus(email)
-  if (current === 'approved') return
+  if (current === 'approved' || current === 'revoked') return
   await command(['SET', statusKey(email), 'pending'])
+}
+
+/** A valid request is approved immediately unless PRO_AUTO_APPROVE is turned off. A revoked email stays closed. */
+export async function openSignup(email: string): Promise<'mailed' | 'approved' | 'pending' | 'closed' | 'unconfigured'> {
+  const current = await accessStatus(email)
+  if (current === 'revoked') return 'closed'
+  if (!autoApprove()) {
+    if (current !== 'approved') await markPending(email)
+    return 'pending'
+  }
+  const stored = await setStatus(email, 'approved')
+  if (!stored) return 'unconfigured'
+  const mailed = await sendSignIn(email)
+  return mailed === 'sent' ? 'mailed' : 'approved'
 }
 
 export async function setStatus(email: string, status: AccessStatus): Promise<boolean> {
