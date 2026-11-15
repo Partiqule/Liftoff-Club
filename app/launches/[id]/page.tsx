@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { AskLaunch } from '@/components/ask-launch'
+import { GlossaryText } from '@/components/glossary-text'
 import { CalendarLinks } from '@/components/calendar-links'
 import { Countdown } from '@/components/countdown'
 import { JobsCorner } from '@/components/jobs'
@@ -67,8 +68,12 @@ export default async function LaunchPage({ params }: { params: Promise<{ id: str
       <div className="detail-grid">
         <article>
           <p className="kicker">What this is</p>
-          <p className="story when-kid">{story.kid}</p>
-          <p className="story when-adult">{story.adult}</p>
+          <p className="story when-kid">
+            <GlossaryText text={story.kid} />
+          </p>
+          <p className="story when-adult">
+            <GlossaryText text={story.adult} />
+          </p>
           <p className="meta">
             {story.source === 'model'
               ? 'Story drafted by a model from the public listing and cached on the server.'
@@ -84,9 +89,11 @@ export default async function LaunchPage({ params }: { params: Promise<{ id: str
             <dt>Pad</dt>
             <dd>{launch.padName}</dd>
             <dt>Orbit</dt>
-            <dd>{launch.orbitName ?? 'Not listed'}</dd>
+            <dd>{launch.orbitName ? <GlossaryText text={launch.orbitName} /> : 'Not listed'}</dd>
             <dt>Status</dt>
-            <dd>{launch.statusName}</dd>
+            <dd>
+              <GlossaryText text={launch.statusName} />
+            </dd>
             {launch.boosterSerial ? (
               <>
                 <dt>Booster</dt>
@@ -109,13 +116,21 @@ export default async function LaunchPage({ params }: { params: Promise<{ id: str
               </>
             ) : null}
           </dl>
-          {launch.weatherConcerns ? <p className="note">{launch.weatherConcerns}</p> : null}
-          {launch.landingDescription ? <p className="note">{launch.landingDescription}</p> : null}
+          {launch.weatherConcerns ? (
+            <p className="note">
+              <GlossaryText text={launch.weatherConcerns} />
+            </p>
+          ) : null}
+          {launch.landingDescription ? (
+            <p className="note">
+              <GlossaryText text={launch.landingDescription} />
+            </p>
+          ) : null}
           <div className="when-adult">
             <p className="kicker">The record</p>
             <dl className="plate">
               <dt>Destination</dt>
-              <dd>{launch.spacecraftDestination ?? 'Not listed'}</dd>
+              <dd>{launch.spacecraftDestination ? <GlossaryText text={launch.spacecraftDestination} /> : 'Not listed'}</dd>
               <dt>Customers</dt>
               <dd>
                 {launch.manifest.filter((item) => item.role !== 'provider').map((item) => item.company).filter((name, index, all) => all.indexOf(name) === index).join(', ') ||
@@ -151,8 +166,14 @@ export default async function LaunchPage({ params }: { params: Promise<{ id: str
             <ul className="jobs">
               {(launch.updates ?? []).map((update) => (
                 <li key={`${update.at ?? 'note'}-${update.text.slice(0, 24)}`}>
-                  <p>{update.text}</p>
-                  {update.at ? <p className="meta">{update.at}</p> : null}
+                  <p>
+                    <GlossaryText text={update.text} />
+                  </p>
+                  {update.at ? (
+                    <p className="meta">
+                      <LocalTime iso={update.at} />
+                    </p>
+                  ) : null}
                 </li>
               ))}
             </ul>
@@ -171,6 +192,27 @@ export default async function LaunchPage({ params }: { params: Promise<{ id: str
           </div>
         </aside>
       </div>
+      {launch.timeline.length > 0 ? (
+        <section>
+          <p className="kicker">Timeline</p>
+          <h2>Calls on the clock</h2>
+          <ol className="jobs">
+            {launch.timeline.map((event) => (
+              <li key={`${event.abbrev}-${event.offsetSec}`}>
+                <h3>
+                  <GlossaryText text={event.abbrev} />
+                </h3>
+                <p>
+                  <GlossaryText text={event.description} />
+                </p>
+              </li>
+            ))}
+          </ol>
+          <p className="note">
+            <Link href="/glossary">All the space words</Link>
+          </p>
+        </section>
+      ) : null}
       <JobsCorner launch={launch} />
       <AskLaunch launchId={launch.id} />
       <CalendarLinks launch={launch} baseUrl={siteUrl()} />

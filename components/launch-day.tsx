@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Countdown } from '@/components/countdown'
+import { GlossaryText } from '@/components/glossary-text'
 import { Logo } from '@/components/logo'
 import { stageScript } from '@/lib/stages'
 import type { Launch } from '@/lib/types'
@@ -59,8 +60,12 @@ export function LaunchDayScreen({ launch }: { launch: Launch }) {
         <p className="kicker">{launch.provider.name}</p>
         <h1 style={{ fontSize: 'clamp(2rem, 5vw, 3.4rem)' }}>{launch.name}</h1>
         <Countdown net={launch.net} size="xl" />
-        <p className="day-stage when-kid">{script.kid}</p>
-        <p className="day-stage when-adult">{script.adult}</p>
+        <p className="day-stage when-kid">
+          <GlossaryText text={script.kid} />
+        </p>
+        <p className="day-stage when-adult">
+          <GlossaryText text={script.adult} />
+        </p>
         {launch.webcastUrl ? (
           <p>
             <a className="btn" href={launch.webcastUrl}>
@@ -78,7 +83,7 @@ export function LaunchDayScreen({ launch }: { launch: Launch }) {
             return (
               <li key={`${step.abbrev}-${step.offsetSec}`} data-state={step.state}>
                 {offset ? `${offset} ` : ''}
-                {step.abbrev}
+                <GlossaryText text={step.abbrev} />
               </li>
             )
           })}

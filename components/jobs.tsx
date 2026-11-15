@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { GlossaryText } from '@/components/glossary-text'
 import { roleLabel } from '@/lib/manifest'
 import type { Launch } from '@/lib/types'
 
@@ -24,8 +25,12 @@ export function JobsCorner({ launch }: { launch: Launch }) {
                 <Link href={`/companies/${item.companySlug}`}>{item.company}</Link>
               </h3>
               {item.name.toLowerCase() !== item.company.toLowerCase() ? <p className="meta">{item.name}</p> : null}
-              <p className="when-kid">{item.kidBrief}</p>
-              <p className="when-adult">{item.brief}</p>
+              <p className="when-kid">
+                <GlossaryText text={item.kidBrief} />
+              </p>
+              <p className="when-adult">
+                <GlossaryText text={item.brief} />
+              </p>
               <div className="job-links">
                 {item.careersUrl ? (
                   <a href={item.careersUrl} rel="noreferrer">

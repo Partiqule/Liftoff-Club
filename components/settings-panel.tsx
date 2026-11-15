@@ -177,7 +177,7 @@ export function SettingsPanel({ providers }: { providers: string[] }) {
         <p className="kicker">Privacy</p>
         <h2>What this browser keeps</h2>
         <p className="lede">
-          Town, kids mode, quiet hours, and which alerts already fired. No name, no email, no account. Weather and city search go straight from your browser to Open-Meteo. If the site is deployed on Vercel, page counts can be turned on there. They are cookieless and we strip query strings.
+          Town, kids mode, quiet hours, companies you follow, space words you open, and which alerts already fired. No name, no email, no account. Weather and city search go straight from your browser to Open-Meteo. If the site is deployed on Vercel, page counts can be turned on there. They are cookieless and we strip query strings.
         </p>
         <button
           className="btn btn-quiet"

@@ -239,6 +239,35 @@ h3 { font-size: 1.25rem; line-height: 1.2; }
 .btn-quiet { color: var(--cold); }
 .btn-quiet::after { opacity: 0.45; box-shadow: none; }
 .btn:hover, .ticket:hover { color: var(--ink); transform: none; filter: none; }
+.term {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-decoration-color: var(--core);
+  text-underline-offset: 0.2em;
+}
+.term:hover, .term:focus-visible { color: var(--ink); }
+.word-list { display: flex; flex-wrap: wrap; gap: 0.85rem 1.5rem; }
+.word-list .term { font-family: var(--font-display); font-size: clamp(1.6rem, 3vw, 2.2rem); }
+dialog.term-card {
+  width: min(32rem, calc(100vw - 2rem));
+  margin: auto;
+  padding: 1.35rem 1.45rem 1.5rem;
+  background: #161326;
+  color: var(--ink);
+  border: 0;
+  box-shadow: 0 0 48px rgba(243, 215, 176, 0.18);
+}
+dialog.term-card::backdrop { background: rgba(7, 6, 15, 0.66); }
+dialog.term-card h2 { margin: 0.15rem 0 0.7rem; }
+dialog.term-card p { line-height: 1.45; }
 .tickets { display: flex; flex-wrap: wrap; gap: 1.25rem 1.75rem; }
 .choice { display: flex; flex-wrap: wrap; gap: 1rem 1.4rem; }
 .choice button[aria-pressed="true"] {

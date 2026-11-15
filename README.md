@@ -64,6 +64,7 @@ After deploy, subscribe to `https://your-site/calendar/feed.ics` from the launch
 - A daily and weekly brief on its own page. It is the same text a later email or text could send. Nothing is sent.
 - Follow a company on its public page. The list of who is flying what stays in this browser.
 - “Ask about this launch” on the grown-up page. Answers come only from that launch’s listing. A model is used only if `EXPLAINER_API_KEY` is set, and the reply is cached. With no key, the answer is read from the record.
+- Space words. Calls such as Max Q, MECO, SECO, fairing separation, scrub, T minus, LEO, GEO, SSO, RTLS, and droneship are tappable on a launch, its timeline, and launch day. The card has a grown up line and a kids line. Words you open are saved in this browser, and the full list is at `/glossary`.
 - A payload and customer list (“space jobs corner”) with a short brief and a careers link when we actually have one.
 - A saved town or device location. It never leaves the browser for an account, because there isn’t one.
 - Tonight’s International Space Station passes, plus a small sample of Starlink passes: direction, time, how high, and an honest grade.

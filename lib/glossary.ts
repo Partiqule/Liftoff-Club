@@ -345,8 +345,6 @@ export const GLOSSARY: GlossaryTerm[] = [
   },
 ]
 
-const GROUP_ORDER = ['clock', 'climb', 'return', 'orbit'] as const
-
 export const GLOSSARY_GROUPS: { id: GlossaryTerm['group']; label: string }[] = [
   { id: 'clock', label: 'The clock' },
   { id: 'climb', label: 'The climb' },
@@ -403,8 +401,4 @@ export function splitGlossary(text: string): GlossarySegment[] {
   }
   if (cursor < text.length) segments.push({ type: 'text', value: text.slice(cursor) })
   return segments
-}
-
-export function glossaryGroupIds(): typeof GROUP_ORDER {
-  return GROUP_ORDER
 }

@@ -1,4 +1,5 @@
 import { FOLLOWS_KEY } from '@/lib/follows'
+import { WORDS_KEY } from '@/lib/words'
 import type { NotificationSettings, Place, Settings } from '@/lib/types'
 
 export const SETTINGS_KEY = 'liftoff-club-v1'
@@ -105,4 +106,5 @@ export function clearClubStorage(): void {
   window.localStorage.removeItem(SETTINGS_KEY)
   window.localStorage.removeItem(FIRED_KEY)
   window.localStorage.removeItem(FOLLOWS_KEY)
+  window.localStorage.removeItem(WORDS_KEY)
 }
