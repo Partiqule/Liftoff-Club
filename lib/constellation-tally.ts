@@ -9,6 +9,8 @@ export type ConstellationCounts = {
   launched: number
   inOrbit: number
   launchesThisYear: number
+  /** Newest payload launch date in the catalog file, YYYY-MM-DD, or null. */
+  latestLaunchDate: string | null
 }
 
 function clean(value: string | null | undefined): string | null {
@@ -48,7 +50,18 @@ export function tallyCatalog(records: CatalogObject[], year: number): Constellat
     launched: payloads.length,
     inOrbit: payloads.filter((record) => !record.decayDate).length,
     launchesThisYear: launches.size,
+    latestLaunchDate: latestPayloadLaunch(payloads),
   }
+}
+
+function latestPayloadLaunch(payloads: CatalogObject[]): string | null {
+  let best: string | null = null
+  for (const record of payloads) {
+    const day = record.launchDate?.slice(0, 10) ?? ''
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) continue
+    if (!best || day > best) best = day
+  }
+  return best
 }
 
 export type AheadLaunch = {

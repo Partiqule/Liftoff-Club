@@ -81,7 +81,9 @@ export async function getConstellationCards(launches: AheadLaunch[], now = Date.
   const loaded = await loadCounts(year)
   return CONSTELLATIONS.map((profile) => ({
     profile,
-    counts: loaded.groups[profile.id] ?? null,
+    counts: loaded.groups[profile.id]
+      ? { ...loaded.groups[profile.id], latestLaunchDate: loaded.groups[profile.id].latestLaunchDate ?? null }
+      : null,
     aheadThisYear: countAheadThisYear(launches, new RegExp(profile.launchPattern, 'i'), year, now),
     fetchedAt: loaded.fetchedAt,
   }))
