@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Cited } from '@/components/pro/cited'
 import { MonthChart } from '@/components/pro/month-chart'
 import { TrackerTable } from '@/components/pro/tracker-table'
 import { loadProBoard } from '@/lib/pro/load'
@@ -23,6 +24,16 @@ export default async function TrackerPage() {
         {rows.map((row) => (
           <article key={row.id} className="pro-card">
             <h2>{row.name}</h2>
+            <div className="pro-stat-row">
+              <div>
+                <p className="kicker">In orbit</p>
+                <Cited cell={row.inOrbit} />
+              </div>
+              <div>
+                <p className="kicker">Authorized</p>
+                <Cited cell={row.authorized} />
+              </div>
+            </div>
             <p>
               <strong>Next scheduled launch. </strong>
               {row.nextLaunch.text}

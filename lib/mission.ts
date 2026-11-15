@@ -73,7 +73,7 @@ export function approximateInclination(orbitName: string | null, orbitAbbrev: st
 }
 
 /** Great-circle points starting at the pad, stepping along the launch azimuth. */
-export function groundTrack(latDeg: number, lonDeg: number, azimuthDeg: number, steps = 36, stepDeg = 2.5): TrackPoint[] {
+export function groundTrack(latDeg: number, lonDeg: number, azimuthDeg: number, steps = 56, stepDeg = 3.2): TrackPoint[] {
   const points: TrackPoint[] = []
   let lat = latDeg
   let lon = lonDeg
@@ -103,6 +103,18 @@ export function pointAlong(track: TrackPoint[], progress: number): TrackPoint | 
 }
 
 /** 0 at liftoff, 1 after about ten minutes of climb. Before liftoff the dot stays at the pad. */
+export function subsolar(nowMs: number): TrackPoint {
+  const date = new Date(nowMs)
+  const start = Date.UTC(date.getUTCFullYear(), 0, 0)
+  const day = (date.getTime() - start) / 86_400_000
+  const lat = 23.44 * Math.sin((2 * Math.PI * (day - 81)) / 365)
+  const hours = date.getUTCHours() + date.getUTCMinutes() / 60 + date.getUTCSeconds() / 3600
+  let lon = 180 - hours * 15
+  if (lon > 180) lon -= 360
+  if (lon < -180) lon += 360
+  return { lat, lon }
+}
+
 export function trackProgress(elapsedSec: number | null): number {
   if (elapsedSec == null || elapsedSec <= 0) return 0
   return Math.min(1, elapsedSec / 600)

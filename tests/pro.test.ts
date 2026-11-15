@@ -4,7 +4,7 @@ import { accessNote } from '@/lib/pro/access'
 import { companyBrief, constellationBrief, talkStaysInside, talkTrack } from '@/lib/pro/brief'
 import { filterManifest, isRideshareLaunch, manifestCsv, manifestFacts, rideshareSlot } from '@/lib/pro/manifest-intel'
 import { CATALOG_LAG_NOTE, isFlownSuccess, monthlyCounts, summarizeHistory, type HistoryLaunch } from '@/lib/pro/history'
-import { formatMountain } from '@/lib/pro/time'
+import { formatLaunchWhen, formatMountain } from '@/lib/pro/time'
 import { trackerRows, type TrackerHistory, type TrackerSource } from '@/lib/pro/tracker'
 import {
   addTarget,
@@ -218,6 +218,44 @@ describe('pro trends and alerts', () => {
     })
     const added = buildFeed(baselined, [launch], refs, when)
     expect(added.map((item) => item.kind)).toContain('constellation-new')
+  })
+})
+
+describe('placeholder launch times', () => {
+  it('does not turn a month precision midnight into a Mountain Time clock', () => {
+    const shown = formatLaunchWhen('2026-11-30T00:00:00Z', 'Month', 'To Be Determined')
+    expect(shown).toBe('November 2026, clock not set')
+    expect(shown).not.toMatch(/5:00|PM/)
+    expect(formatLaunchWhen('2026-11-13T22:47:36Z', 'Second', 'Launch Successful')).toMatch(/MT/)
+  })
+
+  it('keeps OneWeb on its own listing when a Starlink flight shares the placeholder date', () => {
+    const oneweb = makeLaunch({
+      id: 'oneweb-21',
+      name: 'Falcon 9 Block 5 | OneWeb 21',
+      missionName: 'OneWeb 21',
+      net: '2026-11-30T00:00:00Z',
+      precision: 'Month',
+      statusName: 'To Be Determined',
+      rocketName: 'Falcon 9 Block 5',
+    })
+    const starlink = makeLaunch({
+      id: 'starlink-15-21',
+      name: 'Falcon 9 Block 5 | Starlink Group 15-21',
+      missionName: 'Starlink Group 15-21',
+      net: '2026-11-30T00:00:00Z',
+      precision: 'Month',
+      statusName: 'To Be Determined',
+    })
+    const [row] = trackerRows(
+      [source({ id: 'oneweb', name: 'OneWeb', pattern: 'oneweb', companySlug: 'eutelsat' })],
+      [starlink, oneweb],
+      '2026-11-15',
+      Date.parse('2026-11-01T00:00:00Z'),
+    )
+    expect(row.nextLaunch.text).toContain('OneWeb 21')
+    expect(row.nextLaunch.text).not.toContain('Starlink')
+    expect(row.nextLaunch.text).not.toMatch(/5:00|PM/)
   })
 })
 

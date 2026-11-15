@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { FigureLine } from '@/components/pro/figure-line'
-import { GlossaryText } from '@/components/glossary-text'
 import { LaunchDayScreen } from '@/components/launch-day'
 import { Logo } from '@/components/logo'
 import { MissionGlobe } from '@/components/mission-globe'
@@ -16,8 +15,10 @@ import {
   groundTrack,
   launchAzimuthDeg,
   missionEvents,
+  subsolar,
   trackProgress,
 } from '@/lib/mission'
+import { GLOSSARY } from '@/lib/glossary'
 import { findRocketPhoto } from '@/lib/rocket-photos'
 import { formatMountain } from '@/lib/pro/time'
 import type { Launch } from '@/lib/types'
@@ -39,6 +40,7 @@ export function MissionShell({ launch, asOf }: { launch: Launch; asOf: string | 
 
 function MissionView({ launch, asOf, onFamily }: { launch: Launch; asOf: string | null; onFamily: () => void }) {
   const [now, setNow] = useState(() => Date.now())
+  const [openEvent, setOpenEvent] = useState<string | null>(null)
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 1000)
     return () => window.clearInterval(id)
@@ -85,7 +87,7 @@ function MissionView({ launch, asOf, onFamily }: { launch: Launch; asOf: string 
           {launch.orbitName || launch.orbitAbbrev ? <Stat label="Orbit" value={launch.orbitName ?? launch.orbitAbbrev ?? ''} /> : null}
         </aside>
         <div className="mission-center">
-          <MissionGlobe track={track} progress={trackProgress(elapsed)} />
+          <MissionGlobe track={track} progress={trackProgress(elapsed)} sun={subsolar(now)} />
         </div>
         <aside className="mission-cards">
           <article className="pro-card">
@@ -127,12 +129,24 @@ function MissionView({ launch, asOf, onFamily }: { launch: Launch; asOf: string 
         {!script.official ? <p className="kicker">Typical timeline, not official</p> : <p className="kicker">Public timeline</p>}
         <ol className="mission-events">
           {script.events.map((event) => {
+            const key = `${event.abbrev}-${event.offsetSec}`
             const nowEvent = elapsed != null && event.abbrev === phase
+            const folded = event.abbrev.toLowerCase()
+            const term = GLOSSARY.find((item) => item.term.toLowerCase() === folded || item.id === folded.replace(/\s+/g, '-'))
+            const explanation = term?.adult ?? event.description
             return (
-              <li key={`${event.abbrev}-${event.offsetSec}`} data-state={nowEvent ? 'now' : elapsed != null && event.offsetSec < elapsed ? 'past' : 'next'}>
+              <li key={key} data-state={nowEvent ? 'now' : elapsed != null && event.offsetSec < elapsed ? 'past' : 'next'}>
                 <span className="mission-dot" />
-                <GlossaryText text={event.abbrev} />
+                <button
+                  className="mission-label"
+                  type="button"
+                  aria-expanded={openEvent === key}
+                  onClick={() => setOpenEvent(openEvent === key ? null : key)}
+                >
+                  {event.abbrev}
+                </button>
                 <span className="pro-time">{formatOffset(event.offsetSec)}</span>
+                {openEvent === key ? <span className="mission-explain">{explanation}</span> : null}
               </li>
             )
           })}

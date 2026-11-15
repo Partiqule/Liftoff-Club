@@ -3,7 +3,7 @@ import type { ConstellationProfile } from '@/lib/constellation-data'
 import type { ConstellationCounts } from '@/lib/constellation-tally'
 import { aiNotesForCompany } from '@/lib/ai-orbit'
 import { CATALOG_LAG_NOTE, HISTORY_PATTERNS, catalogIsBehind, monthlyCounts, summarizeHistory, type HistoryLaunch } from '@/lib/pro/history'
-import { formatMountain, mountainYear } from '@/lib/pro/time'
+import { formatLaunchWhen, formatMountain, mountainYear } from '@/lib/pro/time'
 import type { Launch } from '@/lib/types'
 
 export type TrackerSource = {
@@ -141,7 +141,7 @@ function rowFor(
       : blankCell(),
     nextLaunch: next
       ? {
-          text: next.net ? `${next.name} · ${formatMountain(next.net)}` : next.name,
+          text: next.net ? `${next.name} · ${formatLaunchWhen(next.net, next.precision, next.statusName)}` : next.name,
           sort: next.net ? Date.parse(next.net) : null,
           sourceUrl: LL2,
           sourceTitle: 'Launch Library 2',
