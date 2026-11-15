@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 }
 
 export default async function ManifestPage() {
-  const { board } = await loadProBoard()
+  const { board, day } = await loadProBoard()
   const orbits = unique(board.launches.map((launch) => launch.orbitAbbrev ?? launch.orbitName ?? '')).sort()
   const sites = unique(board.launches.map((launch) => launch.padLocation ?? launch.padName)).sort()
   return (
@@ -20,7 +20,7 @@ export default async function ManifestPage() {
       <p className="lede">
         Filter the public board by customer, orbit, or site. Rideshare keeps a flight only when the listing names Transporter, Bandwagon, or rideshare.
       </p>
-      <ManifestDesk launches={board.launches} orbits={orbits} sites={sites} />
+      <ManifestDesk launches={board.launches} orbits={orbits} sites={sites} asOf={day} />
     </main>
   )
 }

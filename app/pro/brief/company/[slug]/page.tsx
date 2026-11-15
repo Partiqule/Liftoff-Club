@@ -17,11 +17,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function CompanyBriefPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const { board, sources, day, now } = await loadProBoard()
+  const { board, sources, day, now, history } = await loadProBoard()
   const company = getCatalogCompany(slug) ?? companiesOnBoard(board.launches).find((item) => item.slug === slug) ?? null
   if (!company) notFound()
   const related = sources.filter((item) => item.companySlug === slug)
-  const brief = companyBrief(company.name, slug, related, board.launches, day, now)
+  const brief = companyBrief(company.name, slug, related, board.launches, day, now, history)
   const talk = await maybeRewriteTalk(brief.facts, brief.talk)
   return (
     <main id="content" className="wrap page">

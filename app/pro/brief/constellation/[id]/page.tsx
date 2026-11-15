@@ -18,10 +18,10 @@ export default async function ConstellationBriefPage({ params }: { params: Promi
   const { id } = await params
   const profile = CONSTELLATIONS.find((item) => item.id === id)
   if (!profile) notFound()
-  const { board, sources, day, now } = await loadProBoard()
+  const { board, sources, day, now, history } = await loadProBoard()
   const source = sources.find((item) => item.id === id)
   if (!source) notFound()
-  const brief = constellationBrief(source, board.launches, day, now)
+  const brief = constellationBrief(source, board.launches, day, now, history)
   const talk = await maybeRewriteTalk(brief.facts, brief.talk)
   return (
     <main id="content" className="wrap page">

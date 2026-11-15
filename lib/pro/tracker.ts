@@ -2,7 +2,7 @@ import type { CitedFigure } from '@/lib/cited'
 import type { ConstellationProfile } from '@/lib/constellation-data'
 import type { ConstellationCounts } from '@/lib/constellation-tally'
 import { aiNotesForCompany } from '@/lib/ai-orbit'
-import { CATALOG_LAG_NOTE, HISTORY_PATTERNS, catalogIsBehind, summarizeHistory, type HistoryLaunch } from '@/lib/pro/history'
+import { CATALOG_LAG_NOTE, HISTORY_PATTERNS, catalogIsBehind, monthlyCounts, summarizeHistory, type HistoryLaunch } from '@/lib/pro/history'
 import { formatMountain, mountainYear } from '@/lib/pro/time'
 import type { Launch } from '@/lib/types'
 
@@ -43,6 +43,8 @@ export type TrackerRow = {
   nextLaunch: TrackerCell
   nextLaunchId: string | null
   ai: TrackerCell
+  /** Twelve month counts for the current year, or null when history did not answer. */
+  months: number[] | null
 }
 
 const BLANK = 'No public figure yet'
@@ -104,7 +106,8 @@ function rowFor(
   const flights = history?.byId?.[source.id]
   const historyDay = history?.fetchedAt?.slice(0, 10) ?? null
   const historyReady = Boolean(flights && historyDay && DATE.test(historyDay))
-  const summary = historyReady && flights ? summarizeHistory(pattern, flights, mountainYear(now) ?? new Date(now).getUTCFullYear()) : null
+  const year = mountainYear(now) ?? new Date(now).getUTCFullYear()
+  const summary = historyReady && flights ? summarizeHistory(pattern, flights, year) : null
   const behind = catalogIsBehind(summary?.last?.net, source.latestLaunchDate)
   const inOrbit = catalogNumber(source.inOrbit, source.group, source.catalogAsOf, 'satellites')
   if (behind) inOrbit.note = CATALOG_LAG_NOTE
@@ -147,6 +150,7 @@ function rowFor(
         }
       : { ...blankCell(), text: 'None on the board' },
     nextLaunchId: next?.id ?? null,
+    months: historyReady && flights ? monthlyCounts(pattern, flights, year) : null,
     ai: note
       ? {
           text: 'Listed',

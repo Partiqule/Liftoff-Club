@@ -34,6 +34,26 @@ export function TrackerTable({ rows }: { rows: TrackerRow[] }) {
   }
 
   return (
+    <>
+    <div className="pro-mobile-list">
+      {ordered.map((row) => {
+        const key = targetKey({ kind: 'constellation', id: row.id })
+        const on = store.targets.some((item) => targetKey(item) === key)
+        return (
+          <article key={row.id} className="pro-card">
+            <h2>{row.name}</h2>
+            <p className="meta">{row.operator}</p>
+            <dl className="pro-facts">
+              <div><dt>In orbit</dt><dd><Cited cell={row.inOrbit} /></dd></div>
+              <div><dt>Launches this year</dt><dd><Cited cell={row.launchesThisYear} /></dd></div>
+              <div><dt>Last launch</dt><dd><Cited cell={row.lastLaunch} /></dd></div>
+              <div><dt>Next launch</dt><dd><Cited cell={row.nextLaunch} /></dd></div>
+            </dl>
+            <WatchButton on={on} onClick={() => setStore(on ? removeTarget(store, key) : addTarget(store, { kind: 'constellation', id: row.id, label: row.name, addedAt: new Date().toISOString() }))} />
+          </article>
+        )
+      })}
+    </div>
     <div className="pro-scroll">
       <table className="pro-table">
         <thead>
@@ -84,6 +104,15 @@ export function TrackerTable({ rows }: { rows: TrackerRow[] }) {
         </tbody>
       </table>
     </div>
+    </>
+  )
+}
+
+function WatchButton({ on, onClick }: { on: boolean; onClick: () => void }) {
+  return (
+    <button className="btn" type="button" onClick={onClick}>
+      {on ? 'Watching' : 'Watch'}
+    </button>
   )
 }
 

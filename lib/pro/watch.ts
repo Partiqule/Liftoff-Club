@@ -12,7 +12,7 @@ export type WatchTarget = {
   addedAt: string
 }
 
-export type AlertKind = 'company-launch' | 'scrub-slip' | 'new-manifest'
+export type AlertKind = 'company-launch' | 'scrub-slip' | 'new-manifest' | 'date-set' | 'date-moved' | 'constellation-new'
 
 export type AlertRule = {
   id: string
@@ -22,11 +22,25 @@ export type AlertRule = {
   enabled: boolean
 }
 
+export type SeenLaunch = {
+  id: string
+  net: string | null
+}
+
 export type SeenState = {
   nextId: string | null
   nextNet: string | null
   status: string | null
   manifest: string[]
+  launches: SeenLaunch[]
+}
+
+export type FeedItem = {
+  id: string
+  at: string
+  kind: 'date-set' | 'date-moved' | 'constellation-new'
+  text: string
+  launchId: string | null
 }
 
 export type ProStore = {
@@ -34,6 +48,7 @@ export type ProStore = {
   targets: WatchTarget[]
   rules: AlertRule[]
   seen: Record<string, SeenState>
+  feed: FeedItem[]
 }
 
 export type ConstellationRef = {
@@ -56,10 +71,10 @@ export type DeskChange = {
 }
 
 const KINDS = new Set<WatchKind>(['company', 'constellation', 'rocket', 'site'])
-const ALERTS = new Set<AlertKind>(['company-launch', 'scrub-slip', 'new-manifest'])
+const ALERTS = new Set<AlertKind>(['company-launch', 'scrub-slip', 'new-manifest', 'date-set', 'date-moved', 'constellation-new'])
 
 export function emptyStore(): ProStore {
-  return { version: 1, targets: [], rules: [], seen: {} }
+  return { version: 1, targets: [], rules: [], seen: {}, feed: [] }
 }
 
 export function targetKey(target: Pick<WatchTarget, 'kind' | 'id'>): string {
@@ -82,7 +97,8 @@ export function sanitizeStore(value: unknown): ProStore {
   }
   const unique = new Map<string, WatchTarget>()
   for (const target of targets) unique.set(targetKey(target), target)
-  return { version: 1, targets: [...unique.values()].slice(0, 80), rules: rules.slice(0, 40), seen }
+  const feed = Array.isArray(raw.feed) ? raw.feed.map(readFeed).filter((item): item is FeedItem => Boolean(item)).slice(0, 60) : []
+  return { version: 1, targets: [...unique.values()].slice(0, 80), rules: rules.slice(0, 40), seen, feed }
 }
 
 export function addTarget(store: ProStore, target: WatchTarget): ProStore {
@@ -161,6 +177,7 @@ export function snapshotTarget(
     nextNet: next?.net ?? null,
     status: next ? `${next.statusAbbrev} ${next.statusName}` : null,
     manifest: [...names].sort(),
+    launches: matching.map((launch) => ({ id: launch.id, net: launch.net })),
   }
 }
 
@@ -298,10 +315,99 @@ function readSeen(value: unknown): SeenState | null {
   if (!value || typeof value !== 'object') return null
   const item = value as Partial<SeenState>
   const manifest = Array.isArray(item.manifest) ? item.manifest.filter((name): name is string => typeof name === 'string').slice(0, 60) : []
+  const launches = Array.isArray(item.launches)
+    ? item.launches
+        .map((entry) => {
+          if (!entry || typeof entry !== 'object') return null
+          const row = entry as Partial<SeenLaunch>
+          if (typeof row.id !== 'string' || !row.id) return null
+          return { id: row.id, net: typeof row.net === 'string' ? row.net : null }
+        })
+        .filter((entry): entry is SeenLaunch => Boolean(entry))
+        .slice(0, 80)
+    : []
   return {
     nextId: typeof item.nextId === 'string' ? item.nextId : null,
     nextNet: typeof item.nextNet === 'string' ? item.nextNet : null,
     status: typeof item.status === 'string' ? item.status : null,
     manifest,
+    launches,
   }
+}
+
+function readFeed(value: unknown): FeedItem | null {
+  if (!value || typeof value !== 'object') return null
+  const item = value as Partial<FeedItem>
+  if (item.kind !== 'date-set' && item.kind !== 'date-moved' && item.kind !== 'constellation-new') return null
+  if (typeof item.id !== 'string' || typeof item.text !== 'string' || typeof item.at !== 'string') return null
+  return {
+    id: item.id.slice(0, 160),
+    at: item.at,
+    kind: item.kind,
+    text: item.text.slice(0, 280),
+    launchId: typeof item.launchId === 'string' ? item.launchId : null,
+  }
+}
+
+export function buildFeed(
+  store: ProStore,
+  launches: Launch[],
+  constellations: ConstellationRef[],
+  now = Date.now(),
+): FeedItem[] {
+  const at = new Date(now).toISOString()
+  const items: FeedItem[] = []
+  for (const rule of store.rules) {
+    if (!rule.enabled) continue
+    if (rule.kind === 'date-set' || rule.kind === 'date-moved') {
+      const targets = store.targets.filter((target) => target.kind === 'company' && (!rule.companyId || target.id === rule.companyId))
+      for (const target of targets) {
+        const seen = store.seen[targetKey(target)]
+        if (!seen) continue
+        const known = new Map(seen.launches.map((launch) => [launch.id, launch.net]))
+        const matched = launches.filter((launch) => launchMatches(target, launch, constellations) && stillAhead(launch, now))
+        for (const launch of matched) {
+          const previous = known.get(launch.id)
+          if (rule.kind === 'date-set' && launch.net && (previous === undefined || previous == null)) {
+            items.push({
+              id: `date-set:${launch.id}:${launch.net}`,
+              at,
+              kind: 'date-set',
+              text: `${target.label} has a launch date for ${launch.name}.`,
+              launchId: launch.id,
+            })
+          }
+          if (rule.kind === 'date-moved' && previous && launch.net && previous !== launch.net) {
+            items.push({
+              id: `date-moved:${launch.id}:${previous}:${launch.net}`,
+              at,
+              kind: 'date-moved',
+              text: `${launch.name} moved to a new clock.`,
+              launchId: launch.id,
+            })
+          }
+        }
+      }
+    }
+    if (rule.kind === 'constellation-new') {
+      const targets = store.targets.filter((target) => target.kind === 'constellation')
+      for (const target of targets) {
+        const seen = store.seen[targetKey(target)]
+        if (!seen) continue
+        const known = new Set(seen.launches.map((launch) => launch.id))
+        const matched = launches.filter((launch) => launchMatches(target, launch, constellations) && stillAhead(launch, now))
+        for (const launch of matched) {
+          if (known.has(launch.id)) continue
+          items.push({
+            id: `constellation-new:${target.id}:${launch.id}`,
+            at,
+            kind: 'constellation-new',
+            text: `A new flight is on the board for ${target.label}: ${launch.name}.`,
+            launchId: launch.id,
+          })
+        }
+      }
+    }
+  }
+  return items.slice(0, 40)
 }

@@ -2,13 +2,24 @@
 
 import Link from 'next/link'
 import { useProStore } from '@/components/pro/use-pro-store'
-import { evaluateAlerts, removeRule, targetKey, upsertRule, type AlertKind, type ConstellationRef } from '@/lib/pro/watch'
+import { formatMountain } from '@/lib/pro/time'
+import {
+  buildFeed,
+  markSeen,
+  removeRule,
+  snapshotTarget,
+  targetKey,
+  upsertRule,
+  type AlertKind,
+  type ConstellationRef,
+  type FeedItem,
+} from '@/lib/pro/watch'
 import type { Launch } from '@/lib/types'
 
-const KINDS: { kind: AlertKind; label: string }[] = [
-  { kind: 'company-launch', label: 'Company launches' },
-  { kind: 'scrub-slip', label: 'Scrub or slip' },
-  { kind: 'new-manifest', label: 'New manifest entry' },
+const KINDS: { kind: AlertKind; label: string; detail: string }[] = [
+  { kind: 'date-set', label: 'A followed company gets a launch date', detail: 'Fires when a saved company gains a clock on the board.' },
+  { kind: 'date-moved', label: 'A launch date slips or moves', detail: 'Fires when a saved company flight keeps the same listing and the clock changes.' },
+  { kind: 'constellation-new', label: 'A new launch is added for a constellation', detail: 'Fires when a saved constellation gains a flight that was not on the last reading.' },
 ]
 
 export function AlertDesk({
@@ -21,68 +32,82 @@ export function AlertDesk({
   now: number
 }) {
   const { store, setStore, ready } = useProStore()
-  const companies = store.targets.filter((target) => target.kind === 'company')
-  const hits = ready ? evaluateAlerts(store, launches, constellations, now) : []
-  const feed = `/pro/calendar/feed.ics?targets=${store.targets.map((target) => `${target.kind}:${encodeURIComponent(target.id)}`).join(',')}`
+  if (!ready) return <div className="pro-skeleton" aria-busy="true" aria-label="Opening saved rules" />
+  const live = buildFeed(store, launches, constellations, now)
+  const feed = mergeFeed(live, store.feed)
+  const calendar = `/pro/calendar/feed.ics?targets=${store.targets.map((target) => `${target.kind}:${encodeURIComponent(target.id)}`).join(',')}`
 
-  function add(kind: AlertKind, companyId = '') {
-    const id = `${kind}-${companyId || 'all'}-${store.rules.length + 1}`
-    setStore(upsertRule(store, { id, kind, companyId, enabled: true }))
+  function add(kind: AlertKind) {
+    if (store.rules.some((rule) => rule.kind === kind && rule.enabled)) return
+    setStore(upsertRule(store, { id: kind, kind, companyId: '', enabled: true }))
+  }
+
+  function keep() {
+    const snapshots: Record<string, ReturnType<typeof snapshotTarget>> = {}
+    for (const target of store.targets) snapshots[targetKey(target)] = snapshotTarget(target, launches, constellations, now)
+    setStore({ ...markSeen(store, snapshots), feed: mergeFeed(live, store.feed).slice(0, 50) })
   }
 
   return (
     <div>
-      <div className="pro-filters">
-        {KINDS.map((item) => (
-          <button key={item.kind} className="btn" type="button" onClick={() => add(item.kind)}>
-            Add {item.label.toLowerCase()}
-          </button>
-        ))}
+      <div className="pro-rule-list">
+        {KINDS.map((item) => {
+          const on = store.rules.some((rule) => rule.kind === item.kind && rule.enabled)
+          return (
+            <article key={item.kind} className="pro-card">
+              <h2>{item.label}</h2>
+              <p>{item.detail}</p>
+              {on ? (
+                <button className="btn" type="button" onClick={() => setStore(removeRule(store, item.kind))}>
+                  Turn off
+                </button>
+              ) : (
+                <button className="btn" type="button" onClick={() => add(item.kind)}>
+                  Turn on
+                </button>
+              )}
+            </article>
+          )
+        })}
       </div>
-      {companies.length > 0 ? (
-        <div className="pro-filters">
-          {companies.map((company) => (
-            <button key={company.id} className="btn" type="button" onClick={() => add('company-launch', company.id)}>
-              Launches for {company.label}
-            </button>
-          ))}
-        </div>
-      ) : (
-        <p className="note">Save a company on the watchlist if you want a rule for that name only.</p>
-      )}
-      <ul className="pro-cards">
-        {store.rules.map((rule) => (
-          <li key={rule.id} className="pro-card">
-            <h2>{KINDS.find((item) => item.kind === rule.kind)?.label}</h2>
-            <p className="meta">{rule.companyId ? `Limited to ${rule.companyId}.` : 'Applies to watched companies, or to every saved target for a scrub or slip.'}</p>
-            <button className="btn" type="button" onClick={() => setStore(removeRule(store, rule.id))}>
-              Remove rule
-            </button>
+      <h2>Feed</h2>
+      {store.targets.length === 0 ? <p className="note">Save a target on the watchlist first. Rules only watch what you saved, and they stay in this browser.</p> : null}
+      {feed.length === 0 ? <p className="note">Nothing new against the last reading. Turn a rule on, then keep a reading so the next change can land here.</p> : null}
+      <ol className="pro-feed">
+        {feed.map((item) => (
+          <li key={item.id}>
+            <p className="meta">{formatMountain(item.at)}</p>
+            <p>{item.launchId ? <Link href={`/launches/${item.launchId}`}>{item.text}</Link> : item.text}</p>
           </li>
         ))}
-      </ul>
-      {store.rules.length === 0 ? <p className="lede">No rules yet. They stay in this browser.</p> : null}
-      <h2>Matching now</h2>
-      {hits.length === 0 ? <p className="note">No rule is matching the current board. A scrub or a new manifest name appears after you mark the watchlist seen, then the board changes.</p> : null}
-      <ul className="pro-cards">
-        {hits.map((hit, index) => (
-          <li key={`${hit.ruleId}-${hit.launchId}-${index}`} className="pro-card">
-            <p>
-              {hit.launchId ? <Link href={`/launches/${hit.launchId}`}>{hit.text}</Link> : hit.text}
-            </p>
-          </li>
-        ))}
-      </ul>
+      </ol>
+      {store.targets.length > 0 ? (
+        <p>
+          <button className="btn" type="button" onClick={keep}>
+            Keep this reading
+          </button>
+        </p>
+      ) : null}
       <h2>Calendar</h2>
-      <p className="lede">Subscribe to the launches that match your saved targets. The feed uses the public board, not an account.</p>
+      <p>Subscribe to the launches that match your saved targets. The feed uses the public board, not an account.</p>
       {store.targets.length === 0 ? (
-        <p className="note">Add a target before subscribing. An empty list would be an empty calendar.</p>
+        <p className="note">Add a target before subscribing.</p>
       ) : (
         <p>
-          <a href={feed}>Watched launches calendar</a>
-          <span className="meta"> · {store.targets.map((target) => targetKey(target)).length} targets</span>
+          <a href={calendar}>Watched launches calendar</a>
         </p>
       )}
     </div>
   )
+}
+
+function mergeFeed(live: FeedItem[], saved: FeedItem[]): FeedItem[] {
+  const seen = new Set<string>()
+  const merged: FeedItem[] = []
+  for (const item of [...live, ...saved]) {
+    if (seen.has(item.id)) continue
+    seen.add(item.id)
+    merged.push(item)
+  }
+  return merged
 }

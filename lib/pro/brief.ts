@@ -1,6 +1,6 @@
 import { formatMountain } from '@/lib/pro/time'
 import type { TrackerSource } from '@/lib/pro/tracker'
-import { trackerRows, type TrackerCell } from '@/lib/pro/tracker'
+import { trackerRows, type TrackerCell, type TrackerHistory } from '@/lib/pro/tracker'
 import type { Launch } from '@/lib/types'
 
 export type BriefFact = {
@@ -19,8 +19,14 @@ export type ProBrief = {
   talk: string[]
 }
 
-export function constellationBrief(source: TrackerSource, launches: Launch[], boardAsOf: string | null, now = Date.now()): ProBrief {
-  const row = trackerRows([source], launches, boardAsOf, now)[0]
+export function constellationBrief(
+  source: TrackerSource,
+  launches: Launch[],
+  boardAsOf: string | null,
+  now = Date.now(),
+  history: TrackerHistory | null = null,
+): ProBrief {
+  const row = trackerRows([source], launches, boardAsOf, now, history)[0]
   return briefFromRow(source.name, `${source.name}, ${source.operator}`, row)
 }
 
@@ -31,8 +37,9 @@ export function companyBrief(
   launches: Launch[],
   boardAsOf: string | null,
   now = Date.now(),
+  history: TrackerHistory | null = null,
 ): ProBrief {
-  const rows = trackerRows(sources, launches, boardAsOf, now)
+  const rows = trackerRows(sources, launches, boardAsOf, now, history)
   const facts: BriefFact[] = []
   const gaps: string[] = []
   if (rows.length === 0) gaps.push('No public constellation figure is tied to this company.')
@@ -65,7 +72,7 @@ export function companyBrief(
 
 export function talkTrack(facts: BriefFact[]): string[] {
   if (facts.length === 0) return ['No sourced figure is on file for this page yet.']
-  return facts.slice(0, 8).map((fact) => `${fact.text} That line is from ${fact.sourceTitle}, as of ${fact.asOf}.`)
+  return facts.slice(0, 6).map((fact) => `${fact.text} Source: ${fact.sourceTitle}, as of ${fact.asOf}.`)
 }
 
 export function numbersIn(text: string): string[] {
@@ -101,9 +108,21 @@ function pushCell(facts: BriefFact[], gaps: string[], owner: string, heading: st
   }
   facts.push({
     heading,
-    text: `${heading}: ${cell.text}.`,
+    text: crispFact(heading, cell.text),
     sourceUrl: cell.sourceUrl,
     sourceTitle: cell.sourceTitle,
     asOf: cell.asOf,
   })
+}
+
+function crispFact(heading: string, value: string): string {
+  if (heading === 'Satellites in orbit') return `${value} are in orbit.`
+  if (heading === 'Launches this year') return `${value} flew this year.`
+  if (heading === 'Last launch') return `The last flight was ${value}.`
+  if (heading === 'Next on the public board') return `Next on the board is ${value}.`
+  if (heading === 'Capacity') return `Stated capacity is ${value}.`
+  if (heading === 'Authorized or planned size') return `A public plan names ${value}.`
+  if (heading === 'AI in orbit') return 'A public note lists a computer that runs a model on a spacecraft.'
+  if (heading === 'Upcoming on the public board') return value
+  return `${heading}. ${value}`
 }

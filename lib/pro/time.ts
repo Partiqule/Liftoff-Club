@@ -15,6 +15,13 @@ export function formatMountain(iso: string | null | undefined): string {
   return `${formatted} MT`
 }
 
+export function mountainMonth(iso: string): number | null {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return null
+  const month = Number(new Intl.DateTimeFormat('en-US', { timeZone: MOUNTAIN, month: 'numeric' }).format(date))
+  return Number.isFinite(month) ? month - 1 : null
+}
+
 export function mountainYear(iso: string | number): number | null {
   const date = typeof iso === 'number' ? new Date(iso) : new Date(iso)
   if (Number.isNaN(date.getTime())) return null

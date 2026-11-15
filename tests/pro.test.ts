@@ -2,12 +2,13 @@ import { describe, expect, it } from 'vitest'
 import { PRO_COPY } from '@/lib/pro/copy'
 import { accessNote } from '@/lib/pro/access'
 import { companyBrief, constellationBrief, talkStaysInside, talkTrack } from '@/lib/pro/brief'
-import { filterManifest, isRideshareLaunch, manifestCsv } from '@/lib/pro/manifest-intel'
-import { CATALOG_LAG_NOTE, isFlownSuccess, summarizeHistory, type HistoryLaunch } from '@/lib/pro/history'
+import { filterManifest, isRideshareLaunch, manifestCsv, manifestFacts, rideshareSlot } from '@/lib/pro/manifest-intel'
+import { CATALOG_LAG_NOTE, isFlownSuccess, monthlyCounts, summarizeHistory, type HistoryLaunch } from '@/lib/pro/history'
 import { formatMountain } from '@/lib/pro/time'
 import { trackerRows, type TrackerHistory, type TrackerSource } from '@/lib/pro/tracker'
 import {
   addTarget,
+  buildFeed,
   changesSince,
   emptyStore,
   evaluateAlerts,
@@ -18,6 +19,7 @@ import {
   sanitizeStore,
   snapshotTarget,
   targetKey,
+  upsertRule,
   type WatchTarget,
 } from '@/lib/pro/watch'
 import { CONSTELLATIONS } from '@/lib/constellation-data'
@@ -172,6 +174,50 @@ describe('pro brief', () => {
     expect(talkTrack([])[0]).toMatch(/No sourced figure/)
     const company = companyBrief('SpaceX', 'spacex', [source()], [makeLaunch()], '2026-11-15', Date.parse('2026-11-01T00:00:00Z'))
     expect(company.facts.some((fact) => fact.heading === 'Upcoming on the public board')).toBe(true)
+  })
+})
+
+describe('pro manifest facts', () => {
+  it('cites public fields and leaves a missing rideshare blank', () => {
+    const plain = makeLaunch()
+    const facts = manifestFacts(plain, '2026-11-15')
+    expect(facts.find((fact) => fact.label === 'Target orbit')?.text).toContain('Low Earth')
+    expect(facts.find((fact) => fact.label === 'Target orbit')?.sourceUrl).toMatch(/^https:\/\//)
+    expect(facts.find((fact) => fact.label === 'Rideshare')?.text).toBe('No public figure yet')
+    const rideshare = makeLaunch({ name: 'Falcon 9 Block 5 | Transporter 12', missionName: 'Transporter 12' })
+    expect(rideshareSlot(rideshare)).toMatch(/Transporter 12/i)
+    expect(manifestFacts(rideshare, null).every((fact) => fact.text === 'No public figure yet')).toBe(true)
+  })
+})
+
+describe('pro trends and alerts', () => {
+  it('counts flights by month and writes a local feed when a clock moves or a flight is new', () => {
+    const flights = [
+      flown({ id: 'jan', net: '2026-01-04T06:48:10Z' }),
+      flown({ id: 'nov', name: 'Starship | Starlink Group 31-2 (Starship Flight 15)', net: '2026-11-13T22:47:36Z' }),
+    ]
+    const months = monthlyCounts('starlink group', flights, 2026)
+    expect(months[0]).toBe(1)
+    expect(months[10]).toBe(1)
+    expect(months.reduce((sum, value) => sum + value, 0)).toBe(2)
+
+    const target = { kind: 'company' as const, id: 'spacex', label: 'A saved company', addedAt: '2026-11-01T00:00:00Z' }
+    const launch = makeLaunch()
+    const when = Date.parse('2026-11-01T00:00:00Z')
+    let store = upsertRule(addTarget(emptyStore(), target), { id: 'date-moved', kind: 'date-moved', companyId: '', enabled: true })
+    store = markSeen(store, { [targetKey(target)]: snapshotTarget(target, [launch], refs, when) })
+    const moved = makeLaunch({ net: '2026-11-20T03:14:00Z' })
+    const slipped = buildFeed(store, [moved], refs, when)
+    expect(slipped.map((item) => item.kind)).toContain('date-moved')
+    expect(slipped[0]?.at).toMatch(/2026-11-01/)
+
+    const constellation = { kind: 'constellation' as const, id: 'starlink', label: 'Starlink', addedAt: '2026-11-01T00:00:00Z' }
+    const fresh = upsertRule(addTarget(emptyStore(), constellation), { id: 'constellation-new', kind: 'constellation-new', companyId: '', enabled: true })
+    const baselined = markSeen(fresh, {
+      [targetKey(constellation)]: { nextId: null, nextNet: null, status: null, manifest: [], launches: [] },
+    })
+    const added = buildFeed(baselined, [launch], refs, when)
+    expect(added.map((item) => item.kind)).toContain('constellation-new')
   })
 })
 

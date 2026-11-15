@@ -6,7 +6,7 @@ export const revalidate = 3600
 
 export const metadata: Metadata = {
   title: 'Alerts',
-  description: 'Local rules for company launches, scrubs, slips, and new manifest names, plus a calendar feed.',
+  description: 'Local rules for a new launch date, a moved clock, or a new constellation flight, plus a calendar feed.',
 }
 
 export default async function AlertsPage() {
@@ -16,7 +16,7 @@ export default async function AlertsPage() {
       <p className="kicker">Rules in this browser</p>
       <h1>Alerts</h1>
       <p className="lede">
-        Build a rule for company launches, a scrub or a slip, or a new manifest name. The match list uses the public board. The calendar feed covers the targets you saved.
+        Turn on a rule for a new launch date, a clock that moves, or a new constellation flight. The feed stays in this browser. The calendar covers the targets you saved.
       </p>
       <AlertDesk launches={board.launches} constellations={refs} now={now} />
     </main>

@@ -2,11 +2,21 @@
 
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
-import { filterManifest, manifestCsv } from '@/lib/pro/manifest-intel'
+import { filterManifest, manifestCsv, manifestFacts } from '@/lib/pro/manifest-intel'
 import { formatMountain } from '@/lib/pro/time'
 import type { Launch } from '@/lib/types'
 
-export function ManifestDesk({ launches, orbits, sites }: { launches: Launch[]; orbits: string[]; sites: string[] }) {
+export function ManifestDesk({
+  launches,
+  orbits,
+  sites,
+  asOf,
+}: {
+  launches: Launch[]
+  orbits: string[]
+  sites: string[]
+  asOf: string | null
+}) {
   const [company, setCompany] = useState('')
   const [rideshare, setRideshare] = useState(false)
   const [orbit, setOrbit] = useState('')
@@ -28,7 +38,7 @@ export function ManifestDesk({ launches, orbits, sites }: { launches: Launch[]; 
       <form className="pro-filters" onSubmit={(event) => event.preventDefault()}>
         <label>
           Customer or payload
-          <input className="field" value={company} placeholder="York, NASA, Starlink" onChange={(event) => setCompany(event.target.value)} />
+          <input className="field" value={company} placeholder="Company or payload name" onChange={(event) => setCompany(event.target.value)} />
         </label>
         <label className="pro-check">
           <input type="checkbox" checked={rideshare} onChange={(event) => setRideshare(event.target.checked)} />
@@ -61,39 +71,37 @@ export function ManifestDesk({ launches, orbits, sites }: { launches: Launch[]; 
         </button>
       </form>
       <p className="meta">{rows.length} flights on this cut of the public board.</p>
-      <div className="pro-scroll">
-        <table className="pro-table">
-          <thead>
-            <tr>
-              <th scope="col">Launch</th>
-              <th scope="col">When</th>
-              <th scope="col">Rocket</th>
-              <th scope="col">Orbit</th>
-              <th scope="col">Site</th>
-              <th scope="col">Companies</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((launch) => (
-              <tr key={launch.id}>
-                <th scope="row">
-                  <Link href={`/launches/${launch.id}`}>{launch.name}</Link>
-                </th>
-                <td>{formatMountain(launch.net)}</td>
-                <td>{launch.rocketName}</td>
-                <td>{launch.orbitAbbrev ?? launch.orbitName ?? 'Not listed'}</td>
-                <td>{launch.padLocation ?? launch.padName}</td>
-                <td>{unique(launch.manifest.map((item) => item.company)).slice(0, 4).join(', ')}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="pro-manifest">
+        {rows.map((launch) => (
+          <article key={launch.id} className="pro-card">
+            <h2>
+              <Link href={`/launches/${launch.id}`}>{launch.name}</Link>
+            </h2>
+            <p className="meta">
+              {formatMountain(launch.net)} · {launch.rocketName}
+            </p>
+            <dl className="pro-facts">
+              {manifestFacts(launch, asOf).map((fact) => (
+                <div key={fact.label}>
+                  <dt>{fact.label}</dt>
+                  <dd>
+                    {fact.text}
+                    {fact.sourceUrl && fact.asOf ? (
+                      <>
+                        {' '}
+                        <a href={fact.sourceUrl}>{fact.sourceTitle}</a>
+                        {' · as of '}
+                        {fact.asOf}
+                      </>
+                    ) : null}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </article>
+        ))}
       </div>
       {rows.length === 0 ? <p className="note">Nothing on the board matches this filter.</p> : null}
     </div>
   )
-}
-
-function unique(values: string[]): string[] {
-  return [...new Set(values.filter(Boolean))]
 }

@@ -47,6 +47,8 @@ export function WatchlistDesk({
     setStore(markSeen(store, snapshots))
   }
 
+  if (!ready) return <div className="pro-skeleton" aria-busy="true" aria-label="Opening saved targets" />
+
   return (
     <div>
       <form

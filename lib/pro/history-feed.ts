@@ -14,9 +14,19 @@ type HistoryFile = {
 }
 
 let memory: { expires: number; file: HistoryFile } | null = null
+let pending: Promise<HistoryFile | null> | null = null
 
-export async function getConstellationHistory(now = Date.now()): Promise<HistoryFile | null> {
-  if (memory && memory.expires > now) return memory.file
+export function getConstellationHistory(now = Date.now()): Promise<HistoryFile | null> {
+  if (memory && memory.expires > now) return Promise.resolve(memory.file)
+  if (!pending) {
+    pending = loadHistory(now).finally(() => {
+      pending = null
+    })
+  }
+  return pending
+}
+
+async function loadHistory(now: number): Promise<HistoryFile | null> {
   const cached = await readCache()
   if (cached && now - Date.parse(cached.fetchedAt) < FRESH_MS) {
     memory = { expires: now + FRESH_MS, file: cached }

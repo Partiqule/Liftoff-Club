@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { MonthChart } from '@/components/pro/month-chart'
 import { TrackerTable } from '@/components/pro/tracker-table'
 import { loadProBoard } from '@/lib/pro/load'
 
@@ -18,6 +19,25 @@ export default async function TrackerPage() {
       <p className="lede">
         Satellites in orbit come from the CelesTrak catalog. Last launch and launches this year come from Launch Library 2. A planned size or a capacity number appears only with a public source and a date. Otherwise the cell says no public figure yet.
       </p>
+      <div className="pro-trends">
+        {rows.map((row) => (
+          <article key={row.id} className="pro-card">
+            <h2>{row.name}</h2>
+            <p>
+              <strong>Next scheduled launch. </strong>
+              {row.nextLaunch.text}
+            </p>
+            {row.nextLaunch.sourceUrl && row.nextLaunch.asOf ? (
+              <p className="meta">
+                <a href={row.nextLaunch.sourceUrl}>{row.nextLaunch.sourceTitle}</a>
+                {' · as of '}
+                {row.nextLaunch.asOf}
+              </p>
+            ) : null}
+            {row.months ? <MonthChart counts={row.months} label={`${row.name} launches by month`} /> : <p>No public figure yet for the monthly trend.</p>}
+          </article>
+        ))}
+      </div>
       <TrackerTable rows={rows} />
     </main>
   )

@@ -6,7 +6,7 @@ export function BriefView({ brief, talk, source }: { brief: ProBrief; talk: stri
     <article className="pro-brief">
       <p className="kicker">One page brief</p>
       <h1>{brief.title}</h1>
-      <p className="lede">Public records only. A missing figure stays blank instead of becoming a guess.</p>
+      <p className="lede">Each figure below is a public record. The link is the source, and the date is when that source was read.</p>
       <PrintButton />
       {brief.facts.length === 0 ? <p>No sourced figure is on file yet.</p> : null}
       <dl className="pro-facts">

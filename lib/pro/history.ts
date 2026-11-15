@@ -1,4 +1,4 @@
-import { mountainYear, utcDay } from '@/lib/pro/time'
+import { mountainMonth, mountainYear, utcDay } from '@/lib/pro/time'
 
 export type HistoryLaunch = {
   id: string
@@ -61,6 +61,17 @@ export function historyMatches(pattern: string, launch: HistoryLaunch): boolean 
 export type HistorySummary = {
   launchesThisYear: number
   last: HistoryLaunch | null
+}
+
+export function monthlyCounts(pattern: string, launches: HistoryLaunch[], year: number): number[] {
+  const counts = Array.from({ length: 12 }, () => 0)
+  for (const launch of launches) {
+    if (!launch.net || !historyMatches(pattern, launch) || !isFlownSuccess(launch)) continue
+    if (mountainYear(launch.net) !== year) continue
+    const month = mountainMonth(launch.net)
+    if (month != null) counts[month] += 1
+  }
+  return counts
 }
 
 export function summarizeHistory(pattern: string, launches: HistoryLaunch[], year: number): HistorySummary {

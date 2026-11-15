@@ -671,6 +671,19 @@ html:not([data-voice]) .when-adult { display: none; }
 .pro-asof { white-space: nowrap; }
 .pro-flag { display: block; color: var(--core); font-size: 0.78rem; max-width: 12rem; }
 .pro-foot { color: var(--cold); padding: 1.5rem 0 2.5rem; }
+.pro-app { overflow-x: hidden; }
+.pro-nav { flex-wrap: wrap; }
+.pro-nav a, .pro-family, .pro-links a, .pro-card h2 a, .pro-feed a, .pro-app .btn, .pro-check, .pro-select, .pro-table th button { min-height: 44px; }
+.pro-nav a, .pro-family, .pro-links a, .pro-card h2 a, .pro-check, .pro-table th button { display: inline-flex; align-items: center; }
+.pro-mobile-list, .pro-manifest, .pro-trends, .pro-rule-list { display: grid; gap: 0.4rem; }
+.pro-scroll { display: none; }
+.pro-chart { color: var(--core); max-width: 16rem; margin: 0.4rem 0 0; }
+.pro-chart svg { width: 100%; height: auto; display: block; }
+.pro-chart-labels { display: grid; grid-template-columns: repeat(12, 1fr); color: var(--nebula); font-size: 0.72rem; }
+.pro-feed { list-style: none; margin: 0.4rem 0 0; padding: 0; }
+.pro-feed li { padding: 0.85rem 0; border-top: 1px solid var(--line); }
+.pro-skeleton { min-height: 8rem; background: linear-gradient(90deg, rgba(197, 210, 226, 0.04), rgba(243, 215, 176, 0.16), rgba(197, 210, 226, 0.04)); }
+.pro-facts dd { overflow-wrap: anywhere; }
 .pro-table .btn { width: auto; justify-self: start; }
 .pro-filters, .pro-add, .pro-access { display: grid; gap: 0.8rem; margin: 1rem 0; }
 .pro-select, .pro-access select {
@@ -696,9 +709,11 @@ html:not([data-voice]) .when-adult { display: none; }
   font-size: 0.92rem;
 }
 @media (min-width: 900px) {
-  .pro-personas { grid-template-columns: 1fr 1fr; gap: 2rem; }
+  .pro-personas, .pro-trends, .pro-manifest, .pro-rule-list { grid-template-columns: 1fr 1fr; gap: 1.2rem; }
   .pro-filters, .pro-add { grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: end; }
   .pro-access { grid-template-columns: 1fr 1fr; }
+  .pro-mobile-list { display: none; }
+  .pro-scroll { display: block; overflow-x: auto; margin: 1rem 0; }
 }
 @media print {
   body:has(.pro-brief) { background: white; color: black; }

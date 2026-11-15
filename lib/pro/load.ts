@@ -1,12 +1,13 @@
 import 'server-only'
 
+import { cache } from 'react'
 import { getConstellationCards } from '@/lib/constellations'
 import { getLaunches } from '@/lib/launches'
 import { getConstellationHistory } from '@/lib/pro/history-feed'
 import { boardDay, constellationRefs, watchChoices } from '@/lib/pro/options'
 import { sourceFromProfile, trackerRows } from '@/lib/pro/tracker'
 
-export async function loadProBoard() {
+export const loadProBoard = cache(async function loadProBoard() {
   const board = await getLaunches()
   const cards = await getConstellationCards(board.launches)
   const sources = cards.map((card) => sourceFromProfile(card.profile, card.counts, card.fetchedAt))
@@ -21,5 +22,6 @@ export async function loadProBoard() {
     refs: constellationRefs(),
     day,
     now,
+    history,
   }
-}
+})
