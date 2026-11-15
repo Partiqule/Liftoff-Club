@@ -1,12 +1,8 @@
 'use client'
 
-import { useSyncExternalStore } from 'react'
-import { useClub } from '@/components/club-provider'
+import { useActiveZone } from '@/components/use-zone'
+import { zoneAbbrev } from '@/lib/pro/time'
 import { formatClock, formatWhen } from '@/lib/time'
-
-function subscribe() {
-  return () => {}
-}
 
 export function LocalTime({
   iso,
@@ -17,14 +13,9 @@ export function LocalTime({
   timeZone?: string
   clock?: boolean
 }) {
-  const { settings } = useClub()
-  const browserZone = useSyncExternalStore(
-    subscribe,
-    () => Intl.DateTimeFormat().resolvedOptions().timeZone,
-    () => 'UTC',
-  )
+  const active = useActiveZone()
   if (!iso) return <span>Time not set</span>
-  const zone = timeZone || settings.location?.timezone || browserZone
-  const text = clock ? formatClock(iso, zone) : formatWhen(iso, zone)
+  const zone = timeZone || active
+  const text = clock ? `${formatClock(iso, zone)} ${zoneAbbrev(zone)}` : formatWhen(iso, zone)
   return <time dateTime={iso}>{text}</time>
 }

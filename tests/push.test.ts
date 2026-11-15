@@ -26,7 +26,7 @@ describe('phone alert plan', () => {
     const at = Date.parse('2026-11-16T19:10:00Z')
     const notices = planNotices(at, base, [launch])
     expect(notices.map((item) => item.kind)).toEqual(['hour'])
-    expect(notices[0]?.body).toContain('1:00 PM MT')
+    expect(notices[0]?.body).toMatch(/1:00 PM M[DS]T/)
     const again = applyNotices(base, notices, [launch])
     expect(planNotices(at + 5 * 60 * 1000, again, [launch]).some((item) => item.kind === 'hour')).toBe(false)
     expect(planNotices(Date.parse('2026-11-16T19:50:00Z'), base, [launch]).some((item) => item.kind === 'hour')).toBe(false)

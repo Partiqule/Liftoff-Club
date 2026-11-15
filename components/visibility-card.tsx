@@ -3,15 +3,18 @@
 import { useClub } from '@/components/club-provider'
 import Link from 'next/link'
 import { planForLaunch } from '@/lib/planner'
+import { zoneAbbrev } from '@/lib/pro/time'
 import { formatClock } from '@/lib/time'
+import { useActiveZone } from '@/components/use-zone'
 import type { Launch } from '@/lib/types'
 import { seeLaunch } from '@/lib/visibility'
 import { skyAt } from '@/lib/weather'
 
 export function VisibilityCard({ launch }: { launch: Launch }) {
   const { settings, weather } = useClub()
+  const zone = useActiveZone()
   const verdict = seeLaunch(launch, settings.location)
-  const clock = launch.net && settings.location ? formatClock(launch.net, settings.location.timezone) : null
+  const clock = launch.net && settings.location ? `${formatClock(launch.net, zone)} ${zoneAbbrev(zone)}` : null
   const plan = planForLaunch(verdict, settings.location?.label ?? 'your town', clock)
   const sky = launch.net ? skyAt(weather, launch.net) : null
   return (

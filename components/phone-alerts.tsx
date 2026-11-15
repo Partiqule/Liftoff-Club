@@ -2,6 +2,7 @@
 
 import { useEffect, useSyncExternalStore } from 'react'
 import { useClub } from '@/components/club-provider'
+import { useActiveZone } from '@/components/use-zone'
 import { iosNeedsHomeScreen, readFollowedLaunchIds, urlBase64ToUint8Array, writeFollowedLaunchIds, PUSH_LAUNCHES_KEY } from '@/lib/push/browser'
 
 const NO_LAUNCHES: string[] = []
@@ -108,7 +109,7 @@ export function PhoneAlerts() {
   const prompt = useSyncExternalStore(subscribeInstall, () => installPrompt, () => null)
   const ios = useSyncExternalStore(subscribeClientFlag, () => clientFlag && iosNeedsHomeScreen(), () => false)
   const followed = useSyncExternalStore(subscribePush, readFollowedLaunchIds, () => NO_LAUNCHES)
-  const timezone = settings.location?.timezone ?? 'America/Denver'
+  const timezone = useActiveZone()
 
   useEffect(() => {
     if (!pushEnabled) return

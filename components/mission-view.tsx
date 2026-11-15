@@ -21,6 +21,7 @@ import {
 import { GLOSSARY } from '@/lib/glossary'
 import { findRocketPhoto } from '@/lib/rocket-photos'
 import { formatMountain } from '@/lib/pro/time'
+import { useActiveZone } from '@/components/use-zone'
 import type { Launch } from '@/lib/types'
 import { track } from '@/lib/track'
 
@@ -43,6 +44,7 @@ export function MissionShell({ launch, asOf }: { launch: Launch; asOf: string | 
 }
 
 function MissionView({ launch, asOf, onFamily }: { launch: Launch; asOf: string | null; onFamily: () => void }) {
+  const zone = useActiveZone()
   const [now, setNow] = useState(() => Date.now())
   const [openEvent, setOpenEvent] = useState<string | null>(null)
   useEffect(() => {
@@ -83,7 +85,7 @@ function MissionView({ launch, asOf, onFamily }: { launch: Launch; asOf: string 
           <p className="mission-clock" suppressHydrationWarning>
             {clock}
           </p>
-          <p className="pro-time">{launch.net ? formatMountain(launch.net) : 'Time not set'}</p>
+          <p className="pro-time">{launch.net ? formatMountain(launch.net, zone) : 'Time not set'}</p>
         </div>
         <button className="btn mission-switch" type="button" onClick={onFamily}>
           Family view

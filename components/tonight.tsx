@@ -9,19 +9,22 @@ import { leadPass } from '@/lib/planner'
 import { watchingPlace } from '@/lib/places'
 import { Trail } from '@/components/trail'
 import { LocalTime } from '@/components/local-time'
+import { zoneAbbrev } from '@/lib/pro/time'
 import { formatClock } from '@/lib/time'
+import { useActiveZone } from '@/components/use-zone'
 
 export function Tonight() {
   const { settings, briefs, passes, skyState, skyNotice, weather } = useClub()
   const now = useNow()
   const place = watchingPlace(settings.location)
+  const zone = useActiveZone()
   const town = place.label.split(',')[0]?.trim() || place.label
   const next = briefs.find((item) => item.featured) ?? briefs[0]
   const lead = skyState === 'ready' ? leadPass(passes, now) : null
   const judgement = lead ? skyAt(weather, lead.peak) : null
   const glow = judgement?.call === 'nogo' ? 'fade' : judgement?.call === 'go' ? 'strong' : 'mid'
   const direction = lead ? compass8(lead.riseAzimuth) : null
-  const clock = lead ? formatClock(lead.start, place.timezone) : null
+  const clock = lead ? `${formatClock(lead.start, zone)} ${zoneAbbrev(zone)}` : null
   const who = lead ? (lead.kind === 'iss' ? 'The station rises' : 'A dim Starlink crosses') : null
 
   return (

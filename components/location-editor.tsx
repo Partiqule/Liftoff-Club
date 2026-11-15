@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from 'react'
 import { placeFromBrowser, useClub } from '@/components/club-provider'
+import { ZonePicker } from '@/components/zone-picker'
 import { CENTENNIAL, searchPlaces } from '@/lib/places'
 import type { Place } from '@/lib/types'
 
@@ -11,6 +12,8 @@ export function LocationEditor({ heading = true }: { heading?: boolean }) {
   const [results, setResults] = useState<Place[]>([])
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [latText, setLatText] = useState('')
+  const [lonText, setLonText] = useState('')
 
   async function onSearch(event: FormEvent) {
     event.preventDefault()
@@ -78,6 +81,41 @@ export function LocationEditor({ heading = true }: { heading?: boolean }) {
         </div>
       </form>
       {error ? <p className="error">{error}</p> : null}
+      <form
+        onSubmit={(event) => {
+          event.preventDefault()
+          const lat = Number(latText)
+          const lon = Number(lonText)
+          if (!Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lon) || lon < -180 || lon > 180) {
+            setError('Latitude must be between -90 and 90, and longitude between -180 and 180.')
+            return
+          }
+          setLocation({
+            label: `${lat.toFixed(2)}, ${lon.toFixed(2)}`,
+            lat,
+            lon,
+            timezone: settings.location?.timezone || 'UTC',
+            source: 'search',
+          })
+          setError(null)
+        }}
+      >
+        <p className="kicker">Or enter coordinates</p>
+        <div className="form-row">
+          <label>
+            Latitude
+            <input className="field" inputMode="decimal" value={latText} onChange={(event) => setLatText(event.target.value)} />
+          </label>
+          <label>
+            Longitude
+            <input className="field" inputMode="decimal" value={lonText} onChange={(event) => setLonText(event.target.value)} />
+          </label>
+          <button className="btn btn-quiet" type="submit">
+            Use these coordinates
+          </button>
+        </div>
+      </form>
+      <ZonePicker />
       {results.length > 0 ? (
         <ul className="results">
           {results.map((place) => (

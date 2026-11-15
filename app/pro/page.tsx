@@ -20,6 +20,11 @@ export default async function ProHome() {
       <h1>{PRO_COPY.title}</h1>
       <p className="lede">{PRO_COPY.lede}</p>
       <p className="meta">{PRO_COPY.pricing}</p>
+      <p>
+        <Link className="btn" href="#access">
+          Request early access
+        </Link>
+      </p>
       <div className="pro-personas">
         <section className="pro-card">
           <h2>{PRO_COPY.companyTitle}</h2>
@@ -56,7 +61,7 @@ export default async function ProHome() {
       <p>
         <Link href="/pro/tracker">Open the full tracker</Link>
       </p>
-      <h2>{PRO_COPY.accessTitle}</h2>
+      <h2 id="access">{PRO_COPY.accessTitle}</h2>
       <p>{PRO_COPY.accessBody}</p>
       <p className="meta">{PRO_COPY.pricing}</p>
       <AccessForm />

@@ -158,6 +158,9 @@ export function normalizeLaunch(value: unknown): Launch | null {
   const infos = Array.isArray(item.info_urls) ? item.info_urls : []
   const info = record(infos[0])
   const probability = numberish(item.probability)
+  const programs = (Array.isArray(item.program) ? item.program : [])
+    .map((entry) => text(record(entry)?.name))
+    .filter((name): name is string => Boolean(name))
 
   const partial = {
     id,
@@ -203,6 +206,7 @@ export function normalizeLaunch(value: unknown): Launch | null {
     spacecraftName: cleanCraft(spacecraftName),
     spacecraftDestination: text(stage?.destination),
     payloadHints,
+    programs,
     featured: /spacex/i.test(provider.name) || provider.abbrev === 'SpX',
   }
 
