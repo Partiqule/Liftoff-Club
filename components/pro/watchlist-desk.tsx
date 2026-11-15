@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { useProStore } from '@/components/pro/use-pro-store'
 import type { DeskOption } from '@/lib/pro/options'
+import { formatMountain } from '@/lib/pro/time'
 import {
   addTarget,
   changesSince,
@@ -104,7 +105,7 @@ export function WatchlistDesk({
                 {next ? (
                   <Link href={`/launches/${next.id}`}>
                     {next.name}
-                    {next.net ? ` · ${next.net.slice(0, 16).replace('T', ' ')} UTC` : ''}
+                    {next.net ? ` · ${formatMountain(next.net)}` : ''}
                   </Link>
                 ) : (
                   'None on the current board.'

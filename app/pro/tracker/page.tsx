@@ -16,7 +16,7 @@ export default async function TrackerPage() {
       <p className="kicker">Competitors and constellations</p>
       <h1>Tracker</h1>
       <p className="lede">
-        In orbit and launches this year come from the CelesTrak catalog. A planned size or a capacity number appears only with a public source and a date. Otherwise the cell says no public figure yet.
+        Satellites in orbit come from the CelesTrak catalog. Last launch and launches this year come from Launch Library 2. A planned size or a capacity number appears only with a public source and a date. Otherwise the cell says no public figure yet.
       </p>
       <TrackerTable rows={rows} />
     </main>

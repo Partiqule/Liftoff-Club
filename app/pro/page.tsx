@@ -51,7 +51,7 @@ export default async function ProHome() {
         </section>
       </div>
       <h2>Sample of the tracker</h2>
-      <p className="lede">These rows are the live public records. A blank cell means we do not have a sourced figure.</p>
+      <p className="lede">These rows are the live public records. A blank cell means we do not have a sourced figure. A brief is a one page sheet you choose from the list.</p>
       <TrackerTable rows={rows} />
       <p>
         <Link href="/pro/tracker">Open the full tracker</Link>
@@ -60,7 +60,6 @@ export default async function ProHome() {
       <p>{PRO_COPY.accessBody}</p>
       <p className="meta">{PRO_COPY.pricing}</p>
       <AccessForm />
-      <p className="note">{PRO_COPY.disclaimer}</p>
       <p className="note">{PRO_COPY.savedBody}</p>
     </main>
   )

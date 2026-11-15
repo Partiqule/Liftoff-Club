@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { filterManifest, manifestCsv } from '@/lib/pro/manifest-intel'
+import { formatMountain } from '@/lib/pro/time'
 import type { Launch } from '@/lib/types'
 
 export function ManifestDesk({ launches, orbits, sites }: { launches: Launch[]; orbits: string[]; sites: string[] }) {
@@ -78,7 +79,7 @@ export function ManifestDesk({ launches, orbits, sites }: { launches: Launch[]; 
                 <th scope="row">
                   <Link href={`/launches/${launch.id}`}>{launch.name}</Link>
                 </th>
-                <td>{launch.net ? `${launch.net.slice(0, 16).replace('T', ' ')} UTC` : 'Time not set'}</td>
+                <td>{formatMountain(launch.net)}</td>
                 <td>{launch.rocketName}</td>
                 <td>{launch.orbitAbbrev ?? launch.orbitName ?? 'Not listed'}</td>
                 <td>{launch.padLocation ?? launch.padName}</td>

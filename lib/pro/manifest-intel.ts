@@ -1,3 +1,4 @@
+import { formatMountain } from '@/lib/pro/time'
 import type { Launch } from '@/lib/types'
 
 const RIDESHARE = /\btransporter\b|\bbandwagon\b|\brideshare\b/i
@@ -32,7 +33,7 @@ export function filterManifest(launches: Launch[], filters: ManifestFilters): La
 }
 
 export function manifestCsv(launches: Launch[]): string {
-  const header = ['Launch', 'When UTC', 'Provider', 'Rocket', 'Orbit', 'Site', 'Status', 'Companies', 'Payloads']
+  const header = ['Launch', 'When MT', 'Provider', 'Rocket', 'Orbit', 'Site', 'Status', 'Companies', 'Payloads']
   const lines = [header, ...launches.map(csvRow)]
   return lines.map((row) => row.map(csvCell).join(',')).join('\n') + '\n'
 }
@@ -45,7 +46,7 @@ function csvRow(launch: Launch): string[] {
     .join('; ')
   return [
     launch.name,
-    launch.net ?? '',
+    launch.net ? formatMountain(launch.net) : '',
     launch.provider.name,
     launch.rocketName,
     launch.orbitName ?? launch.orbitAbbrev ?? '',

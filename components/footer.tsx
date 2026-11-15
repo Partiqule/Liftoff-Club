@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { PRO_COPY } from '@/lib/pro/copy'
 
 export function Footer() {
   return (
@@ -15,6 +16,7 @@ export function Footer() {
         <p>
           <Link href="/pro">Liftoff Club Pro</Link> is a separate desk for space industry teams. The family site stays free.
         </p>
+        <p>{PRO_COPY.footerLine}</p>
       </div>
     </footer>
   )

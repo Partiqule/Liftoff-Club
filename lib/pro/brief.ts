@@ -1,3 +1,4 @@
+import { formatMountain } from '@/lib/pro/time'
 import type { TrackerSource } from '@/lib/pro/tracker'
 import { trackerRows, type TrackerCell } from '@/lib/pro/tracker'
 import type { Launch } from '@/lib/types'
@@ -40,7 +41,7 @@ export function companyBrief(
     pushCell(facts, gaps, row.name, 'Launches this year', row.launchesThisYear)
     pushCell(facts, gaps, row.name, 'Authorized or planned size', row.authorized)
     pushCell(facts, gaps, row.name, 'Capacity', row.capacity)
-    pushCell(facts, gaps, row.name, 'Latest catalog launch date', row.lastLaunch)
+    pushCell(facts, gaps, row.name, 'Last launch', row.lastLaunch)
     if (row.ai.text === 'Listed') pushCell(facts, gaps, row.name, 'AI in orbit', row.ai)
     else gaps.push(`${row.name}: no public note yet for a computer that runs a model on the spacecraft.`)
   }
@@ -52,7 +53,7 @@ export function companyBrief(
     if (!dated) break
     facts.push({
       heading: 'Upcoming on the public board',
-      text: launch.net ? `${launch.name} is listed for ${launch.net.slice(0, 16).replace('T', ' ')} UTC.` : `${launch.name} is listed. The clock is not set.`,
+      text: launch.net ? `${launch.name} is listed for ${formatMountain(launch.net)}.` : `${launch.name} is listed. The clock is not set.`,
       sourceUrl: 'https://thespacedevs.com/llapi',
       sourceTitle: 'Launch Library 2',
       asOf: dated,
@@ -84,7 +85,7 @@ function briefFromRow(title: string, subject: string, row: ReturnType<typeof tra
   pushCell(facts, gaps, title, 'Launches this year', row.launchesThisYear)
   pushCell(facts, gaps, title, 'Authorized or planned size', row.authorized)
   pushCell(facts, gaps, title, 'Capacity', row.capacity)
-  pushCell(facts, gaps, title, 'Latest catalog launch date', row.lastLaunch)
+    pushCell(facts, gaps, title, 'Last launch', row.lastLaunch)
   pushCell(facts, gaps, title, 'Next on the public board', row.nextLaunch)
   if (row.ai.text === 'Listed') pushCell(facts, gaps, title, 'AI in orbit', row.ai)
   else gaps.push('No public note yet for a computer that runs a model on the spacecraft.')

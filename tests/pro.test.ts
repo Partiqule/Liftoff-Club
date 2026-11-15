@@ -3,7 +3,9 @@ import { PRO_COPY } from '@/lib/pro/copy'
 import { accessNote } from '@/lib/pro/access'
 import { companyBrief, constellationBrief, talkStaysInside, talkTrack } from '@/lib/pro/brief'
 import { filterManifest, isRideshareLaunch, manifestCsv } from '@/lib/pro/manifest-intel'
-import { trackerRows, type TrackerSource } from '@/lib/pro/tracker'
+import { CATALOG_LAG_NOTE, isFlownSuccess, summarizeHistory, type HistoryLaunch } from '@/lib/pro/history'
+import { formatMountain } from '@/lib/pro/time'
+import { trackerRows, type TrackerHistory, type TrackerSource } from '@/lib/pro/tracker'
 import {
   addTarget,
   changesSince,
@@ -43,16 +45,27 @@ function source(partial: Partial<TrackerSource> = {}): TrackerSource {
 }
 
 describe('pro copy', () => {
-  it('names both desks without claiming a partnership, and skips walk and dashes', () => {
+  it('describes both desks without naming a company, and skips walk and dashes', () => {
     const blob = JSON.stringify(PRO_COPY)
-    expect(blob).toMatch(/Hubble Network/)
-    expect(blob).toMatch(/Starlink/)
-    expect(blob).toMatch(/not a partner/)
-    expect(blob).toMatch(/not endorsed/)
+    expect(blob).toMatch(/For teams at small satellite companies/)
+    expect(blob).toMatch(/For people who sell constellation service/)
+    expect(blob).toMatch(/Independent project/)
+    expect(blob).not.toMatch(/Hubble|Starlink|SpaceX/)
     expect(blob.toLowerCase()).not.toMatch(/walk/)
     expect(blob).not.toMatch(/[—–]/)
   })
 })
+
+function flown(partial: Partial<HistoryLaunch>): HistoryLaunch {
+  return {
+    id: partial.id ?? 'flight',
+    name: partial.name ?? 'Starship | Starlink Group 31-2 (Starship Flight 15)',
+    missionName: partial.missionName ?? null,
+    net: partial.net ?? '2026-11-13T22:47:36Z',
+    statusName: partial.statusName ?? 'Launch Successful',
+    statusAbbrev: partial.statusAbbrev ?? 'Success',
+  }
+}
 
 describe('pro tracker', () => {
   it('cites every number and leaves a missing capacity blank', () => {
@@ -74,6 +87,33 @@ describe('pro tracker', () => {
     const [row] = trackerRows([source({ inOrbit: null, launchesThisYear: null, latestLaunchDate: null, catalogAsOf: null })], [], null)
     expect(row.inOrbit.text).toBe('No public figure yet')
     expect(row.inOrbit.sort).toBeNull()
+    expect(row.launchesThisYear.text).toBe('No public figure yet')
+    expect(row.lastLaunch.text).toBe('No public figure yet')
+  })
+
+  it('counts Starship flights that carried Starlink and notes when the catalog is behind', () => {
+    const flights = [
+      flown({ id: 'f15', name: 'Starship | Starlink Group 31-2 (Starship Flight 15)', net: '2026-11-13T22:47:36Z' }),
+      flown({ id: 'f14', name: 'Starship | Starlink Group 31-1 (Starship Flight 14)', net: '2026-10-15T00:00:00Z' }),
+      flown({ id: 'f9', name: 'Falcon 9 Block 5 | Starlink Group 6-1', net: '2026-01-04T06:48:10Z' }),
+      flown({ id: 'old', name: 'Falcon 9 Block 5 | Starlink Group 2-1', net: '2025-12-01T00:00:00Z' }),
+      flown({ id: 'fail', name: 'Falcon 9 Block 5 | Starlink Group 9-9', net: '2026-02-01T00:00:00Z', statusName: 'Launch Failure', statusAbbrev: 'Failure' }),
+    ]
+    const summary = summarizeHistory('starlink group', flights, 2026)
+    expect(summary.launchesThisYear).toBe(3)
+    expect(summary.last?.name).toContain('Flight 15')
+    expect(isFlownSuccess(flights[4])).toBe(false)
+    expect(formatMountain('2026-11-13T22:47:36Z')).toMatch(/MT/)
+    expect(formatMountain('2026-11-13T22:47:36Z')).not.toMatch(/22:47/)
+    const history: TrackerHistory = { fetchedAt: '2026-11-15T12:00:00Z', byId: { starlink: flights } }
+    const [row] = trackerRows([source({ latestLaunchDate: '2026-10-31' })], [], '2026-11-15', Date.parse('2026-11-15T18:00:00Z'), history)
+    expect(row.launchesThisYear.text).toBe('3 launches')
+    expect(row.launchesThisYear.sourceTitle).toBe('Launch Library 2')
+    expect(row.lastLaunch.text).toMatch(/MT/)
+    expect(row.lastLaunch.note).toContain('Flight 15')
+    expect(row.inOrbit.note).toBe(CATALOG_LAG_NOTE)
+    const [caughtUp] = trackerRows([source({ latestLaunchDate: '2026-11-13' })], [], '2026-11-15', Date.parse('2026-11-15T18:00:00Z'), history)
+    expect(caughtUp.inOrbit.note).toBeNull()
   })
 })
 

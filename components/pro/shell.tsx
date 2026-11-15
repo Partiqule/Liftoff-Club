@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { ReactNode } from 'react'
 import { Logo, Wordmark } from '@/components/logo'
+import { PRO_COPY } from '@/lib/pro/copy'
 
 const LINKS = [
   { href: '/pro', label: 'Desk' },
@@ -46,6 +47,11 @@ export function ProShell({ children }: { children: ReactNode }) {
         </div>
       </header>
       {children}
+      <footer className="pro-foot">
+        <div className="wrap">
+          <p>{PRO_COPY.footerLine}</p>
+        </div>
+      </footer>
     </div>
   )
 }
