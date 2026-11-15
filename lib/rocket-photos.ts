@@ -24,6 +24,15 @@ export function licenseAllowed(license: string): boolean {
 
 export const ROCKET_PHOTOS: RocketPhoto[] = [
   {
+    id: 'starship',
+    matches: ['starship'],
+    file: '/rockets/starship.jpg',
+    alt: 'Starship lifts off on integrated flight test 5.',
+    author: 'Steve Jurvetson',
+    license: 'CC BY 2.0',
+    sourceUrl: 'https://commons.wikimedia.org/wiki/File:Liftoff_of_SpaceX_IFT-5_(54064037095).jpg',
+  },
+  {
     id: 'falcon-9',
     matches: ['falcon 9'],
     file: '/rockets/falcon-9.jpg',

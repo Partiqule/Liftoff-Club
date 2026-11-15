@@ -39,6 +39,9 @@ export function Header() {
             ))}
           </nav>
           <div className="top-tools">
+            <Link className="pro-entry" href="/pro">
+              Pro
+            </Link>
             <Link className="place-chip" href="/settings#place">
               {settings.location ? settings.location.label : 'Set your town'}
             </Link>

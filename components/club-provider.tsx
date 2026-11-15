@@ -9,13 +9,8 @@ import type { WeatherBundle } from '@/lib/weather'
 
 const settingsListeners = new Set<() => void>()
 let currentSettings: Settings = defaultSettings
-let settingsLoaded = false
 
 function readSettings(): Settings {
-  if (!settingsLoaded && typeof window !== 'undefined') {
-    currentSettings = loadSettings()
-    settingsLoaded = true
-  }
   return currentSettings
 }
 
@@ -26,7 +21,6 @@ function subscribeSettings(listener: () => void) {
 
 function commitSettings(next: Settings) {
   currentSettings = next
-  settingsLoaded = true
   saveSettings(next)
   settingsListeners.forEach((listener) => listener())
 }
@@ -75,6 +69,11 @@ export function ClubProvider({ briefs, children }: { briefs: LaunchBrief[]; chil
   const [weather, setWeather] = useState<WeatherBundle | null>(null)
 
   useEffect(() => {
+    const stored = loadSettings()
+    commitSettings({ ...stored, location: stored.location ?? defaultSettings.location })
+  }, [])
+
+  useEffect(() => {
     document.documentElement.dataset.voice = settings.kidsMode ? 'kid' : 'adult'
     document.documentElement.dataset.night = settings.nightRed ? 'red' : 'sky'
     if (settings.location) document.documentElement.dataset.place = settings.location.label
@@ -93,16 +92,16 @@ export function ClubProvider({ briefs, children }: { briefs: LaunchBrief[]; chil
   const timezone = settings.location?.timezone
 
   useEffect(() => {
-    if (!hydrated || lat == null || lon == null || !timezone) return
+    if (lat == null || lon == null || !timezone) return
     let cancel = false
     const place = { lat, lon, timezone }
-    queueMicrotask(() => {
+    const timer = window.setTimeout(() => {
       if (!cancel) setSkyState('loading')
-    })
+    }, 0)
     ;(async () => {
       try {
         const [tleResponse, predictMod, weatherMod] = await Promise.all([
-          fetch('/api/sky/tles').then((response) => {
+          fetch('/api/sky/tles', { signal: AbortSignal.timeout(12_000) }).then((response) => {
             if (!response.ok) throw new Error('orbits')
             return response.json() as Promise<{
               iss?: { name: string; line1: string; line2: string }
@@ -144,8 +143,9 @@ export function ClubProvider({ briefs, children }: { briefs: LaunchBrief[]; chil
     })()
     return () => {
       cancel = true
+      window.clearTimeout(timer)
     }
-  }, [hydrated, lat, lon, timezone])
+  }, [lat, lon, timezone])
 
   useEffect(() => {
     if (!hydrated || !settings.notifications.enabled) return
@@ -184,15 +184,8 @@ export function ClubProvider({ briefs, children }: { briefs: LaunchBrief[]; chil
   }, [])
 
   const setLocation = useCallback((place: Place | null) => {
-    commitSettings({ ...readSettings(), location: place })
-    if (!place) {
-      setPasses([])
-      setWeather(null)
-      setSkyNotice(null)
-      setSkyState('idle')
-      return
-    }
-    setPasses([])
+    const next = place ?? defaultSettings.location
+    commitSettings({ ...readSettings(), location: next })
     setSkyState('loading')
   }, [])
 
@@ -240,8 +233,8 @@ export async function placeFromBrowser(): Promise<Place> {
     }
     navigator.geolocation.getCurrentPosition(resolve, () => reject(new Error('Location permission was declined.')), {
       enableHighAccuracy: false,
-      timeout: 12_000,
-      maximumAge: 60_000,
+      timeout: 8_000,
+      maximumAge: 5 * 60_000,
     })
   })
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'

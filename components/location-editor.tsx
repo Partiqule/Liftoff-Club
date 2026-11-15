@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from 'react'
 import { placeFromBrowser, useClub } from '@/components/club-provider'
-import { searchPlaces } from '@/lib/places'
+import { CENTENNIAL, searchPlaces } from '@/lib/places'
 import type { Place } from '@/lib/types'
 
 export function LocationEditor({ heading = true }: { heading?: boolean }) {
@@ -68,11 +68,11 @@ export function LocationEditor({ heading = true }: { heading?: boolean }) {
             {busy ? 'Looking…' : 'Find this place'}
           </button>
           <button className="btn btn-quiet" type="button" onClick={() => void onDevice()} disabled={busy}>
-            Use this device
+            {busy ? 'Finding you…' : 'Use my location'}
           </button>
-          {settings.location ? (
-            <button className="btn btn-quiet" type="button" onClick={() => setLocation(null)}>
-              Clear place
+          {settings.location && settings.location.label !== CENTENNIAL.label ? (
+            <button className="btn btn-quiet" type="button" onClick={() => setLocation(CENTENNIAL)}>
+              Use Centennial
             </button>
           ) : null}
         </div>

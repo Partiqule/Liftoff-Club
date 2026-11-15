@@ -50,7 +50,14 @@ async function fetchGroup(group: string, year: number): Promise<ConstellationCou
 
 async function loadCounts(year: number): Promise<{ groups: Record<string, ConstellationCounts>; fetchedAt: string | null }> {
   const cached = await readCache()
-  if (cached && Date.now() - Date.parse(cached.fetchedAt) < FRESH_MS) {
+  const cacheComplete = Boolean(
+    cached &&
+      CONSTELLATIONS.every((profile) => {
+        const group = cached.groups[profile.id]
+        return Boolean(group && Object.prototype.hasOwnProperty.call(group, 'latestLaunchDate'))
+      }),
+  )
+  if (cached && cacheComplete && Date.now() - Date.parse(cached.fetchedAt) < FRESH_MS) {
     return { groups: cached.groups, fetchedAt: cached.fetchedAt }
   }
   const groups: Record<string, ConstellationCounts> = {}
@@ -81,7 +88,9 @@ export async function getConstellationCards(launches: AheadLaunch[], now = Date.
   const loaded = await loadCounts(year)
   return CONSTELLATIONS.map((profile) => ({
     profile,
-    counts: loaded.groups[profile.id] ?? null,
+    counts: loaded.groups[profile.id]
+      ? { ...loaded.groups[profile.id], latestLaunchDate: loaded.groups[profile.id].latestLaunchDate ?? null }
+      : null,
     aheadThisYear: countAheadThisYear(launches, new RegExp(profile.launchPattern, 'i'), year, now),
     fetchedAt: loaded.fetchedAt,
   }))

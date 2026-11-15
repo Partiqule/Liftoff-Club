@@ -48,7 +48,7 @@ export default async function RocketPage({ params }: { params: Promise<{ slug: s
         <ul className="board">
           {flights.map((launch) => (
             <li key={launch.id}>
-              <FlightStrip launch={launch} />
+              <FlightStrip launch={launch} trail={!photo} />
             </li>
           ))}
         </ul>

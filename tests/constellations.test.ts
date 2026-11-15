@@ -27,6 +27,7 @@ describe('catalog counts', () => {
     expect(counts.launched).toBe(3)
     expect(counts.inOrbit).toBe(2)
     expect(counts.launchesThisYear).toBe(1)
+    expect(counts.latestLaunchDate).toBe('2026-01-02')
   })
 
   it('counts two launches on the same day as two launches', () => {

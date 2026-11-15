@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { PRO_COPY } from '@/lib/pro/copy'
 
 export function Footer() {
   return (
@@ -12,6 +13,10 @@ export function Footer() {
           <Link href="/companies">Companies on the board</Link> are public pages with no owner and no login. <Link href="/glossary">Space words</Link> explain the calls on a countdown. <Link href="/constellations">Constellations</Link> count what is in orbit. Rocket pictures are limited to public domain and Creative Commons licenses that allow commercial use.
         </p>
         <p>No ads. No accounts. Your town stays in this browser. Bedtime quiet hours apply to alerts, not to the countdown itself.</p>
+        <p>
+          <Link href="/pro">Liftoff Club Pro</Link> is a separate desk for space industry teams. The family site stays free.
+        </p>
+        <p>{PRO_COPY.footerLine}</p>
       </div>
     </footer>
   )

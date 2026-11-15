@@ -6,12 +6,17 @@ export function launchToIcs(launch: Launch, baseUrl: string, options?: { alarm?:
   return wrapCalendar([eventBody(launch, baseUrl, options?.alarm ?? true)], 'PUBLISH')
 }
 
-export function feedToIcs(launches: Launch[], baseUrl: string, now = Date.now()): string {
+export function feedToIcs(
+  launches: Launch[],
+  baseUrl: string,
+  now = Date.now(),
+  meta?: { name?: string; description?: string },
+): string {
   const events = launches
     .filter((launch) => includeInFeed(launch, now))
     .slice(0, 40)
     .map((launch) => eventBody(launch, baseUrl, false))
-  return wrapCalendar(events, 'PUBLISH', true)
+  return wrapCalendar(events, 'PUBLISH', true, meta)
 }
 
 function includeInFeed(launch: Launch, now: number): boolean {
@@ -21,15 +26,20 @@ function includeInFeed(launch: Launch, now: number): boolean {
   return start > now - 6 * 60 * 60 * 1000
 }
 
-function wrapCalendar(events: string[], method: string, subscribe = false): string {
+function wrapCalendar(
+  events: string[],
+  method: string,
+  subscribe = false,
+  meta?: { name?: string; description?: string },
+): string {
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
     `PRODID:${PRODID}`,
     'CALSCALE:GREGORIAN',
     `METHOD:${method}`,
-    'X-WR-CALNAME:Liftoff Club',
-    'X-WR-CALDESC:Rocket launches from the Liftoff Club board. Times update when a launch slips.',
+    `X-WR-CALNAME:${meta?.name ?? 'Liftoff Club'}`,
+    `X-WR-CALDESC:${meta?.description ?? 'Rocket launches from the Liftoff Club board. Times update when a launch slips.'}`,
   ]
   if (subscribe) {
     lines.push('REFRESH-INTERVAL;VALUE=DURATION:PT1H', 'X-PUBLISHED-TTL:PT1H')

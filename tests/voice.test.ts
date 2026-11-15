@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { statusWords } from '@/components/status-stamp'
-import { sanitizeSettings } from '@/lib/settings'
+import { watchingPlace } from '@/lib/places'
+import { defaultSettings, sanitizeSettings } from '@/lib/settings'
 import { judgeSky } from '@/lib/weather'
 
 describe('plain sky words', () => {
@@ -20,6 +21,12 @@ describe('plain sky words', () => {
 })
 
 describe('night red', () => {
+  it('starts in Centennial until a saved town or a tap replaces it', () => {
+    expect(defaultSettings.location?.label).toContain('Centennial')
+    expect(watchingPlace(null).timezone).toBe('America/Denver')
+    expect(sanitizeSettings({}).location?.label).toContain('Centennial')
+  })
+
   it('stays off unless this browser saved it', () => {
     expect(sanitizeSettings({}).nightRed).toBe(false)
     expect(sanitizeSettings({ nightRed: true }).nightRed).toBe(true)

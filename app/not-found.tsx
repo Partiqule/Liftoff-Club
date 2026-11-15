@@ -11,7 +11,7 @@ export default function NotFound() {
   return (
     <main id="content" className="wrap page">
       <Link className="brand" href="/">
-        <Logo size={96} />
+        <Logo />
         <span className="brand-words">
           <Wordmark />
           <span className="tagline">Look up together</span>
