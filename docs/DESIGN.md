@@ -1,6 +1,6 @@
 # Liftoff Club design
 
-One night sky. A launch trail, and the glowing plume it leaves behind. Everything on the site belongs to that picture.
+One night sky. One launch trail. Everything on the site belongs to that picture.
 
 These principles govern color, type, motion, and components. If a new screen needs a new trick, it does not belong.
 
@@ -19,13 +19,9 @@ Actions are words with a trail under them. They are not filled buttons, pills, s
 
 The page sits in a deep field, not on a flat dark panel. Color comes from real deep field photographs: a near black void, dusty violet, cold blue, and a small amount of warm core light. Nebula color is soft and large. Stars sit in layers, far ones faint and slow, near ones slightly brighter. Nothing is a stock gradient hero.
 
-## 3. Trail and jellyfish
+## 3. The trail is the signature
 
-A twilight launch can light its own exhaust while the ground is still dark. The plume opens into a translucent bell with long tendrils. That is the jellyfish effect, and it is the heart of the picture, next to the trail.
-
-The trail is the arc of the flight: logo, dividers, pass paths, and the line the clock rides. The jellyfish is the plume at the head of that arc: layered, see through, softly glowing, dusty violet in the bell and warm core light where the sun catches it. Tendrils fall the way exhaust falls. It is not a cartoon animal and it has no face.
-
-Use it in the hero, on launch day, while the sky is still being plotted, and in the small mark. A pass you can see gets a brighter plume. A no go lets the plume fade. If you removed the words, the curves and the glow should still say this is Liftoff Club.
+A launch leaves an arc. That arc is the logo, the divider, the way you see progress, and the shape of launch day. The countdown and the timeline sit on a trajectory. A pass across the sky is drawn as an arc. Loading is a trail, not a spinner. A bright head marks where the flight is now. If you removed the words, the curve should still say this is Liftoff Club.
 
 ## 4. Light carries the meaning
 
@@ -43,4 +39,4 @@ Sentences are short and concrete. The tone is not cute, and it does not talk dow
 
 ## 7. Motion can leave
 
-The star field drifts slowly. Tendrils sway a little, like exhaust in a high wind. A point of light at the head of a trail breathes. None of that motion carries information by itself. When the device asks for reduced motion, the field, the plume, and the trail hold still. The words and the glow remain.
+The star field drifts slowly. A point of light at the head of a trail breathes. None of that motion carries information by itself. When the device asks for reduced motion, the field and the trail hold still. The words and the glow remain.

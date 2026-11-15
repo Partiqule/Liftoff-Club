@@ -248,43 +248,18 @@ h3 { font-size: 1.25rem; line-height: 1.2; }
 .light-mid { color: var(--ink); text-shadow: 0 0 10px rgba(197, 210, 226, 0.45); }
 .light-fade { color: var(--cold); opacity: 0.55; text-shadow: none; }
 .trail { width: 7.5rem; height: auto; display: block; }
+.trail-hero {
+  position: absolute;
+  left: 0;
+  top: 6vh;
+  width: min(100%, 46rem);
+  height: auto;
+}
+.trail-load { width: min(18rem, 72%); height: auto; margin-bottom: 1.1rem; }
 .trail .trail-head { transform-origin: center; transform-box: fill-box; }
 .light-strong .trail-head, .trail.light-strong .trail-head { animation: pulse 2.8s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: 0.45; } }
 
-.jelly { display: block; overflow: visible; pointer-events: none; }
-.jelly-hero { position: absolute; right: -8%; top: 6%; width: min(46vw, 400px); height: auto; z-index: 0; opacity: 0.9; }
-@media (max-width: 759px) {
-  .jelly-hero { width: 78vw; right: -18%; top: 0; opacity: 0.45; }
-}
-.jelly-day { position: absolute; right: 0; top: 4%; width: min(52vw, 560px); height: auto; z-index: 0; }
-.jelly-load { width: 6.5rem; height: auto; margin-bottom: 0.6rem; }
-.jelly-mark { width: 2.5rem; }
-.bell { stroke: none; }
-.bell-outer { fill: rgba(126, 146, 196, 0.28); }
-.bell-veil { fill: rgba(214, 206, 236, 0.16); }
-.bell-mid { fill: rgba(186, 206, 230, 0.22); }
-.bell-core { fill: rgba(255, 236, 214, 0.82); }
-.tendril {
-  fill: none;
-  stroke: rgba(214, 224, 240, 0.72);
-  stroke-width: 1.6;
-  stroke-linecap: round;
-}
-.tendril-core { stroke: rgba(255, 228, 196, 0.9); stroke-width: 2; }
-.jelly-drift { transform-origin: 180px 120px; animation: jelly-drift 16s ease-in-out infinite alternate; }
-.tendril { animation: tendril 11s ease-in-out infinite alternate; }
-.tendril-slow { animation-duration: 15s; animation-direction: alternate-reverse; }
-@keyframes jelly-drift {
-  from { transform: translateY(0); }
-  to { transform: translateY(14px); }
-}
-@keyframes tendril {
-  from { transform: translateX(0); }
-  to { transform: translateX(8px); }
-}
-.light-fade .jelly, .jelly.light-fade { opacity: 0.35; }
-.tonight > :not(.jelly) { position: relative; z-index: 1; }
 .tonight { position: relative; }
 
 .stamp, .pill {

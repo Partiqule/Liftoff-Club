@@ -115,7 +115,7 @@ Photos are not embedded. Webcasts and official pages are linked out.
 
 ## Design
 
-The look is one system: a deep field, a launch trail, and a twilight plume. Principles, including the self hosted typefaces and their licenses, live in [docs/DESIGN.md](docs/DESIGN.md).
+The look is one system: a deep field and a launch trail. Principles, including the self hosted typefaces and their licenses, live in [docs/DESIGN.md](docs/DESIGN.md).
 
 Company pages live at `/companies` and `/companies/[slug]`. A slug is the company id (`spacex`, `united-launch-alliance`). “ULA” and “United Launch Alliance” are the same id. Starlink is a payload name on SpaceX, not a second company. Pages are public and unclaimed: `claimedBy` is always null. There is no company login. Vercel Web Analytics, if you turn it on, counts page views in aggregate and the app strips query strings first. It does not keep a profile of who looked.
 

@@ -4,7 +4,6 @@ import { useClub } from '@/components/club-provider'
 import { LocationEditor } from '@/components/location-editor'
 import { compass8, heightPhrase } from '@/lib/geo'
 import { bestPasses, planForPass } from '@/lib/planner'
-import { Jellyfish } from '@/components/jellyfish'
 import { Trail } from '@/components/trail'
 import { formatClock } from '@/lib/time'
 import { skyAt } from '@/lib/weather'
@@ -33,7 +32,7 @@ export function SkyBoard() {
   if (skyState === 'loading' || skyState === 'idle') {
     return (
       <section className="wrap page" aria-busy="true">
-        <Jellyfish size="load" />
+        <Trail glow="mid" span="load" />
         <p className="kicker">{place.label}</p>
         <h1>Plotting passes.</h1>
         <p className="lede">Station first, then a sample of Starlink. We do not propagate every satellite in the constellation.</p>

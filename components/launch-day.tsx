@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Countdown } from '@/components/countdown'
-import { Jellyfish } from '@/components/jellyfish'
 import { Logo } from '@/components/logo'
 import { stageScript } from '@/lib/stages'
 import type { Launch } from '@/lib/types'
@@ -25,7 +24,6 @@ export function LaunchDayScreen({ launch }: { launch: Launch }) {
 
   return (
     <section className="day-screen">
-      <Jellyfish size="day" />
       <svg className="day-arc" viewBox="0 0 1000 640" preserveAspectRatio="none" aria-hidden="true">
         <defs>
           <linearGradient id="dayglow" x1="0" y1="1" x2="1" y2="0">

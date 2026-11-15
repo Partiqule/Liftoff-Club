@@ -7,7 +7,6 @@ import { useNow } from '@/components/use-now'
 import { skyAt } from '@/lib/weather'
 import { compass8, heightPhrase } from '@/lib/geo'
 import { leadPass } from '@/lib/planner'
-import { Jellyfish } from '@/components/jellyfish'
 import { Trail } from '@/components/trail'
 import { formatClock } from '@/lib/time'
 
@@ -19,7 +18,7 @@ export function Tonight() {
   if (!hydrated || (place && skyState !== 'ready' && skyState !== 'error')) {
     return (
       <section className="tonight wrap" aria-busy="true">
-        <Jellyfish size="load" />
+        <Trail glow="mid" span="load" />
         <p className="kicker">Tonight</p>
         <h1>{place ? `Checking the sky over ${place.label}.` : 'Checking tonight’s sky.'}</h1>
         <p className="lede">Orbits first, then clouds. This takes a moment and stays on your device.</p>
@@ -71,8 +70,7 @@ export function Tonight() {
   const glow = judgement.call === 'nogo' ? 'fade' : judgement.call === 'go' ? 'strong' : 'mid'
   return (
     <section className={`tonight wrap light-${glow}`}>
-      <Jellyfish size="hero" />
-      <Trail glow={glow} />
+      <Trail glow={glow} span="hero" />
       <p className="kicker">
         {place.label} · {lead.gradeLabel}
       </p>
