@@ -16,6 +16,10 @@ Night sky, one warm signal color, and type set like a storybook next to a missio
 
 ![A launch, in kids mode, with the flight plate](docs/screenshots/04-detail-desktop.png)
 
+![The same launch with kids mode off: booster history, customers, and public delay notes](docs/screenshots/19-detail-adult-desktop.png)
+
+![Today’s brief from Centennial](docs/screenshots/21-brief-desktop.png)
+
 ![Launch day mode, sized for a TV or an iPad](docs/screenshots/06-day-desktop.png)
 
 ![Passes over Centennial, with a real no-go for clouds](docs/screenshots/07-sky-desktop.png)

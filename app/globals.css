@@ -120,7 +120,7 @@ a:hover { color: var(--core); }
   position: sticky;
   top: 0;
   z-index: 20;
-  background: rgba(7, 6, 15, 0.78);
+  background: rgba(7, 6, 15, 0.94);
   backdrop-filter: blur(16px);
 }
 .topbar-inner {

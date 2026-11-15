@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from 'react'
 import Link from 'next/link'
+import { LocalTime } from '@/components/local-time'
 import { FOLLOWS_KEY, toggleFollow } from '@/lib/follows'
 
 export type FollowRosterItem = {
@@ -42,28 +43,47 @@ function write(next: string[]) {
   listeners.forEach((listener) => listener())
 }
 
-export function FollowList({ slug, roster }: { slug: string; roster: FollowRosterItem[] }) {
+export function FollowList({
+  slug,
+  roster,
+  buttonOnly = false,
+  listOnly = false,
+}: {
+  slug: string
+  roster: FollowRosterItem[]
+  buttonOnly?: boolean
+  listOnly?: boolean
+}) {
   const follows = useSyncExternalStore(subscribe, read, () => [] as string[])
   const on = follows.includes(slug)
   const rows = roster.filter((item) => follows.includes(item.slug))
+  const button = (
+    <button className="btn" type="button" aria-pressed={on} onClick={() => write(toggleFollow(follows, slug))}>
+      {on ? 'Following' : 'Follow this company'}
+    </button>
+  )
+  if (buttonOnly) return button
   return (
     <section>
-      <button className="btn" type="button" aria-pressed={on} onClick={() => write(toggleFollow(follows, slug))}>
-        {on ? 'Following' : 'Follow this company'}
-      </button>
+      {listOnly ? null : button}
       <p className="kicker">Who you follow</p>
       <h2>Who is flying what</h2>
       {rows.length === 0 ? <p className="note">Follow a company and its next flight shows up here, on this device only.</p> : null}
       <ul className="jobs">
         {rows.map((item) => (
-          <li key={item.slug}>
+          <li key={`${item.slug}-${item.launchId ?? 'none'}`}>
             <h3>
               <Link href={`/companies/${item.slug}`}>{item.name}</Link>
             </h3>
             {item.launchId && item.launchName ? (
               <p className="meta">
                 <Link href={`/launches/${item.launchId}`}>{item.launchName}</Link>
-                {item.net ? ` · ${item.net}` : ''}
+                {item.net ? (
+                  <>
+                    {' · '}
+                    <LocalTime iso={item.net} />
+                  </>
+                ) : null}
               </p>
             ) : (
               <p className="note">Nothing on the current board.</p>

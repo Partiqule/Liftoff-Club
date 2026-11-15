@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { LocalTime } from '@/components/local-time'
-import { FollowList } from '@/components/follow-list'
+import { FollowList, type FollowRosterItem } from '@/components/follow-list'
 import { companyPage, companiesOnBoard } from '@/lib/company-board'
 import { listCatalog } from '@/lib/companies'
 import { getLaunches } from '@/lib/launches'
@@ -39,16 +39,23 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
   const page = companyPage(slug, board.launches)
   if (!page) notFound()
   const { company, flights } = page
-  const roster = companiesOnBoard(board.launches).map((item) => {
-    const next = companyPage(item.slug, board.launches)?.flights[0]
-    return {
-      slug: item.slug,
-      name: item.name,
-      launchId: next?.launchId ?? null,
-      launchName: next?.launchName ?? null,
-      net: next?.net ?? null,
+  const roster: FollowRosterItem[] = []
+  for (const item of companiesOnBoard(board.launches)) {
+    const listed = companyPage(item.slug, board.launches)?.flights ?? []
+    if (listed.length === 0) {
+      roster.push({ slug: item.slug, name: item.name, launchId: null, launchName: null, net: null })
+      continue
     }
-  })
+    for (const flight of listed) {
+      roster.push({
+        slug: item.slug,
+        name: item.name,
+        launchId: flight.launchId,
+        launchName: flight.launchName,
+        net: flight.net,
+      })
+    }
+  }
   return (
     <main id="content" className="wrap page">
       <p className="kicker">Public profile · unclaimed</p>
@@ -69,6 +76,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
           </a>
         ) : null}
       </div>
+      <FollowList slug={company.slug} roster={roster} buttonOnly />
       <p className="note when-adult">
         This page is assembled from public launch listings. It has no owner and no login. The family app does not record who looked at it beyond an anonymous page count, and only if the site is deployed with that turned on.
       </p>
@@ -94,7 +102,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
           ))}
         </ul>
       </section>
-      <FollowList slug={company.slug} roster={roster} />
+      <FollowList slug={company.slug} roster={roster} listOnly />
     </main>
   )
 }
