@@ -9,6 +9,7 @@ export const PRIVACY = {
   collect: [
     'Pro early access stores the name, email, company, and role you type, so we can send a reply.',
     'Phone alerts, if a grown up turns them on, store the browser address that receives the alert. There is no name and no email on that record.',
+    'The iPhone app, if you install it, stores a push token and a cached launch list on that phone so alerts and the home screen widget can work offline.',
     'A town and a time zone are saved in the browser on the device. They are not sent to an account.',
     'Vercel Web Analytics counts pages. Query strings are stripped. The family site does not require a cookie for that count.',
   ],
@@ -17,7 +18,7 @@ export const PRIVACY = {
   retentionTitle: 'How long it stays',
   retention: 'A town and a time zone stay in the browser until you clear the site data. Early access notes and phone alert addresses stay in our store until you ask us to delete them. We do not set a separate clock on the page counts.',
   deleteTitle: 'How to delete it',
-  delete: `Email ${PRIVACY_EMAIL} from the address you want removed. Say whether the note is an early access sign up, a phone alert, or both. We delete the records we hold.`,
+  delete: `Email ${PRIVACY_EMAIL} from the address you want removed. Say whether the note is an early access sign up, a phone alert, an iPhone push token, or all of them. We delete the records we hold.`,
 } as const
 
 export const SUPPORT = {

@@ -11,3 +11,9 @@ tsconfig.tsbuildinfo
 coverage
 playwright-report
 test-results
+*.p8
+AuthKey_*.p8
+*.mobileprovision
+*.xcuserstate
+ios/DerivedData
+ios/App/Pods

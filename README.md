@@ -97,6 +97,10 @@ Set these on Vercel before sign in works. Do not commit the secret values.
 - `PRO_NOTIFY_EMAIL` receives a copy when someone requests early access, and that address is also an admin email
 - `PRO_AUTO_APPROVE` is optional. Leave it unset to approve a valid request immediately. Set it to `false` to require the admin page.
 
+## iPhone app
+
+The Capacitor project is in `ios/`. It opens https://liftoffclub.app, saves a launch list for offline and the home screen widget, registers for Apple push, and uses the system share sheet. Signing keys stay out of git. The click by click steps are in `docs/APP_STORE.md`.
+
 ## Tests
 
 ```bash

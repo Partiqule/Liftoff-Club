@@ -1,3 +1,5 @@
+import { deliverApns } from '@/lib/ios/apns-send'
+import { readApnsEnv } from '@/lib/ios/apns'
 import { getLaunch, getLaunches } from '@/lib/launches'
 import { cronAuthorized, pushConfigured } from '@/lib/push/config'
 import { applyNotices, planNotices, type LaunchSnap } from '@/lib/push/plan'
@@ -24,11 +26,13 @@ function snap(launch: Launch): LaunchSnap {
 }
 
 export async function GET(request: Request) {
-  if (!pushConfigured()) return Response.json({ ok: true, skipped: 'push not configured' })
+  const web = pushConfigured()
+  const apple = Boolean(readApnsEnv())
+  if (!web && !apple) return Response.json({ ok: true, skipped: 'push not configured' })
   if (!cronAuthorized(request.headers.get('authorization'))) return Response.json({ error: 'Unauthorized' }, { status: 401 })
   const board = await getLaunches()
   const byId = new Map(board.launches.map((launch) => [launch.id, snap(launch)]))
-  const records = await listPushes()
+  const records = web ? await listPushes() : []
   let sent = 0
   let removed = 0
   const extraBudget = { left: 8 }
@@ -63,5 +67,6 @@ export async function GET(request: Request) {
     const quiet = isQuietHour(new Date(), record.quietStart, record.quietEnd, record.timezone)
     if (!record.paused && !quiet) await replacePush({ ...record, ...applyNotices(record, notices, launches) })
   }
-  return Response.json({ ok: true, checked: records.length, sent, removed })
+  const appleResult = apple ? await deliverApns([...byId.values()]).catch(() => ({ sent: 0, removed: 0 })) : { sent: 0, removed: 0 }
+  return Response.json({ ok: true, checked: records.length, sent, removed, apnsSent: appleResult.sent, apnsRemoved: appleResult.removed })
 }
