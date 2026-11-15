@@ -1,5 +1,8 @@
 import land from '@/lib/land-rings.json'
+import { cameraVector, globeCamera, type Vec } from '@/lib/globe-view'
 import type { TrackPoint } from '@/lib/mission'
+
+const DISC = 86
 
 type Sun = { lat: number; lon: number }
 
@@ -12,56 +15,53 @@ export function MissionGlobe({
   progress: number
   sun: Sun
 }) {
-  const pad = track[0] ?? { lat: 20, lon: -90 }
-  const centerLon = pad.lon - 28
+  const camera = globeCamera(track)
   const landPaths = (land as number[][][])
-    .map((ring) => drawRing(ring, centerLon, sun))
+    .map((ring) => drawRing(ring, camera, sun))
     .filter((item): item is { key: string; d: string; lit: boolean } => Boolean(item))
-  const paths = trackSegments(track, centerLon)
+  const paths = trackSegments(track, camera)
   const along = track[Math.min(track.length - 1, Math.round(progress * Math.max(0, track.length - 1)))]
-  const dot = along ? project(along, centerLon) : null
+  const dot = along ? project(along, camera) : null
   return (
     <figure className="mission-globe">
       <svg viewBox="-120 -120 240 240" role="img" aria-label="Approximate path">
         <defs>
           <clipPath id="mission-disk">
-            <circle cx="0" cy="0" r="98" />
+            <circle cx="0" cy="0" r={DISC} />
           </clipPath>
         </defs>
-        <circle cx="0" cy="0" r="98" fill="#100e1c" />
+        <circle cx="0" cy="0" r={DISC} fill="#100e1c" />
         <g clipPath="url(#mission-disk)">
           {landPaths.map((item) => (
             <path key={item.key} d={item.d} fill={item.lit ? '#4a4368' : '#1c1830'} />
           ))}
-          <path d={nightPath(sun, centerLon)} fill="#07060f" opacity="0.55" />
+          <path d={nightPath(sun, camera)} fill="#07060f" opacity="0.55" />
           {paths.map((d, index) => (
             <path key={index} d={d} fill="none" stroke="#f3d7b0" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" />
           ))}
           {dot ? <circle cx={dot.x} cy={dot.y} r="3.2" fill="#f6f3ec" /> : null}
         </g>
-        <circle cx="0" cy="0" r="98" fill="none" stroke="rgba(197,210,226,0.35)" />
+        <circle cx="0" cy="0" r={DISC} fill="none" stroke="rgba(197,210,226,0.35)" />
       </svg>
       <figcaption className="kicker">Approximate path</figcaption>
     </figure>
   )
 }
 
-type Vec = { x: number; y: number; z: number }
-
-function drawRing(ring: number[][], centerLon: number, sun: Sun): { key: string; d: string; lit: boolean } | null {
-  const vecs = ring.map((pair) => toVec({ lon: pair[0], lat: pair[1] }, centerLon))
+function drawRing(ring: number[][], camera: ReturnType<typeof globeCamera>, sun: Sun): { key: string; d: string; lit: boolean } | null {
+  const vecs = ring.map((pair) => toVec({ lon: pair[0], lat: pair[1] }, camera))
   if (vecs.length > 2) vecs.push(vecs[0])
   const chains = clipChains(vecs)
   if (chains.length === 0) return null
   const d = chains.map((chain) => closeOnLimb(chain)).join(' ')
   const front = vecs.filter((item) => item.z >= 0)
   const sample = front[0] ?? vecs[0]
-  const lit = isLitVec(sample, toVec(sun, centerLon))
+  const lit = isLitVec(sample, toVec(sun, camera))
   return { key: `${ring[0][0]}-${ring[0][1]}-${ring.length}`, d, lit }
 }
 
-function trackSegments(track: TrackPoint[], centerLon: number): string[] {
-  const vecs = track.map((point) => toVec(point, centerLon))
+function trackSegments(track: TrackPoint[], camera: ReturnType<typeof globeCamera>): string[] {
+  const vecs = track.map((point) => toVec(point, camera))
   return clipChains(vecs).map((chain) => chain.map((item, index) => `${index ? 'L' : 'M'}${sx(item)} ${sy(item)}`).join(''))
 }
 
@@ -102,8 +102,8 @@ function closeOnLimb(chain: Vec[]): string {
   return d
 }
 
-function nightPath(sun: Sun, centerLon: number): string {
-  const s = toVec(sun, centerLon)
+function nightPath(sun: Sun, camera: ReturnType<typeof globeCamera>): string {
+  const s = toVec(sun, camera)
   const ortho = Math.abs(s.y) < 0.9 ? { x: 0, y: 1, z: 0 } : { x: 1, y: 0, z: 0 }
   const u = norm(cross(ortho, s))
   const v = norm(cross(s, u))
@@ -159,23 +159,21 @@ function crossZero(a: Vec, b: Vec): Vec {
   return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: 0 }
 }
 
-function toVec(point: { lat: number; lon: number }, centerLon: number): Vec {
-  const λ = ((point.lon - centerLon) * Math.PI) / 180
-  const φ = (point.lat * Math.PI) / 180
-  return { x: Math.cos(φ) * Math.sin(λ), y: Math.sin(φ), z: Math.cos(φ) * Math.cos(λ) }
+function toVec(point: { lat: number; lon: number }, camera: ReturnType<typeof globeCamera>): Vec {
+  return cameraVector(point, camera)
 }
 
-function project(point: TrackPoint, centerLon: number): { x: number; y: number } | null {
-  const vec = toVec(point, centerLon)
+function project(point: TrackPoint, camera: ReturnType<typeof globeCamera>): { x: number; y: number } | null {
+  const vec = toVec(point, camera)
   if (vec.z < 0) return null
-  return { x: vec.x * 98, y: -vec.y * 98 }
+  return { x: vec.x * DISC, y: -vec.y * DISC }
 }
 
 function sx(vec: Vec): string {
-  return (vec.x * 98).toFixed(2)
+  return (vec.x * DISC).toFixed(2)
 }
 function sy(vec: Vec): string {
-  return (-vec.y * 98).toFixed(2)
+  return (-vec.y * DISC).toFixed(2)
 }
 function cross(a: Vec, b: Vec): Vec {
   return { x: a.y * b.z - a.z * b.y, y: a.z * b.x - a.x * b.z, z: a.x * b.y - a.y * b.x }
