@@ -1,8 +1,8 @@
 'use client'
 
-import { track } from '@vercel/analytics'
 import { useState, type FormEvent } from 'react'
 import type { AccessDesk } from '@/lib/pro/signups'
+import { track } from '@/lib/track'
 
 export function AccessForm() {
   const [name, setName] = useState('')

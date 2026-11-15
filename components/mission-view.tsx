@@ -22,9 +22,13 @@ import { GLOSSARY } from '@/lib/glossary'
 import { findRocketPhoto } from '@/lib/rocket-photos'
 import { formatMountain } from '@/lib/pro/time'
 import type { Launch } from '@/lib/types'
+import { track } from '@/lib/track'
 
 export function MissionShell({ launch, asOf }: { launch: Launch; asOf: string | null }) {
   const [family, setFamily] = useState(false)
+  useEffect(() => {
+    track('launch_day_opened')
+  }, [])
   if (family) {
     return (
       <div className="mission-family">

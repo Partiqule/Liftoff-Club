@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { dueAlerts } from '@/lib/alerts'
+import { track } from '@/lib/track'
 import { labelForCoords } from '@/lib/places'
 import { defaultSettings, loadFired, loadSettings, saveFired, saveSettings } from '@/lib/settings'
 import type { LaunchBrief, Place, Settings, SkyPass } from '@/lib/types'
@@ -196,6 +197,7 @@ export function ClubProvider({ briefs, children }: { briefs: LaunchBrief[]; chil
     if (permission === 'granted') {
       const current = readSettings()
       commitSettings({ ...current, notifications: { ...current.notifications, enabled: true } })
+      track('alert_enabled')
     }
   }, [])
 

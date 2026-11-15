@@ -8,6 +8,7 @@ import { CalendarLinks } from '@/components/calendar-links'
 import { Countdown } from '@/components/countdown'
 import { JobsCorner } from '@/components/jobs'
 import { LocalTime } from '@/components/local-time'
+import { LaunchViewed } from '@/components/analytics'
 import { LaunchRemind } from '@/components/launch-remind'
 import { RocketFigure } from '@/components/rocket-figure'
 import { StatusStamp } from '@/components/status-stamp'
@@ -44,6 +45,7 @@ export default async function LaunchPage({ params }: { params: Promise<{ id: str
   const loose = /day|month|year|quarter|week/i.test(launch.precision ?? '')
   return (
     <main id="content" className="wrap page">
+      <LaunchViewed />
       <p className="kicker">
         {launch.provider.name} · {launch.padLocation ?? launch.padName}
       </p>
