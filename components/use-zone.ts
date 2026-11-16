@@ -10,7 +10,7 @@ function subscribe() {
 
 export function useActiveZone(): string {
   const { settings } = useClub()
-  const fallback = settings.location?.timezone || 'America/Denver'
+  const fallback = settings.location?.timezone || 'UTC'
   const browser = useSyncExternalStore(
     subscribe,
     () => {

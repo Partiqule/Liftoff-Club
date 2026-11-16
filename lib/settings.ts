@@ -1,5 +1,4 @@
 import { FOLLOWS_KEY } from '@/lib/follows'
-import { CENTENNIAL } from '@/lib/places'
 import { WORDS_KEY } from '@/lib/words'
 import type { NotificationSettings, Place, Settings } from '@/lib/types'
 
@@ -23,9 +22,9 @@ export const defaultSettings: Settings = {
   quietStart: '21:00',
   quietEnd: '07:00',
   notifications: defaultNotifications,
-  location: CENTENNIAL,
+  location: null,
   zoneMode: 'auto',
-  zone: 'America/Denver',
+  zone: 'UTC',
 }
 
 function isPlace(value: unknown): value is Place {
@@ -58,9 +57,9 @@ export function sanitizeSettings(value: unknown): Settings {
     nightRed: raw.nightRed === true,
     quietStart: clock(raw.quietStart, defaultSettings.quietStart),
     quietEnd: clock(raw.quietEnd, defaultSettings.quietEnd),
-    location: isPlace(raw.location) ? raw.location : CENTENNIAL,
+    location: isPlace(raw.location) ? raw.location : null,
     zoneMode: raw.zoneMode === 'chosen' ? 'chosen' : 'auto',
-    zone: typeof raw.zone === 'string' && raw.zone.length < 80 ? raw.zone : 'America/Denver',
+    zone: typeof raw.zone === 'string' && raw.zone.length < 80 ? raw.zone : 'UTC',
     notifications: {
       enabled: notes.enabled === true,
       leadMinutes: lead === 30 || lead === 180 ? lead : 60,

@@ -145,7 +145,7 @@ export function PhoneAlerts() {
         launchIds,
         quietStart: settings.quietStart,
         quietEnd: settings.quietEnd,
-        timezone: settings.location?.timezone ?? 'America/Denver',
+        timezone: settings.location?.timezone ?? 'UTC',
         kidsMode: false,
       }),
     })

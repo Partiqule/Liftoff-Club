@@ -11,6 +11,7 @@ import { zoneAbbrev } from '@/lib/pro/time'
 import { skyAt } from '@/lib/weather'
 import { isVisibleTrain } from '@/lib/trains'
 import { SkyFinderSoon } from '@/components/sky-finder-soon'
+import { LocationPrompt } from '@/components/location-prompt'
 
 export function SkyBoard() {
   const { settings, passes, skyState, skyNotice, weather } = useClub()
@@ -20,9 +21,10 @@ export function SkyBoard() {
   if (skyState === 'error') {
     return (
       <section className="wrap page">
-        <p className="kicker">{place.label}</p>
+        <p className="kicker">{place ? place.label : 'Set your location'}</p>
         <h1>The orbit feed stumbled.</h1>
         <p className="lede">Refresh in a minute. Launch times on the board do not depend on this chart.</p>
+        {place ? null : <LocationPrompt />}
         <SkyFinderSoon />
       </section>
     )
@@ -34,8 +36,9 @@ export function SkyBoard() {
   const trains = passes.filter(isVisibleTrain).slice(0, 4)
   return (
     <section className="wrap page">
-      <p className="kicker">{place.label}</p>
+      <p className="kicker">{place ? place.label : 'Set your location'}</p>
       <h1>What crosses the sky.</h1>
+      {place ? <p className="meta">Watching from {place.label}</p> : <LocationPrompt />}
       <p className="lede when-kid">
         The space station is the bright one. Starlink satellites are usually dim dots. Give your eyes a minute in the dark.
       </p>
@@ -45,12 +48,12 @@ export function SkyBoard() {
       {skyNotice ? <p className="banner">{skyNotice}</p> : null}
       <SkyFinderSoon />
       <h2>Space station</h2>
-      {waiting ? <SkySkeleton /> : <PassList passes={iss} place={place.label} timeZone={zone} weather={weather} empty="No station pass in the next day and a half." />}
+      {!place ? null : waiting ? <SkySkeleton /> : <PassList passes={iss} place={place.label} timeZone={zone} weather={weather} empty="No station pass in the next day and a half." />}
       <h2>Recent trains</h2>
       <p className="meta">Approximate. Satellites from launches in the last few days, in a dark sky, with the satellites in sunlight. Not the full Starlink list.</p>
-      {waiting ? <SkySkeleton /> : <PassList passes={trains} place={place.label} timeZone={zone} weather={weather} empty="No recent train clears the dark sky and cloud check." />}
+      {!place ? null : waiting ? <SkySkeleton /> : <PassList passes={trains} place={place.label} timeZone={zone} weather={weather} empty="No recent train clears the dark sky and cloud check." />}
       <h2>Starlink sample</h2>
-      {waiting ? (
+      {!place ? null : waiting ? (
         <SkySkeleton />
       ) : (
         <PassList

@@ -58,10 +58,11 @@ export function buildBrief(input: {
       line: `${launch.providerName} · ${launch.rocketName} · ${launch.padLocation ?? launch.padName}`,
     }))
   const visible = input.passes.filter((pass) => pass.grade === 'great' || pass.grade === 'good' || pass.grade === 'fair')
-  const place = input.placeLabel ?? 'your town'
-  const sky = visible.length
-    ? `${visible.length} pass${visible.length === 1 ? '' : 'es'} worth a look from ${place}. First: ${visible[0]?.name ?? 'a satellite'}.`
-    : `Nothing bright is listed over ${place} in the passes we have.`
+  const sky = !input.placeLabel
+    ? 'Set your location to see which passes are overhead.'
+    : visible.length
+      ? `${visible.length} pass${visible.length === 1 ? '' : 'es'} worth a look from ${input.placeLabel}. First: ${visible[0]?.name ?? 'a satellite'}.`
+      : `Nothing bright is listed over ${input.placeLabel} in the passes we have.`
   const subject = input.period === 'day' ? 'Liftoff Club daily brief' : 'Liftoff Club weekly brief'
   const launchLines = launches.length
     ? launches.map((launch) => `${launch.name}. ${launch.line}.`).join('\n')

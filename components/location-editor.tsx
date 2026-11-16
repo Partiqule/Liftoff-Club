@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from 'react'
 import { placeFromBrowser, useClub } from '@/components/club-provider'
 import { ZonePicker } from '@/components/zone-picker'
-import { CENTENNIAL, searchPlaces } from '@/lib/places'
+import { searchPlaces } from '@/lib/places'
 import type { Place } from '@/lib/types'
 
 export function LocationEditor({ heading = true }: { heading?: boolean }) {
@@ -22,7 +22,7 @@ export function LocationEditor({ heading = true }: { heading?: boolean }) {
     try {
       const found = await searchPlaces(query)
       setResults(found)
-      if (found.length === 0) setError('No town matched. Try a city name, like Centennial or Cocoa Beach.')
+      if (found.length === 0) setError('No town matched. Try a city name.')
     } catch {
       setError('The place search did not answer. Try again in a moment.')
     } finally {
@@ -62,7 +62,7 @@ export function LocationEditor({ heading = true }: { heading?: boolean }) {
           id="place-query"
           className="field"
           value={query}
-          placeholder="Centennial, or 80112"
+          placeholder="City or ZIP"
           autoComplete="off"
           onChange={(event) => setQuery(event.target.value)}
         />
@@ -71,13 +71,8 @@ export function LocationEditor({ heading = true }: { heading?: boolean }) {
             {busy ? 'Looking…' : 'Find this place'}
           </button>
           <button className="btn btn-quiet" type="button" onClick={() => void onDevice()} disabled={busy}>
-            {busy ? 'Finding you…' : 'Use my location'}
+            {busy ? 'Finding you…' : 'Use this phone\'s location'}
           </button>
-          {settings.location && settings.location.label !== CENTENNIAL.label ? (
-            <button className="btn btn-quiet" type="button" onClick={() => setLocation(CENTENNIAL)}>
-              Use Centennial
-            </button>
-          ) : null}
         </div>
       </form>
       {error ? <p className="error">{error}</p> : null}

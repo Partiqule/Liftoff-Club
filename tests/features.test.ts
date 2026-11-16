@@ -40,7 +40,13 @@ describe('starlink trains', () => {
     const pass = { id: 'p', kind: 'starlink', start: '2026-11-15T02:00:00Z', peak: '2026-11-15T02:05:00Z', illuminatedAtPeak: true, sunElevationAtPeak: -12, maxElevation: 40, grade: 'fair', gradeReason: 'A dim train.' } as SkyPass
     const alerts = dueAlerts({
       now: Date.parse('2026-11-15T01:30:00Z'),
-      settings: { ...defaultSettings, notifications: { ...defaultSettings.notifications, enabled: true, starlinkTrains: true, includeSky: false } },
+      settings: {
+        ...defaultSettings,
+        quietStart: '08:00',
+        quietEnd: '09:00',
+        location: { label: 'Test', lat: 0, lon: 0, timezone: 'UTC', source: 'search' },
+        notifications: { ...defaultSettings.notifications, enabled: true, starlinkTrains: true, includeSky: false },
+      },
       briefs: [],
       passes: [pass],
       already: new Set(),

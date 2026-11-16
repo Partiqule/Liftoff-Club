@@ -54,7 +54,7 @@ async function publish(device: string, settings: Settings) {
       launchIds: readFollowedLaunchIds(),
       quietStart: settings.quietStart,
       quietEnd: settings.quietEnd,
-      timezone: settings.location?.timezone ?? 'America/Denver',
+      timezone: settings.location?.timezone ?? 'UTC',
       kidsMode: settings.kidsMode,
     }),
   }).catch(() => undefined)
