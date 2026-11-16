@@ -13,7 +13,13 @@ export function useActiveZone(): string {
   const fallback = settings.location?.timezone || 'America/Denver'
   const browser = useSyncExternalStore(
     subscribe,
-    () => Intl.DateTimeFormat().resolvedOptions().timeZone || fallback,
+    () => {
+      try {
+        return Intl.DateTimeFormat().resolvedOptions().timeZone || fallback
+      } catch {
+        return fallback
+      }
+    },
     () => fallback,
   )
   if (settings.zoneMode === 'chosen' && isTimeZone(settings.zone)) return settings.zone

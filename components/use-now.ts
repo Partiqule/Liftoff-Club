@@ -2,20 +2,17 @@
 
 import { useSyncExternalStore } from 'react'
 
-let clock = 0
 let timer: number | null = null
 const listeners = new Set<() => void>()
 
 function currentTime(): number {
-  if (clock === 0) clock = Date.now()
-  return clock
+  return Math.floor(Date.now() / 1000) * 1000
 }
 
 function subscribe(listener: () => void) {
   listeners.add(listener)
-  if (timer == null) {
+  if (timer == null && typeof window !== 'undefined') {
     timer = window.setInterval(() => {
-      clock = Date.now()
       listeners.forEach((item) => item())
     }, 60_000)
   }
@@ -29,5 +26,5 @@ function subscribe(listener: () => void) {
 }
 
 export function useNow(): number {
-  return useSyncExternalStore(subscribe, currentTime, () => 0)
+  return useSyncExternalStore(subscribe, currentTime, currentTime)
 }

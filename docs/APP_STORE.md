@@ -1,5 +1,7 @@
 # Put Liftoff Club on the App Store
 
+Version 1 is iPhone only. The App and LiftoffWidget targets use device family 1, so iPad, Mac Designed for iPad, and Vision are not included. Apple may still run the iPhone app on an iPad in compatibility mode. The phone layout is what that mode shows. You do not upload iPad screenshots.
+
 The iPhone project is already in `ios/`. You build it on a Mac. This machine cannot compile it. Nothing in git is a signing key. If a file named `AuthKey_something.p8` lands in this folder, do not commit it. `.gitignore` already ignores `*.p8`.
 
 You need a Mac with Xcode 16 or newer, and the Apple Developer account for team `39AMCG49RK`.
@@ -95,7 +97,7 @@ The phone asks `https://liftoffclub.app` to remember its push token. The site se
     - `store/screenshots/iphone-6.5-home.png`
     - `store/screenshots/iphone-6.5-launch.png`
     - `store/screenshots/iphone-6.5-sky.png`
-9. Those files are 1290 by 2796 and 1284 by 2778. They are the live site at phone size, which is what the app shows.
+9. Those files are 1290 by 2796 and 1284 by 2778. They are the live site at phone size, which is what the app shows. Do not add an iPad screenshot set. Version 1 does not include an iPad layout.
 10. Scroll to **App Review Information**. Check **Sign in required** off. Paste the review notes from `store/listing.txt`.
 11. Copyright: `2026 Paul Miller`.
 12. Click **Save**.

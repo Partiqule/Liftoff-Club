@@ -7,6 +7,7 @@ import { zoneAbbrev } from '@/lib/pro/time'
 import { useActiveZone } from '@/components/use-zone'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useState } from 'react'
 
 const LINKS = [
   { href: '/', label: 'Tonight' },
@@ -22,6 +23,9 @@ export function Header() {
   const zone = useActiveZone()
   const kids = settings.kidsMode
   const town = settings.location?.label.split(',')[0] || 'Set your town'
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+
   return (
     <>
       <a className="skip" href="#content">
@@ -43,8 +47,32 @@ export function Header() {
               </Link>
             ))}
           </nav>
-          <SiteSearch />
-          <div className="top-tools">
+          <button
+            type="button"
+            className="search-toggle"
+            aria-expanded={searchOpen}
+            onClick={() => {
+              setMenuOpen(false)
+              setSearchOpen((open) => !open)
+            }}
+          >
+            Search
+          </button>
+          <button
+            type="button"
+            className="menu-toggle"
+            aria-expanded={menuOpen}
+            onClick={() => {
+              setSearchOpen(false)
+              setMenuOpen((open) => !open)
+            }}
+          >
+            Menu
+          </button>
+          <div className={searchOpen ? 'site-search-slot is-open' : 'site-search-slot'}>
+            <SiteSearch />
+          </div>
+          <div className={menuOpen ? 'top-tools is-open' : 'top-tools'}>
             <Link className="pro-entry" href="/pro">
               Pro
             </Link>
