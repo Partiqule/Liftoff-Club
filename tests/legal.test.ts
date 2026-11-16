@@ -20,9 +20,10 @@ describe('legal copy', () => {
 })
 
 describe('celestrak limits', () => {
-  it('skips the full starlink catalog, prefers one launch, and stops on a 403', () => {
-    expect(catalogGroupAllowed('starlink')).toBe(false)
+  it('counts the starlink catalog, prefers one launch for passes, and stops on a 403', () => {
+    expect(catalogGroupAllowed('starlink')).toBe(true)
     expect(catalogGroupAllowed('oneweb')).toBe(true)
+    expect(catalogGroupAllowed('  ')).toBe(false)
     expect(starlinkLaunchUrl('2026-256')).toContain('INTDES=2026-256')
     expect(starlinkLaunchUrl('2026-256')).toContain('FORMAT=JSON')
     expect(starlinkLaunchUrl('nope')).toBeNull()

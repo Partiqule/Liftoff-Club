@@ -757,6 +757,7 @@ html:not([data-voice]) .when-adult { display: none; }
   z-index: 20;
   background: rgba(7, 6, 15, 0.94);
   backdrop-filter: blur(16px);
+  padding-top: env(safe-area-inset-top);
 }
 .pro-bar-inner { display: flex; align-items: center; gap: 1rem; min-height: 4.25rem; flex-wrap: wrap; }
 .pro-brand-line { display: flex; align-items: baseline; gap: 0.45rem; }
@@ -767,7 +768,7 @@ html:not([data-voice]) .when-adult { display: none; }
   text-transform: uppercase;
   color: var(--core);
 }
-.pro-nav { display: flex; gap: 0.9rem; overflow-x: auto; }
+.pro-nav { display: flex; gap: 0.9rem; flex-wrap: wrap; overflow: visible; }
 .pro-nav a { color: var(--cold); text-decoration: none; white-space: nowrap; }
 .pro-nav a[aria-current="page"] { color: var(--ink); }
 .pro-family { margin-left: auto; color: var(--cold); text-decoration: none; white-space: nowrap; }
@@ -780,18 +781,19 @@ html:not([data-voice]) .when-adult { display: none; }
 .pro-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; min-width: 52rem; }
 .pro-table th, .pro-table td { text-align: left; vertical-align: top; padding: 0.55rem 0.65rem; border-bottom: 1px solid var(--line); }
 .pro-table th button { background: none; border: 0; padding: 0; color: var(--cold); text-align: left; }
-.pro-cell { display: grid; gap: 0.2rem; }
-.pro-cite { display: grid; color: var(--ink-quiet); font-size: 0.78rem; line-height: 1.3; }
-.pro-asof { white-space: nowrap; }
-.pro-flag { display: block; color: var(--core); font-size: 0.78rem; max-width: 12rem; }
+.pro-cell { display: grid; gap: 0.35rem; min-width: 0; }
+.pro-cite { display: grid; color: var(--ink-quiet); font-size: 0.78rem; line-height: 1.35; min-width: 0; overflow-wrap: anywhere; }
+.pro-asof { white-space: normal; }
+.pro-flag { display: block; color: var(--core); font-size: 0.78rem; max-width: 100%; line-height: 1.35; }
 .pro-foot { color: var(--cold); padding: 1.5rem 0 2.5rem; }
 .pro-app { overflow-x: hidden; }
-.pro-nav { flex-wrap: wrap; }
+.pro-nav { flex-wrap: wrap; overflow: visible; }
 .pro-nav a, .pro-family, .pro-links a, .pro-card h2 a, .pro-feed a, .pro-app .btn, .pro-check, .pro-select, .pro-table th button { min-height: 44px; }
 .pro-nav a, .pro-family, .pro-links a, .pro-card h2 a, .pro-check, .pro-table th button { display: inline-flex; align-items: center; }
 .pro-mobile-list, .pro-manifest, .pro-trends, .pro-rule-list { display: grid; gap: 0.4rem; }
 .pro-scroll { display: none; }
 .pro-chart { color: var(--core); max-width: 16rem; margin: 0.4rem 0 0; }
+.pro-chart-empty { margin: 0.15rem 0 0; }
 .pro-chart svg { width: 100%; height: auto; display: block; }
 .pro-chart-labels { display: grid; grid-template-columns: repeat(12, 1fr); color: var(--ink-quiet); font-size: 0.72rem; }
 .pro-feed { list-style: none; margin: 0.4rem 0 0; padding: 0; }
@@ -819,8 +821,9 @@ html:not([data-voice]) .when-adult { display: none; }
 .pro-check { display: flex; align-items: center; gap: 0.5rem; }
 .pro-cards, .pro-index { list-style: none; margin: 0.6rem 0 0; padding: 0; }
 .pro-facts { display: grid; gap: 0.9rem; margin: 1rem 0; }
+.pro-facts > div { min-width: 0; }
 .pro-facts dt { color: var(--ink-quiet); }
-.pro-facts dd { margin: 0.15rem 0 0; }
+.pro-facts dd { margin: 0.15rem 0 0; min-width: 0; }
 .pro-talk { max-width: 40rem; }
 .pro-note-preview {
   white-space: pre-wrap;
@@ -958,7 +961,11 @@ body:has(.pro-app) { padding-bottom: 0; }
 }
 .mission-line::before { left: 0; background: linear-gradient(90deg, var(--void), transparent); }
 .mission-line::after { right: 0; background: linear-gradient(270deg, var(--void), transparent); }
-.pro-stat-row { display: flex; gap: 1.4rem; flex-wrap: wrap; margin: 0.4rem 0 0.6rem; }
+.pro-stat-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.9rem; margin: 0.4rem 0 0.6rem; }
+.pro-stat-row > * { min-width: 0; }
+@media (min-width: 700px) {
+  .pro-stat-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.4rem; }
+}
 .mission-switch { min-height: 44px; }
 .mission-family .mission-switch { position: fixed; top: 0.8rem; right: 0.8rem; z-index: 30; }
 @media (max-width: 899px) {

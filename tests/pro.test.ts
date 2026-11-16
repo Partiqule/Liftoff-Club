@@ -5,7 +5,7 @@ import { companyBrief, constellationBrief, talkStaysInside, talkTrack } from '@/
 import { filterManifest, isRideshareLaunch, manifestCsv, manifestFacts, rideshareSlot } from '@/lib/pro/manifest-intel'
 import { CATALOG_LAG_NOTE, isFlownSuccess, monthlyCounts, summarizeHistory, type HistoryLaunch } from '@/lib/pro/history'
 import { formatLaunchWhen, formatMountain } from '@/lib/pro/time'
-import { trackerRows, type TrackerHistory, type TrackerSource } from '@/lib/pro/tracker'
+import { ORBIT_ABOVE_PLAN_NOTE, trackerRows, type TrackerHistory, type TrackerSource } from '@/lib/pro/tracker'
 import {
   addTarget,
   buildFeed,
@@ -119,6 +119,24 @@ describe('pro tracker', () => {
     expect(row.inOrbit.note).toBe(CATALOG_LAG_NOTE)
     const [caughtUp] = trackerRows([source({ latestLaunchDate: '2026-11-13' })], [], '2026-11-15', Date.parse('2026-11-15T18:00:00Z'), history)
     expect(caughtUp.inOrbit.note).toBeNull()
+  })
+
+  it('notes when more satellites are in orbit than the authorized count', () => {
+    const iridium = CONSTELLATIONS.find((item) => item.id === 'iridium')
+    const history: TrackerHistory = { fetchedAt: '2026-11-15T12:00:00Z', byId: { iridium: [] } }
+    const [row] = trackerRows(
+      [source({ id: 'iridium', name: 'Iridium', inOrbit: 80, authorized: iridium?.satellites ?? null, latestLaunchDate: '2019-01-11', catalogAsOf: '2026-11-15' })],
+      [],
+      '2026-11-15',
+      Date.parse('2026-11-15T18:00:00Z'),
+      history,
+    )
+    expect(row.inOrbit.text).toBe('80 satellites')
+    expect(row.inOrbit.note).toBe(ORBIT_ABOVE_PLAN_NOTE)
+    expect(row.inOrbit.note).not.toMatch(/[—–]|-/)
+    expect(row.authorized.text).toContain('66')
+    expect(row.months).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    expect(row.launchesThisYear.text).toBe('0 launches')
   })
 })
 

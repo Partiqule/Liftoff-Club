@@ -13,9 +13,9 @@ export function catalogCsvUrl(group: string): string {
   return `https://celestrak.org/satcat/records.php?GROUP=${encodeURIComponent(group)}&FORMAT=CSV`
 }
 
-/** The full Starlink catalog is too large. Other named groups stay. */
+/** Named SATCAT groups, including Starlink. Sky passes still avoid the full Starlink element file. */
 export function catalogGroupAllowed(group: string): boolean {
-  return group.toLowerCase() !== 'starlink'
+  return group.trim().length > 0
 }
 
 /** Any answer other than 200 stops further CelesTrak calls, except a missing launch set. */
