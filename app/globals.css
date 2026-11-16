@@ -273,6 +273,8 @@ h3 { font-size: 1.25rem; line-height: 1.2; }
 .tonight h1 .dir { display: block; color: var(--core); font-weight: 500; }
 .tonight h1 .when { display: block; }
 .hero-actions { display: flex; flex-wrap: wrap; gap: 1.25rem; align-items: center; margin-top: 1.4rem; }
+.soon-card { margin: 1.5rem 0 0.2rem; padding-top: 0.9rem; border-top: 1px solid var(--line); max-width: var(--measure); }
+.soon-card h2 { margin: 0.15rem 0 0.45rem; font-size: clamp(1.7rem, 4vw, 2.2rem); }
 .hero-next { margin: 0.8rem 0 0; max-width: var(--measure); }
 .hero-next a { text-decoration: none; }
 .sky-skeleton { display: grid; gap: 0.7rem; margin: 0.6rem 0 1rem; max-width: 28rem; }

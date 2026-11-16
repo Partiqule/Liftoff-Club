@@ -14,6 +14,7 @@ import { zoneAbbrev } from '@/lib/pro/time'
 import { formatClock } from '@/lib/time'
 import { useActiveZone } from '@/components/use-zone'
 import { pickNext } from '@/lib/schedule'
+import { SkyFinderSoon } from '@/components/sky-finder-soon'
 
 export function Tonight() {
   const { settings, briefs, passes, skyState, skyNotice, weather } = useClub()
@@ -87,6 +88,7 @@ export function Tonight() {
           Plan the viewing
         </Link>
       </div>
+      <SkyFinderSoon />
     </section>
   )
 }
