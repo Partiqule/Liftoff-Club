@@ -49,6 +49,7 @@ export type TrackerRow = {
 }
 
 const BLANK = 'No public figure yet'
+export const ORBIT_ABOVE_PLAN_NOTE = 'This count includes spare satellites and retired satellites that are still in orbit.'
 const DATE = /^\d{4}-\d{2}-\d{2}$/
 const LL2 = 'https://thespacedevs.com/llapi'
 
@@ -111,7 +112,8 @@ function rowFor(
   const summary = historyReady && flights ? summarizeHistory(pattern, flights, year) : null
   const behind = catalogIsBehind(summary?.last?.net, source.latestLaunchDate)
   const inOrbit = catalogNumber(source.inOrbit, source.group, source.catalogAsOf, 'satellites')
-  if (behind) inOrbit.note = CATALOG_LAG_NOTE
+  const orbitNotes = [behind ? CATALOG_LAG_NOTE : null, abovePlanNote(source)].filter((item): item is string => Boolean(item))
+  if (orbitNotes.length > 0) inOrbit.note = orbitNotes.join(' ')
   return {
     id: source.id,
     name: source.name,
@@ -179,6 +181,13 @@ function nextLaunch(source: TrackerSource, launches: Launch[], now: number): Lau
   })
   matched.sort((a, b) => (a.net ?? '9999').localeCompare(b.net ?? '9999'))
   return matched[0] ?? null
+}
+
+function abovePlanNote(source: TrackerSource): string | null {
+  const plan = source.authorized
+  if (source.inOrbit == null || !plan || plan.unit !== 'satellites') return null
+  if (source.inOrbit <= plan.value) return null
+  return ORBIT_ABOVE_PLAN_NOTE
 }
 
 function catalogNumber(value: number | null, group: string, asOf: string | null, unit: string): TrackerCell {

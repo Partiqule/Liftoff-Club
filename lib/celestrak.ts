@@ -9,7 +9,8 @@ import { CELESTRAK_FRESH_MS, celestrakShouldHalt } from '@/lib/celestrak-query'
  * CelesTrak asks machines to stop on a block or a server error, especially 403.
  * One of those answers closes further requests in this process and for the cooldown on disk.
  * GP data is cached for a day, longer than the two hour update, so we do not refetch the same file.
- * The full Starlink group is never requested. Passes use the station plus one launch at most.
+ * Sky passes never request the full Starlink element file. They use the station plus one launch.
+ * The SATCAT group file is a separate catalog count and may include Starlink.
  */
 const COOL_MS = 12 * 60 * 60 * 1000
 const USER_AGENT = 'LiftoffClub/1.0 (family sky; cache 24h; +https://liftoffclub.app)'
@@ -24,7 +25,7 @@ export function celestrakHalted(now = Date.now()): boolean {
   return memoryHaltUntil > now
 }
 
-export async function celestrakText(url: string): Promise<string | null> {
+export async function celestrakText(url: string, options?: { tolerateTimeout?: boolean }): Promise<string | null> {
   if (celestrakHalted() || (await haltActive())) return null
   let response: Response
   try {
@@ -34,7 +35,7 @@ export async function celestrakText(url: string): Promise<string | null> {
       cache: 'no-store',
     })
   } catch {
-    await halt()
+    if (!options?.tolerateTimeout) await halt()
     return null
   }
   if (!response.ok) {

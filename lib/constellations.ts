@@ -36,7 +36,7 @@ async function readCache(): Promise<CacheFile | null> {
 
 async function fetchGroup(group: string, year: number): Promise<ConstellationCounts | null> {
   if (!catalogGroupAllowed(group) || celestrakHalted()) return null
-  const text = await celestrakText(catalogCsvUrl(group))
+  const text = await celestrakText(catalogCsvUrl(group), { tolerateTimeout: group.toLowerCase() === 'starlink' })
   if (!text) return null
   const records = parseCatalogCsv(text)
   if (records.length === 0) return null

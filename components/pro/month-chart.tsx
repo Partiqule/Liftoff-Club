@@ -1,8 +1,15 @@
 const LABELS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']
 
 export function MonthChart({ counts, label }: { counts: number[]; label: string }) {
-  const max = Math.max(1, ...counts)
   const total = counts.reduce((sum, value) => sum + value, 0)
+  if (total === 0) {
+    return (
+      <figure className="pro-chart pro-chart-empty">
+        <figcaption className="meta">No flights in the public record for these months.</figcaption>
+      </figure>
+    )
+  }
+  const max = Math.max(1, ...counts)
   return (
     <figure className="pro-chart">
       <svg viewBox="0 0 240 80" role="img" aria-label={`${label}. ${total} flights this year.`}>
@@ -16,7 +23,7 @@ export function MonthChart({ counts, label }: { counts: number[]; label: string 
           <span key={month}>{month}</span>
         ))}
       </div>
-      <figcaption className="meta">{total === 0 ? 'No flights in the public record for these months.' : `${total} flights in this chart.`}</figcaption>
+      <figcaption className="meta">{`${total} flights in this chart.`}</figcaption>
     </figure>
   )
 }
