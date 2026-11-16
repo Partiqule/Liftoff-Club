@@ -135,12 +135,23 @@ async function fetchLive(): Promise<LaunchBoard> {
     if (launches.length < PAGE_SIZE) break
     if (total != null && upcoming >= total) break
   }
-  for (const url of [...NAMED_UPCOMING, ...RECENT_TESTS]) {
+  for (const url of NAMED_UPCOMING) {
     try {
       const body = await fetchJson(url)
-      for (const launch of normalizeLaunches(body.results)) seen.set(launch.id, launch)
+      for (const launch of normalizeLaunches(body.results)) seen.set(launch.id, { ...launch, historical: false })
     } catch {
-      // The upcoming pages are the board. Recent test flights are added when the feed allows another request.
+      // The upcoming pages are the board. Named searches fill gaps when the feed allows another request.
+    }
+  }
+  for (const url of RECENT_TESTS) {
+    try {
+      const body = await fetchJson(url)
+      for (const launch of normalizeLaunches(body.results)) {
+        if (seen.has(launch.id)) continue
+        seen.set(launch.id, { ...launch, historical: true })
+      }
+    } catch {
+      // Past test flights stay off the next launch pick. They are added only when the feed allows another request.
     }
   }
   const launches = [...seen.values()].sort((a, b) => {

@@ -13,6 +13,7 @@ import { LocalTime } from '@/components/local-time'
 import { zoneAbbrev } from '@/lib/pro/time'
 import { formatClock } from '@/lib/time'
 import { useActiveZone } from '@/components/use-zone'
+import { pickNext } from '@/lib/schedule'
 
 export function Tonight() {
   const { settings, briefs, passes, skyState, skyNotice, weather } = useClub()
@@ -20,7 +21,7 @@ export function Tonight() {
   const place = watchingPlace(settings.location)
   const zone = useActiveZone()
   const town = place.label.split(',')[0]?.trim() || place.label
-  const next = briefs.find((item) => item.featured) ?? briefs[0]
+  const next = pickNext(briefs, now)
   const lead = skyState === 'ready' ? leadPass(passes, now) : null
   const judgement = lead ? skyAt(weather, lead.peak) : null
   const glow = judgement?.call === 'nogo' ? 'fade' : judgement?.call === 'go' ? 'strong' : 'mid'
@@ -69,7 +70,11 @@ export function Tonight() {
             </span>
           ) : null}
         </p>
-      ) : null}
+      ) : (
+        <p className="hero-next">
+          Next launch not posted yet. <Link href="/launches">See the full schedule</Link>
+        </p>
+      )}
       {passes.some(isVisibleTrain) ? (
         <p className="note">
           A recent Starlink train may be visible. Times are approximate.{' '}

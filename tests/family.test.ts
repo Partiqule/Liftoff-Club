@@ -3,7 +3,7 @@ import { dueAlerts } from '@/lib/alerts'
 import { explainLaunch, templateExplain } from '@/lib/explain'
 import { normalizeLaunch } from '@/lib/normalize'
 import { isQuietHour } from '@/lib/quiet'
-import { isStillAhead } from '@/lib/schedule'
+import { isStillAhead, pickNext } from '@/lib/schedule'
 import { stageScript } from '@/lib/stages'
 import { defaultSettings } from '@/lib/settings'
 import { seeLaunch } from '@/lib/visibility'
@@ -144,5 +144,32 @@ describe('launch day lines', () => {
   it('drops launches that already succeeded', () => {
     expect(isStillAhead(makeLaunch({ statusAbbrev: 'Success', statusName: 'Launch Successful' }))).toBe(false)
     expect(isStillAhead(makeLaunch(), Date.parse('2026-11-18T03:00:00Z'))).toBe(true)
+  })
+
+  it('does not pick a past Starship history row as the next launch', () => {
+    const now = Date.parse('2026-11-15T12:00:00Z')
+    const past = makeLaunch({
+      id: 'flight-8',
+      name: 'Starship | Flight 8',
+      net: '2025-03-06T23:30:00Z',
+      windowEnd: '2025-03-06T23:30:00Z',
+      statusName: 'In Flight',
+      statusAbbrev: 'Flight',
+      featured: true,
+      historical: true,
+    })
+    const future = makeLaunch({
+      id: 'soon',
+      name: 'Falcon 9 | Starlink',
+      net: '2026-11-20T00:00:00Z',
+      windowEnd: '2026-11-20T01:00:00Z',
+      featured: true,
+      historical: false,
+    })
+    expect(isStillAhead(past, now)).toBe(false)
+    expect(isStillAhead({ ...past, historical: false }, now)).toBe(false)
+    expect(pickNext([past, future], now)?.id).toBe('soon')
+    expect(pickNext([past], now)).toBeNull()
+    expect(pickNext([{ ...past, historical: false, net: '2026-12-01T00:00:00Z', windowEnd: '2026-12-01T00:00:00Z' }], now)?.name).toContain('Starship')
   })
 })

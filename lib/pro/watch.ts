@@ -1,4 +1,5 @@
 import { companySlug } from '@/lib/companies'
+import { clockIsFuture } from '@/lib/schedule'
 import type { Launch } from '@/lib/types'
 
 export const PRO_STORE_KEY = 'liftoff-club-pro-v1'
@@ -282,10 +283,8 @@ export function evaluateAlerts(
 }
 
 function stillAhead(launch: Launch, now: number): boolean {
-  if (!launch.net) return true
-  const when = Date.parse(launch.net)
-  if (!Number.isFinite(when)) return true
-  return when > now - 30 * 60 * 1000
+  if (launch.historical) return false
+  return clockIsFuture(launch, now)
 }
 
 function readTarget(value: unknown): WatchTarget | null {
