@@ -38,8 +38,12 @@ function subscribePermission(listener: () => void) {
 }
 
 function permissionNow(): NotificationPermission | 'unsupported' {
-  if (typeof Notification === 'undefined') return 'unsupported'
-  return Notification.permission
+  try {
+    if (typeof Notification === 'undefined') return 'unsupported'
+    return Notification.permission
+  } catch {
+    return 'unsupported'
+  }
 }
 
 type SkyState = 'idle' | 'loading' | 'ready' | 'error'
@@ -82,10 +86,14 @@ export function ClubProvider({ briefs, children }: { briefs: LaunchBrief[]; chil
   }, [settings])
 
   useEffect(() => {
-    if (!('serviceWorker' in navigator)) return
-    navigator.serviceWorker.register('/sw.js').catch(() => {
-      // Alerts still work from an open tab without the worker.
-    })
+    try {
+      if (!('serviceWorker' in navigator) || !navigator.serviceWorker?.register) return
+      navigator.serviceWorker.register('/sw.js').catch(() => {
+        // Alerts still work from an open tab without the worker.
+      })
+    } catch {
+      // A web view can omit the worker. The page still renders.
+    }
   }, [])
 
   const lat = settings.location?.lat

@@ -80,9 +80,14 @@ function subscribePush(listener: () => void) {
 }
 
 async function currentSubscription(): Promise<PushSubscription | null> {
-  if (!('serviceWorker' in navigator)) return null
-  const registration = await navigator.serviceWorker.ready
-  return registration.pushManager.getSubscription()
+  try {
+    if (typeof navigator === 'undefined' || !('serviceWorker' in navigator) || !navigator.serviceWorker) return null
+    const registration = await navigator.serviceWorker.ready
+    if (!registration?.pushManager?.getSubscription) return null
+    return await registration.pushManager.getSubscription()
+  } catch {
+    return null
+  }
 }
 
 async function syncSubscription(input: { kidsMode: boolean; quietStart: string; quietEnd: string; timezone: string; launchIds: string[] }) {
@@ -118,9 +123,12 @@ export function PhoneAlerts() {
 
   async function allow() {
     if (!pushEnabled || settings.kidsMode || ios) return
+    if (typeof Notification === 'undefined' || typeof Notification.requestPermission !== 'function') return
+    if (!('serviceWorker' in navigator) || !navigator.serviceWorker?.register) return
     const permission = await Notification.requestPermission()
     if (permission !== 'granted') return
     const registration = await navigator.serviceWorker.register('/sw.js')
+    if (!registration.pushManager?.subscribe) return
     const config = (await fetch('/api/push/config').then((response) => response.json())) as { enabled?: boolean; publicKey?: string }
     if (!config.enabled || !config.publicKey) return
     const key = urlBase64ToUint8Array(config.publicKey)
@@ -156,7 +164,11 @@ export function PhoneAlerts() {
     }
     writeFollowedLaunchIds([])
     clearClubStorage()
-    window.localStorage.removeItem(PUSH_LAUNCHES_KEY)
+    try {
+      window.localStorage?.removeItem(PUSH_LAUNCHES_KEY)
+    } catch {
+      // Storage can be missing in a web view.
+    }
     updateSettings(defaultSettings)
   }
 

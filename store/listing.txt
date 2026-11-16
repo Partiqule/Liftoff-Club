@@ -5,7 +5,7 @@ Subtitle
 Launches and the night sky
 
 Promotional text
-A family companion for rocket launches and visible passes. Free during early access for the industry desk.
+A family companion for rocket launches and the night sky. Look up together from your town.
 
 Description
 Look up together. Liftoff Club shows the public launch board, a plain answer about whether you might see a flight from your town, and the night sky passes that are worth stepping outside for.
@@ -15,7 +15,7 @@ Kids mode is on until a grown up turns it off. Quiet hours keep alerts from arri
 Liftoff Club is an independent project. It is not affiliated with or endorsed by any launch provider or agency. Company and agency names only identify launches and belong to their owners.
 
 Keywords
-launch,rocket,night sky,starlink,spacex,kids,countdown,orbit
+launch,rocket,night sky,satellite,space station,kids,countdown,orbit,stargazing,astronomy
 
 Support URL
 https://liftoffclub.app/support

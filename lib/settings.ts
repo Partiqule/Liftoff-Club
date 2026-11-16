@@ -90,8 +90,12 @@ export function loadSettings(): Settings {
 }
 
 export function saveSettings(settings: Settings): void {
-  if (typeof window === 'undefined') return
-  window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings))
+  if (typeof window === 'undefined' || !window.localStorage) return
+  try {
+    window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings))
+  } catch {
+    // A web view can refuse storage. The page still renders.
+  }
 }
 
 export function loadFired(): string[] {
@@ -106,14 +110,22 @@ export function loadFired(): string[] {
 }
 
 export function saveFired(ids: string[]): void {
-  if (typeof window === 'undefined') return
-  window.localStorage.setItem(FIRED_KEY, JSON.stringify(ids.slice(-200)))
+  if (typeof window === 'undefined' || !window.localStorage) return
+  try {
+    window.localStorage.setItem(FIRED_KEY, JSON.stringify(ids.slice(-200)))
+  } catch {
+    // A web view can refuse storage.
+  }
 }
 
 export function clearClubStorage(): void {
-  if (typeof window === 'undefined') return
-  window.localStorage.removeItem(SETTINGS_KEY)
-  window.localStorage.removeItem(FIRED_KEY)
-  window.localStorage.removeItem(FOLLOWS_KEY)
-  window.localStorage.removeItem(WORDS_KEY)
+  if (typeof window === 'undefined' || !window.localStorage) return
+  try {
+    window.localStorage.removeItem(SETTINGS_KEY)
+    window.localStorage.removeItem(FIRED_KEY)
+    window.localStorage.removeItem(FOLLOWS_KEY)
+    window.localStorage.removeItem(WORDS_KEY)
+  } catch {
+    // A web view can refuse storage.
+  }
 }

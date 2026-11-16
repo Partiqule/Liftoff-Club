@@ -9,10 +9,21 @@ function subscribe() {
   return () => {}
 }
 
+const FALLBACK_ZONES = ['UTC', 'America/Denver', 'America/New_York', 'America/Los_Angeles', 'Europe/London', 'Asia/Tokyo']
+
+export function timeZoneChoices(): string[] {
+  try {
+    const intl = Intl as typeof Intl & { supportedValuesOf?: (key: string) => string[] }
+    if (typeof intl.supportedValuesOf !== 'function') return FALLBACK_ZONES
+    const values = intl.supportedValuesOf('timeZone')
+    return Array.isArray(values) && values.length > 0 ? values : FALLBACK_ZONES
+  } catch {
+    return FALLBACK_ZONES
+  }
+}
+
 function zones(): string[] {
-  const intl = Intl as typeof Intl & { supportedValuesOf?: (key: string) => string[] }
-  if (typeof intl.supportedValuesOf === 'function') return intl.supportedValuesOf('timeZone')
-  return ['UTC', 'America/Denver', 'America/New_York', 'America/Los_Angeles', 'Europe/London', 'Asia/Tokyo']
+  return timeZoneChoices()
 }
 
 export function ZonePicker() {

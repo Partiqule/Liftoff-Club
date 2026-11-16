@@ -3,9 +3,23 @@ const EMPTY_IDS: string[] = []
 let cachedRaw: string | null = null
 let cachedIds: string[] = EMPTY_IDS
 
+export function readStorageItem(read: () => string | null): string | null {
+  try {
+    return read()
+  } catch {
+    return null
+  }
+}
+
+/** iPhone Safari that is not already installed. A missing media query must not throw. */
+export function homeScreenNeeded(userAgent: string, standalone: boolean, mediaMatches: boolean | null): boolean {
+  const ios = /iphone|ipad|ipod/i.test(userAgent)
+  return ios && !standalone && mediaMatches !== true
+}
+
 export function readFollowedLaunchIds(): string[] {
-  if (typeof window === 'undefined') return cachedIds
-  const raw = window.localStorage.getItem(PUSH_LAUNCHES_KEY)
+  if (typeof window === 'undefined' || !window.localStorage) return cachedIds
+  const raw = readStorageItem(() => window.localStorage.getItem(PUSH_LAUNCHES_KEY))
   if (raw === cachedRaw) return cachedIds
   cachedRaw = raw
   try {
@@ -19,12 +33,16 @@ export function readFollowedLaunchIds(): string[] {
 }
 
 export function writeFollowedLaunchIds(ids: string[]): void {
-  if (typeof window === 'undefined') return
+  if (typeof window === 'undefined' || !window.localStorage) return
   const next = [...new Set(ids)].slice(0, 40)
   cachedIds = next
   cachedRaw = JSON.stringify(next)
-  window.localStorage.setItem(PUSH_LAUNCHES_KEY, cachedRaw)
-  window.dispatchEvent(new Event('liftoff-push'))
+  try {
+    window.localStorage.setItem(PUSH_LAUNCHES_KEY, cachedRaw)
+    window.dispatchEvent(new Event('liftoff-push'))
+  } catch {
+    // A web view can refuse storage. The page still renders.
+  }
 }
 
 export function urlBase64ToUint8Array(value: string): Uint8Array {
@@ -36,8 +54,12 @@ export function urlBase64ToUint8Array(value: string): Uint8Array {
 }
 
 export function iosNeedsHomeScreen(): boolean {
-  if (typeof navigator === 'undefined') return false
-  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent)
-  const standalone = window.matchMedia('(display-mode: standalone)').matches || ('standalone' in navigator && Boolean((navigator as Navigator & { standalone?: boolean }).standalone))
-  return ios && !standalone
+  try {
+    if (typeof navigator === 'undefined' || typeof window === 'undefined') return false
+    const standalone = 'standalone' in navigator && Boolean((navigator as Navigator & { standalone?: boolean }).standalone)
+    const media = typeof window.matchMedia === 'function' ? window.matchMedia('(display-mode: standalone)') : null
+    return homeScreenNeeded(navigator.userAgent || '', standalone, media ? media.matches : null)
+  } catch {
+    return false
+  }
 }

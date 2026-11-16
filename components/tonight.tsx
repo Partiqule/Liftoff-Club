@@ -31,8 +31,8 @@ export function Tonight() {
 
   return (
     <section className={`tonight wrap light-${glow}`} aria-busy={skyState === 'loading' || skyState === 'idle'}>
-      <Trail glow={glow} span="hero" />
       <p className="kicker">Tonight over {town}</p>
+      <Trail glow={glow} span="hero" />
       <p className="flourish">Ad astra</p>
       <h1>
         Tonight over {town}
