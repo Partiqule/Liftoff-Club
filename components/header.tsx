@@ -22,7 +22,7 @@ export function Header() {
   const { settings, updateSettings } = useClub()
   const zone = useActiveZone()
   const kids = settings.kidsMode
-  const town = settings.location?.label.split(',')[0] || 'Set your town'
+  const town = settings.location?.label.split(',')[0] || 'Set your location'
   const [menuOpen, setMenuOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
 
@@ -77,7 +77,7 @@ export function Header() {
               Pro
             </Link>
             <Link className="place-chip" href="/settings#place">
-              {town} · {zoneAbbrev(zone)}
+              {settings.location ? `${town} · ${zoneAbbrev(zone)}` : 'Set your location'}
             </Link>
             <button
               className="switch"

@@ -21,10 +21,11 @@ describe('plain sky words', () => {
 })
 
 describe('night red', () => {
-  it('starts in Centennial until a saved town or a tap replaces it', () => {
-    expect(defaultSettings.location?.label).toContain('Centennial')
-    expect(watchingPlace(null).timezone).toBe('America/Denver')
-    expect(sanitizeSettings({}).location?.label).toContain('Centennial')
+  it('does not assume a town until this browser saves one', () => {
+    expect(defaultSettings.location).toBeNull()
+    expect(watchingPlace(null)).toBeNull()
+    expect(sanitizeSettings({}).location).toBeNull()
+    expect(sanitizeSettings({ location: { label: 'Cocoa Beach', lat: 28.3, lon: -80.6, timezone: 'America/New_York', source: 'search' } }).location?.label).toBe('Cocoa Beach')
   })
 
   it('stays off unless this browser saved it', () => {

@@ -10,8 +10,13 @@ import type { WeatherBundle } from '@/lib/weather'
 
 const settingsListeners = new Set<() => void>()
 let currentSettings: Settings = defaultSettings
+let storageRead = false
 
 function readSettings(): Settings {
+  if (!storageRead && typeof window !== 'undefined') {
+    storageRead = true
+    currentSettings = loadSettings()
+  }
   return currentSettings
 }
 
@@ -74,8 +79,7 @@ export function ClubProvider({ briefs, children }: { briefs: LaunchBrief[]; chil
   const [weather, setWeather] = useState<WeatherBundle | null>(null)
 
   useEffect(() => {
-    const stored = loadSettings()
-    commitSettings({ ...stored, location: stored.location ?? defaultSettings.location })
+    commitSettings(loadSettings())
   }, [])
 
   useEffect(() => {
@@ -193,9 +197,12 @@ export function ClubProvider({ briefs, children }: { briefs: LaunchBrief[]; chil
   }, [])
 
   const setLocation = useCallback((place: Place | null) => {
-    const next = place ?? defaultSettings.location
-    commitSettings({ ...readSettings(), location: next })
-    setSkyState('loading')
+    commitSettings({ ...readSettings(), location: place })
+    setSkyState(place ? 'loading' : 'idle')
+    if (!place) {
+      setPasses([])
+      setWeather(null)
+    }
   }, [])
 
   const enableNotifications = useCallback(async () => {

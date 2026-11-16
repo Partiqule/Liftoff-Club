@@ -5,7 +5,7 @@ import type { Place } from '@/lib/types'
  * A paid plan is required before Pro ever charges.
  */
 
-/** Home town for first paint, before a saved place or a tap on Use my location. */
+/** A place someone can search for. It is not the default for other visitors. */
 export const CENTENNIAL: Place = {
   label: 'Centennial, Colorado',
   lat: 39.5807,
@@ -14,8 +14,8 @@ export const CENTENNIAL: Place = {
   source: 'search',
 }
 
-export function watchingPlace(place: Place | null | undefined): Place {
-  return place ?? CENTENNIAL
+export function watchingPlace(place: Place | null | undefined): Place | null {
+  return place ?? null
 }
 
 type GeoResult = {

@@ -15,13 +15,14 @@ import { formatClock } from '@/lib/time'
 import { useActiveZone } from '@/components/use-zone'
 import { pickNext } from '@/lib/schedule'
 import { SkyFinderSoon } from '@/components/sky-finder-soon'
+import { LocationPrompt } from '@/components/location-prompt'
 
 export function Tonight() {
   const { settings, briefs, passes, skyState, skyNotice, weather } = useClub()
   const now = useNow()
   const place = watchingPlace(settings.location)
   const zone = useActiveZone()
-  const town = place.label.split(',')[0]?.trim() || place.label
+  const town = place?.label.split(',')[0]?.trim() || place?.label || ''
   const next = pickNext(briefs, now)
   const lead = skyState === 'ready' ? leadPass(passes, now) : null
   const judgement = lead ? skyAt(weather, lead.peak) : null
@@ -32,13 +33,14 @@ export function Tonight() {
 
   return (
     <section className={`tonight wrap light-${glow}`} aria-busy={skyState === 'loading' || skyState === 'idle'}>
-      <p className="kicker">Tonight over {town}</p>
+      <p className="kicker">{place ? `Tonight over ${town}` : 'Set your location'}</p>
       <Trail glow={glow} span="hero" />
       <p className="flourish">Ad astra</p>
       <h1>
-        Tonight over {town}
+        {place ? `Tonight over ${town}` : 'Tonight'}
         {next ? <span className="when">{next.name}</span> : null}
       </h1>
+      {place ? <p className="meta">Watching from {place.label}</p> : <LocationPrompt />}
       {who && direction && clock ? (
         <p className="lede">
           {who} {direction} at {clock}.
