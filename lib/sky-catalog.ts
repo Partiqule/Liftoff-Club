@@ -111,16 +111,21 @@ export async function refreshSkyCatalog(): Promise<{ ok: boolean; objects: numbe
 
 async function readStarlink(dates: { dates: Record<string, string>; designators: string[] | null }): Promise<SkyElement[] | null> {
   const fromLaunches = await readByDesignator(dates)
-  if (fromLaunches && fromLaunches.length > 0) return fromLaunches
   const recentText = await readText(SKY_RECENT_URL, 20_000)
-  if (!recentText) return fromLaunches
-  try {
-    const rows = recentText.trim().startsWith('[') ? (JSON.parse(recentText) as unknown[]) : parseGpCsv(recentText)
-    const trains = trainsFromGp(rows, dates.dates)
-    return trains.length > 0 ? toElements(trains) : fromLaunches
-  } catch {
-    return fromLaunches
+  let trains: ParsedTle[] = []
+  if (recentText) {
+    try {
+      const rows = recentText.trim().startsWith('[') ? (JSON.parse(recentText) as unknown[]) : parseGpCsv(recentText)
+      trains = trainsFromGp(rows, dates.dates)
+    } catch {
+      trains = []
+    }
   }
+  const picked = trains.length > 0 ? toElements(trains) : fromLaunches
+  console.info(
+    `sky starlink des ${dates.designators?.join(' ') || 'none'} csv ${recentText?.length ?? 0} names ${(recentText?.match(/STARLINK/gi) ?? []).length} trains ${trains.length} launches ${fromLaunches?.length ?? 'null'}`,
+  )
+  return picked
 }
 
 async function readByDesignator(dates: { dates: Record<string, string>; designators: string[] | null }): Promise<SkyElement[] | null> {
