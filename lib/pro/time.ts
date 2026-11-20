@@ -10,6 +10,17 @@ export function zoneAbbrev(zone: string, date = new Date()): string {
   }
 }
 
+/** Settings sentence. With no town, skip the repeated UTC pair. */
+export function zoneStatusCopy(zone: string, mode: 'auto' | 'chosen', hasTown: boolean): string {
+  if (!hasTown && mode !== 'chosen') return 'Times follow this device.'
+  const abbrev = zoneAbbrev(zone).replace(/\s+/g, ' ').trim()
+  const id = zone.trim()
+  const same = abbrev.length === 0 || abbrev.toLowerCase() === id.toLowerCase()
+  const named = same ? abbrev || id : `${abbrev} (${id})`
+  const tail = mode === 'auto' ? 'That follows this device.' : 'You chose this zone.'
+  return `Times use ${named}. ${tail}`
+}
+
 export function isTimeZone(zone: string): boolean {
   try {
     Intl.DateTimeFormat('en-US', { timeZone: zone })

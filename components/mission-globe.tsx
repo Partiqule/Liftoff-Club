@@ -30,12 +30,12 @@ export function MissionGlobe({
             <circle cx="0" cy="0" r={DISC} />
           </clipPath>
         </defs>
-        <circle cx="0" cy="0" r={DISC} fill="#100e1c" />
+        <circle cx="0" cy="0" r={DISC} fill="#1a4a73" />
         <g clipPath="url(#mission-disk)">
           {landPaths.map((item) => (
-            <path key={item.key} d={item.d} fill={item.lit ? '#4a4368' : '#1c1830'} />
+            <path key={item.key} d={item.d} fill={item.lit ? '#e6d3b4' : '#8ea4b8'} />
           ))}
-          <path d={nightPath(sun, camera)} fill="#07060f" opacity="0.55" />
+          <path d={nightPath(sun, camera)} fill="#07060f" opacity="0.28" />
           {paths.map((d, index) => (
             <path key={index} d={d} fill="none" stroke="#f3d7b0" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" />
           ))}

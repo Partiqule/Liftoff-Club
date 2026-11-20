@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useSyncExternalStore } from 'react'
 import { useClub } from '@/components/club-provider'
-import { isTimeZone, zoneAbbrev } from '@/lib/pro/time'
+import { isTimeZone, zoneAbbrev, zoneStatusCopy } from '@/lib/pro/time'
 import { useActiveZone } from '@/components/use-zone'
 
 function subscribe() {
@@ -40,15 +40,13 @@ export function ZonePicker() {
   return (
     <div>
       <p className="kicker">Time zone</p>
-      <p className="lede">
-        Times use {zoneAbbrev(active)} ({active}). {settings.zoneMode === 'auto' ? 'That follows this device.' : 'You chose this zone.'}
-      </p>
+      <p className="lede">{zoneStatusCopy(active, settings.zoneMode, Boolean(settings.location))}</p>
       <button
         className="btn btn-quiet"
         type="button"
         onClick={() => updateSettings({ ...settings, zoneMode: 'auto' })}
       >
-        Use this device's zone
+        {"Use this device's zone"}
       </button>
       <label>
         Search time zones
