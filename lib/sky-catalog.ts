@@ -94,6 +94,7 @@ export async function refreshSkyCatalog(): Promise<{ ok: boolean; objects: numbe
     await writeShared(stored)
     memory = { expires: Date.now() + 10 * 60 * 1000, catalog: serve(stored, 'live') }
     const trains = [...new Set(objects.filter((object) => object.kind === 'starlink').map((object) => object.name))]
+    console.info(`sky refresh objects ${objects.length} starlink ${objects.filter((object) => object.kind === 'starlink').length}`)
     return { ok: true, objects: objects.length, starlink: objects.filter((object) => object.kind === 'starlink').length, trains }
   } catch {
     if (previousObjects.length > 0) {
@@ -111,7 +112,7 @@ export async function refreshSkyCatalog(): Promise<{ ok: boolean; objects: numbe
 async function readStarlink(dates: { dates: Record<string, string>; designators: string[] | null }): Promise<SkyElement[] | null> {
   const fromLaunches = await readByDesignator(dates)
   if (fromLaunches && fromLaunches.length > 0) return fromLaunches
-  const recentText = await celestrakText(SKY_RECENT_URL, { timeoutMs: 20_000 })
+  const recentText = await readText(SKY_RECENT_URL, 20_000)
   if (!recentText) return fromLaunches
   try {
     const rows = recentText.trim().startsWith('[') ? (JSON.parse(recentText) as unknown[]) : parseGpCsv(recentText)
@@ -128,7 +129,8 @@ async function readByDesignator(dates: { dates: Record<string, string>; designat
   for (const designator of dates.designators) {
     const url = starlinkLaunchUrl(designator)
     if (!url) continue
-    const rows = await readGp(url, 12_000)
+    const text = await readText(url, 12_000)
+    const rows = text ? parseJsonGp(text) : null
     if (!rows) continue
     const named = limitStarlinkGroups([rows.filter((sat) => /starlink/i.test(sat.name))], 12).map((sat) => ({
       ...sat,
@@ -178,6 +180,29 @@ async function launchDates(): Promise<{ dates: Record<string, string>; designato
 
 function toElements(sats: ParsedTle[]): SkyElement[] {
   return assembleSkyElements({ stations: [], hubble: [], visual: [], starlink: sats })
+}
+
+async function readText(url: string, timeoutMs: number): Promise<string | null> {
+  try {
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'LiftoffClub/1.0 (family sky; cache 24h; +https://liftoffclub.app)', Accept: 'application/json, text/csv;q=0.9' },
+      signal: AbortSignal.timeout(timeoutMs),
+      cache: 'no-store',
+    })
+    if (!response.ok) return null
+    return await response.text()
+  } catch {
+    return null
+  }
+}
+
+function parseJsonGp(text: string): ParsedTle[] | null {
+  try {
+    const rows = parseGpJson(JSON.parse(text))
+    return rows.length > 0 ? rows : null
+  } catch {
+    return null
+  }
 }
 
 async function readGp(url: string, timeoutMs: number): Promise<ParsedTle[] | null> {
