@@ -5,6 +5,7 @@ import path from 'node:path'
 import { cache } from 'react'
 import { celestrakText } from '@/lib/celestrak'
 import { starlinkLaunchUrl } from '@/lib/celestrak-query'
+import { getLaunches } from '@/lib/launches'
 import { runtimeCachePath } from '@/lib/runtime-cache'
 import {
   SKY_HUBBLE_URL,
@@ -108,16 +109,20 @@ export async function refreshSkyCatalog(): Promise<{ ok: boolean; objects: numbe
 }
 
 async function readStarlink(dates: { dates: Record<string, string>; designators: string[] | null }): Promise<SkyElement[] | null> {
-  const recentText = await celestrakText(SKY_RECENT_URL, { timeoutMs: 25_000 })
-  if (recentText) {
-    try {
-      const rows = recentText.trim().startsWith('[') ? (JSON.parse(recentText) as unknown[]) : parseGpCsv(recentText)
-      const trains = trainsFromGp(rows, dates.dates)
-      if (trains.length > 0) return toElements(trains)
-    } catch {
-      // Fall through to one launch file at a time.
-    }
+  const fromLaunches = await readByDesignator(dates)
+  if (fromLaunches && fromLaunches.length > 0) return fromLaunches
+  const recentText = await celestrakText(SKY_RECENT_URL, { timeoutMs: 20_000 })
+  if (!recentText) return fromLaunches
+  try {
+    const rows = recentText.trim().startsWith('[') ? (JSON.parse(recentText) as unknown[]) : parseGpCsv(recentText)
+    const trains = trainsFromGp(rows, dates.dates)
+    return trains.length > 0 ? toElements(trains) : fromLaunches
+  } catch {
+    return fromLaunches
   }
+}
+
+async function readByDesignator(dates: { dates: Record<string, string>; designators: string[] | null }): Promise<SkyElement[] | null> {
   if (!dates.designators) return null
   const groups: ParsedTle[][] = []
   for (const designator of dates.designators) {
@@ -136,31 +141,39 @@ async function readStarlink(dates: { dates: Record<string, string>; designators:
 }
 
 async function launchDates(): Promise<{ dates: Record<string, string>; designators: string[] | null }> {
+  const rows: Array<{ name?: string; net?: string; statusName?: string; designator?: string }> = []
+  try {
+    const board = await getLaunches()
+    for (const launch of board.launches) {
+      if (!launch.launchDesignator || !/starlink/i.test(launch.name)) continue
+      rows.push({ name: launch.name, net: launch.net ?? undefined, statusName: launch.statusName, designator: launch.launchDesignator })
+    }
+  } catch {
+    // The public board is only a hint. The launch search below still counts.
+  }
   try {
     const response = await fetch('https://ll.thespacedevs.com/2.3.0/launches/previous/?search=Starlink&limit=12&mode=list', {
       headers: { Accept: 'application/json', 'User-Agent': 'LiftoffClub/1.0 (family sky; cache 24h; +https://liftoffclub.app)' },
-      signal: AbortSignal.timeout(8_000),
+      signal: AbortSignal.timeout(12_000),
       cache: 'no-store',
     })
-    if (!response.ok) return { dates: {}, designators: null }
-    const body = (await response.json()) as {
-      results?: Array<{ name?: string; net?: string; status?: { name?: string }; launch_designator?: string }>
+    if (response.ok) {
+      const body = (await response.json()) as {
+        results?: Array<{ name?: string; net?: string; status?: { name?: string }; launch_designator?: string }>
+      }
+      for (const row of body.results ?? []) {
+        rows.push({ name: row.name, net: row.net, statusName: row.status?.name, designator: row.launch_designator })
+      }
     }
-    const rows = (body.results ?? []).map((row) => ({
-      name: row.name,
-      net: row.net,
-      statusName: row.status?.name,
-      designator: row.launch_designator,
-    }))
-    const dates: Record<string, string> = {}
-    for (const row of rows) {
-      const designator = row.designator ? launchDesignator(row.designator) : null
-      if (designator && row.net) dates[designator] = row.net
-    }
-    return { dates, designators: recentStarlinkDesignators(rows, Date.now()) }
   } catch {
-    return { dates: {}, designators: null }
+    // Designators already gathered from the saved board still stand.
   }
+  const dates: Record<string, string> = {}
+  for (const row of rows) {
+    const designator = row.designator ? launchDesignator(row.designator) : null
+    if (designator && row.net) dates[designator] = row.net
+  }
+  return { dates, designators: rows.length > 0 ? recentStarlinkDesignators(rows, Date.now()) : null }
 }
 
 function toElements(sats: ParsedTle[]): SkyElement[] {
