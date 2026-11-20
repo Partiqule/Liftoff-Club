@@ -16,6 +16,7 @@ import {
   launchDesignator,
   limitStarlinkGroups,
   mergeSkyKinds,
+  parseGpCsv,
   recentStarlinkDesignators,
   starlinkTrainName,
   trainsFromGp,
@@ -110,11 +111,9 @@ async function readStarlink(dates: { dates: Record<string, string>; designators:
   const recentText = await celestrakText(SKY_RECENT_URL, { timeoutMs: 25_000 })
   if (recentText) {
     try {
-      const rows = JSON.parse(recentText) as unknown
-      if (Array.isArray(rows)) {
-        const trains = trainsFromGp(rows, dates.dates)
-        if (trains.length > 0) return toElements(trains)
-      }
+      const rows = recentText.trim().startsWith('[') ? (JSON.parse(recentText) as unknown[]) : parseGpCsv(recentText)
+      const trains = trainsFromGp(rows, dates.dates)
+      if (trains.length > 0) return toElements(trains)
     } catch {
       // Fall through to one launch file at a time.
     }

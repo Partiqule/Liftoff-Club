@@ -6,7 +6,7 @@ export const SKY_STATIONS_URL = 'https://celestrak.org/NORAD/elements/gp.php?GRO
 export const SKY_VISUAL_URL = 'https://celestrak.org/NORAD/elements/gp.php?GROUP=visual&FORMAT=JSON'
 export const SKY_HUBBLE_URL = 'https://celestrak.org/NORAD/elements/gp.php?CATNR=20580&FORMAT=JSON'
 /** Recent launches only. This is not the full Starlink fleet file. */
-export const SKY_RECENT_URL = 'https://celestrak.org/NORAD/elements/gp.php?GROUP=last-30-days&FORMAT=JSON'
+export const SKY_RECENT_URL = 'https://celestrak.org/NORAD/elements/gp.php?GROUP=last-30-days&FORMAT=CSV'
 
 const ISS_ID = '25544'
 const TIANGONG_ID = '48274'
@@ -135,8 +135,44 @@ export function launchIsRecent(launchedAt: string | null, now: number): boolean 
 }
 
 /** Low, new Starlink trains from a mixed recent launch file. The full fleet file is never read. */
+export function parseGpCsv(text: string): OmmRecord[] {
+  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter((line) => line.length > 0)
+  const header = (lines[0] ?? '').split(',').map((cell) => cell.trim())
+  if (!header.includes('OBJECT_NAME') || !header.includes('NORAD_CAT_ID')) return []
+  return lines.slice(1).map((line) => {
+    const cells = line.split(',')
+    const raw: Record<string, string> = {}
+    header.forEach((key, index) => {
+      raw[key] = (cells[index] ?? '').trim()
+    })
+    const num = (key: string) => {
+      const value = Number(raw[key])
+      return Number.isFinite(value) ? value : undefined
+    }
+    return {
+      OBJECT_NAME: raw.OBJECT_NAME,
+      OBJECT_ID: raw.OBJECT_ID,
+      EPOCH: raw.EPOCH,
+      MEAN_MOTION: num('MEAN_MOTION'),
+      ECCENTRICITY: num('ECCENTRICITY'),
+      INCLINATION: num('INCLINATION'),
+      RA_OF_ASC_NODE: num('RA_OF_ASC_NODE'),
+      ARG_OF_PERICENTER: num('ARG_OF_PERICENTER'),
+      MEAN_ANOMALY: num('MEAN_ANOMALY'),
+      NORAD_CAT_ID: num('NORAD_CAT_ID'),
+      ELEMENT_SET_NO: num('ELEMENT_SET_NO'),
+      REV_AT_EPOCH: num('REV_AT_EPOCH'),
+      BSTAR: num('BSTAR'),
+      MEAN_MOTION_DOT: num('MEAN_MOTION_DOT'),
+      MEAN_MOTION_DDOT: num('MEAN_MOTION_DDOT'),
+      CLASSIFICATION_TYPE: raw.CLASSIFICATION_TYPE,
+      EPHEMERIS_TYPE: num('EPHEMERIS_TYPE') ?? 0,
+    }
+  })
+}
+
 export function trainsFromGp(rows: unknown[], dates: Record<string, string>, now = Date.now()): ParsedTle[] {
-  const buckets = new Map<string, { launchedAt: string | null; sats: ParsedTle[] }>()
+  const buckets = new Map<string, { designator: string; launchedAt: string | null; sats: ParsedTle[] }>()
   for (const row of rows) {
     if (!row || typeof row !== 'object') continue
     const record = row as OmmRecord
@@ -149,12 +185,17 @@ export function trainsFromGp(rows: unknown[], dates: Record<string, string>, now
     if (!designator) continue
     const launchedAt = dates[designator] ?? null
     if (!launchIsRecent(launchedAt, now)) continue
-    const bucket = buckets.get(designator) ?? { launchedAt, sats: [] }
+    const bucket = buckets.get(designator) ?? { designator, launchedAt, sats: [] }
     if (!bucket.launchedAt && launchedAt) bucket.launchedAt = launchedAt
     bucket.sats.push({ ...tle, name: starlinkTrainName(bucket.launchedAt) })
     buckets.set(designator, bucket)
   }
-  const ordered = [...buckets.values()].sort((a, b) => Date.parse(b.launchedAt ?? '') - Date.parse(a.launchedAt ?? ''))
+  const ordered = [...buckets.values()].sort((a, b) => {
+    const ad = Date.parse(a.launchedAt ?? '')
+    const bd = Date.parse(b.launchedAt ?? '')
+    if (Number.isFinite(ad) && Number.isFinite(bd) && ad !== bd) return bd - ad
+    return b.designator.localeCompare(a.designator)
+  })
   const chosen: ParsedTle[] = []
   for (const bucket of ordered.slice(0, 3)) {
     const name = starlinkTrainName(bucket.launchedAt)

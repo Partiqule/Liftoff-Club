@@ -14,6 +14,7 @@ import {
   launchIsRecent,
   limitStarlinkGroups,
   mergeSkyKinds,
+  parseGpCsv,
   recentStarlinkDesignators,
   skyGroupUrls,
   staleCatalogNotice,
@@ -193,6 +194,14 @@ describe('sky finder orbits', () => {
     expect(skyGroupUrls()).toEqual([SKY_STATIONS_URL, SKY_VISUAL_URL, SKY_HUBBLE_URL])
     for (const url of [...skyGroupUrls(), SKY_RECENT_URL]) expect(url).not.toMatch(/GROUP=starlink(?:&|$)/i)
     expect(SKY_RECENT_URL).toContain('GROUP=last-30-days')
+    expect(SKY_RECENT_URL).toContain('FORMAT=CSV')
+    const csv = [
+      'OBJECT_NAME,OBJECT_ID,EPOCH,MEAN_MOTION,ECCENTRICITY,INCLINATION,RA_OF_ASC_NODE,ARG_OF_PERICENTER,MEAN_ANOMALY,EPHEMERIS_TYPE,CLASSIFICATION_TYPE,NORAD_CAT_ID,ELEMENT_SET_NO,REV_AT_EPOCH,BSTAR,MEAN_MOTION_DOT,MEAN_MOTION_DDOT',
+      'STARLINK-3200,2026-256A,2026-11-14T00:00:00.000Z,15.5,0.0001,53,10,20,30,0,U,61000,999,10,0.0001,0,0',
+      'NOAA 20,2026-010A,2026-11-14T00:00:00.000Z,14.2,0.0001,98,10,20,30,0,U,43013,999,10,0.0001,0,0',
+    ].join('\n')
+    const fromCsv = trainsFromGp(parseGpCsv(csv), { '2026-256': '2026-11-12T22:47:36Z' }, Date.parse('2026-11-20T20:00:00Z'))
+    expect(fromCsv.map((sat) => sat.name)).toEqual(['Starlink train (launched Nov 12)'])
     const objects = assembleSkyElements({
       stations: [ISS_FALLBACK, line('48274', 'CSS (TIANHE)')],
       hubble: [line('20580', 'HST')],
