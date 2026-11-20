@@ -10,7 +10,7 @@ import { formatClock } from '@/lib/time'
 import { zoneAbbrev } from '@/lib/pro/time'
 import { skyAt } from '@/lib/weather'
 import { isVisibleTrain } from '@/lib/trains'
-import { SkyFinderSoon } from '@/components/sky-finder-soon'
+import { SkyFinderCard } from '@/components/sky-finder-card'
 import { LocationPrompt } from '@/components/location-prompt'
 
 export function SkyBoard() {
@@ -25,7 +25,7 @@ export function SkyBoard() {
         <h1>The orbit feed stumbled.</h1>
         <p className="lede">Refresh in a minute. Launch times on the board do not depend on this chart.</p>
         {place ? null : <LocationPrompt />}
-        <SkyFinderSoon />
+        <SkyFinderCard />
       </section>
     )
   }
@@ -46,7 +46,7 @@ export function SkyBoard() {
         Times can miss by a couple of minutes. Starlink is a sample of recent, lower satellites spread across orbit planes, not the full catalog of thousands.
       </p>
       {skyNotice ? <p className="banner">{skyNotice}</p> : null}
-      <SkyFinderSoon />
+      <SkyFinderCard />
       <h2>Space station</h2>
       {!place ? null : waiting ? <SkySkeleton /> : <PassList passes={iss} place={place.label} timeZone={zone} weather={weather} empty="No station pass in the next day and a half." />}
       <h2>Recent trains</h2>
