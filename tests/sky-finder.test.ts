@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import * as satellite from 'satellite.js'
 import {
   SKY_HUBBLE_URL,
+  SKY_RECENT_URL,
   SKY_STATIONS_URL,
   SKY_VISUAL_URL,
   assembleSkyElements,
@@ -10,10 +11,15 @@ import {
   catalogNotice,
   emptyCatalogNotice,
   formatSavedDay,
+  launchIsRecent,
   limitStarlinkGroups,
+  mergeSkyKinds,
   recentStarlinkDesignators,
   skyGroupUrls,
   staleCatalogNotice,
+  starlinkTrainName,
+  trainsFromGp,
+  visitorCatalogNotice,
 } from '@/lib/sky-catalog-model'
 import { lookNow, surveySky } from '@/lib/sky-propagate'
 import {
@@ -33,6 +39,28 @@ import { ISS_FALLBACK, type ParsedTle } from '@/lib/tle-select'
 function expectPlain(text: string) {
   expect(text.toLowerCase()).not.toContain('walk')
   expect(text).not.toMatch(/[—–-]/)
+}
+
+function gp(name: string, objectId: string, cat: number, motion: number) {
+  return {
+    OBJECT_NAME: name,
+    OBJECT_ID: objectId,
+    EPOCH: '2026-11-14T00:00:00.000Z',
+    MEAN_MOTION: motion,
+    ECCENTRICITY: 0.0001,
+    INCLINATION: 53,
+    RA_OF_ASC_NODE: 10,
+    ARG_OF_PERICENTER: 20,
+    MEAN_ANOMALY: 30,
+    NORAD_CAT_ID: cat,
+    ELEMENT_SET_NO: 999,
+    REV_AT_EPOCH: 10,
+    BSTAR: 0.0001,
+    MEAN_MOTION_DOT: 0,
+    MEAN_MOTION_DDOT: 0,
+    CLASSIFICATION_TYPE: 'U',
+    EPHEMERIS_TYPE: 0,
+  }
 }
 
 function line(id: string, name: string, motion = '15.49368089'): ParsedTle {
@@ -163,7 +191,8 @@ describe('sky finder pointing', () => {
 describe('sky finder orbits', () => {
   it('names the station, Hubble, and a recent Starlink group without the full fleet file', () => {
     expect(skyGroupUrls()).toEqual([SKY_STATIONS_URL, SKY_VISUAL_URL, SKY_HUBBLE_URL])
-    for (const url of skyGroupUrls()) expect(url).not.toMatch(/GROUP=starlink/i)
+    for (const url of [...skyGroupUrls(), SKY_RECENT_URL]) expect(url).not.toMatch(/GROUP=starlink(?:&|$)/i)
+    expect(SKY_RECENT_URL).toContain('GROUP=last-30-days')
     const objects = assembleSkyElements({
       stations: [ISS_FALLBACK, line('48274', 'CSS (TIANHE)')],
       hubble: [line('20580', 'HST')],
@@ -190,13 +219,40 @@ describe('sky finder orbits', () => {
         ],
         now,
       ),
-    ).toEqual(['2026-256'])
+    ).toEqual(['2026-256', '2026-246'])
+    expect(recentStarlinkDesignators([{ name: 'Starlink', net: '2026-09-01T00:00:00Z', statusName: 'Launch Successful', designator: '2026-190' }], now)).toEqual([])
+    expect(starlinkTrainName('2026-11-12T22:47:36Z')).toBe('Starlink train (launched Nov 12)')
+    expectPlain(starlinkTrainName('2026-11-12T22:47:36Z'))
+    expect(starlinkTrainName(null)).toBe('Starlink train')
+    expect(launchIsRecent('2026-10-20T00:00:00Z', now)).toBe(true)
+    expect(launchIsRecent('2026-09-01T00:00:00Z', now)).toBe(false)
+    const trains = trainsFromGp(
+      [
+        gp('STARLINK-3200', '2026-256A', 61000, 15.5),
+        gp('NOAA 20', '2026-010A', 43013, 14.2),
+        gp('STARLINK-100', '2026-100A', 61001, 15.5),
+      ],
+      { '2026-256': '2026-11-12T22:47:36Z', '2026-100': '2026-09-01T00:00:00Z' },
+      now,
+    )
+    expect(trains.map((sat) => sat.name)).toEqual(['Starlink train (launched Nov 12)'])
+    const keptStarlink = { noradId: '1', name: 'Starlink train (launched Nov 12)', kind: 'starlink' as const, line1: ISS_FALLBACK.line1, line2: ISS_FALLBACK.line2 }
+    const merged = mergeSkyKinds([keptStarlink], { station: [objects[0]], hubble: null, bright: null, starlink: null })
+    expect(merged.some((object) => object.kind === 'starlink')).toBe(true)
+    expect(visitorCatalogNotice(3)).toBeNull()
+    expect(visitorCatalogNotice(0)).toBe(emptyCatalogNotice())
     expect(catalogNotice({ stations: false, hubble: true, visual: true, starlink: 'ok', hasHubble: true })).toContain('Space stations did not load')
     expectPlain(catalogNotice({ stations: true, hubble: false, visual: true, starlink: 'empty', hasHubble: true }) ?? '')
     const source = readFileSync(new URL('../lib/sky-catalog.ts', import.meta.url), 'utf8')
     expect(source).toContain('liftoff-sky-finder.json')
     expect(source).toContain('runtimeCachePath')
     expect(source).toContain('starlinkLaunchUrl')
+    expect(source).toContain('SKY_RECENT_URL')
+    const visitor = source.slice(source.indexOf('export const getSkyCatalog'), source.indexOf('export async function refreshSkyCatalog'))
+    expect(visitor).not.toContain('celestrakText')
+    expect(visitor).not.toContain('fetch(')
+    expect(readFileSync(new URL('../app/api/sky/cron/route.ts', import.meta.url), 'utf8')).toContain('cronAuthorized')
+    expect(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8')).toContain('/api/sky/cron')
     expect(source).not.toContain('.cache')
     expect(source).not.toContain('ISS_FALLBACK')
     expect(source).not.toContain('GROUP=starlink')

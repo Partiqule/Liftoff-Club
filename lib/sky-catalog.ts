@@ -8,21 +8,24 @@ import { starlinkLaunchUrl } from '@/lib/celestrak-query'
 import { runtimeCachePath } from '@/lib/runtime-cache'
 import {
   SKY_HUBBLE_URL,
+  SKY_RECENT_URL,
   SKY_STATIONS_URL,
   SKY_VISUAL_URL,
   assembleSkyElements,
-  catalogNotice,
   emptyCatalogNotice,
+  launchDesignator,
   limitStarlinkGroups,
+  mergeSkyKinds,
   recentStarlinkDesignators,
-  staleCatalogNotice,
+  starlinkTrainName,
+  trainsFromGp,
+  visitorCatalogNotice,
 } from '@/lib/sky-catalog-model'
-import type { SkyElement } from '@/lib/sky-point'
+import type { SkyElement, SkyKind } from '@/lib/sky-point'
 import { parseGpJson, type ParsedTle } from '@/lib/tle-select'
 
-const FRESH_MS = 24 * 60 * 60 * 1000
-const RETRY_MS = 15 * 60 * 1000
 const FILE_NAME = 'liftoff-sky-finder.json'
+const SHARED_KEY = 'sky:finder'
 const CREDIT = 'Orbit data from CelesTrak.'
 
 export type SkyCatalog = {
@@ -40,107 +43,107 @@ type Stored = {
 }
 
 let memory: { expires: number; catalog: SkyCatalog } | null = null
-let pending: Promise<SkyCatalog> | null = null
 
 export function skyCatalogCachePath(env: { VERCEL?: string } = { VERCEL: process.env.VERCEL }, cwd = process.cwd()): string {
   return runtimeCachePath(FILE_NAME, env, cwd)
 }
 
+/** Visitors only read the saved file. They do not call CelesTrak. */
 export const getSkyCatalog = cache(async (): Promise<SkyCatalog> => {
   if (memory && memory.expires > Date.now()) return memory.catalog
-  if (!pending) {
-    pending = loadCatalog().finally(() => {
-      pending = null
-    })
+  const stored = (await readStored()) ?? (await readShared())
+  if (stored && stored.objects.length > 0) {
+    await writeStored(stored)
+    const catalog = serve(stored, 'cache')
+    memory = { expires: Date.now() + 10 * 60 * 1000, catalog }
+    return catalog
   }
-  return pending
+  return serve({ objects: [], fetchedAt: new Date().toISOString(), notice: emptyCatalogNotice() }, 'none')
 })
 
-async function loadCatalog(): Promise<SkyCatalog> {
-  const stored = await readStored()
-  const age = stored ? Date.now() - Date.parse(stored.fetchedAt) : Number.POSITIVE_INFINITY
-  if (stored && stored.objects.length > 0 && age >= 0 && age < FRESH_MS) {
-    const catalog = serve(stored, 'cache', stored.notice)
-    memory = { expires: Date.parse(stored.fetchedAt) + FRESH_MS, catalog }
-    return catalog
-  }
+/** Daily job. A failed fetch keeps the previous file. */
+export async function refreshSkyCatalog(): Promise<{ ok: boolean; objects: number; starlink: number; trains: string[] }> {
+  const previous = (await readStored()) ?? (await readShared())
+  const previousObjects = previous?.objects ?? []
   try {
-    const live = await fetchLive()
-    if (!live || live.objects.length === 0) throw new Error('no orbits')
-    await writeStored(live)
-    const catalog = serve(live, 'live', live.notice)
-    memory = { expires: Date.now() + FRESH_MS, catalog }
-    return catalog
+    const dates = await launchDates()
+    const [stations, hubble, visual, starlink] = await Promise.all([
+      readGp(SKY_STATIONS_URL, 20_000),
+      readGp(SKY_HUBBLE_URL, 20_000),
+      readGp(SKY_VISUAL_URL, 20_000),
+      readStarlink(dates),
+    ])
+    const built = assembleSkyElements({
+      stations: stations ?? [],
+      hubble: hubble ?? [],
+      visual: visual ?? [],
+      starlink: starlink ?? [],
+    })
+    const ofKind = (kind: SkyKind, loaded: unknown): SkyElement[] | null => (loaded ? built.filter((object) => object.kind === kind) : null)
+    const objects = mergeSkyKinds(previousObjects, {
+      station: ofKind('station', stations),
+      hubble: ofKind('hubble', hubble),
+      bright: ofKind('bright', visual),
+      starlink: ofKind('starlink', starlink),
+    })
+    if (objects.length === 0) return { ok: false, objects: 0, starlink: 0, trains: [] }
+    const stored: Stored = { objects, fetchedAt: new Date().toISOString(), notice: null }
+    await writeStored(stored)
+    await writeShared(stored)
+    memory = { expires: Date.now() + 10 * 60 * 1000, catalog: serve(stored, 'live') }
+    const trains = [...new Set(objects.filter((object) => object.kind === 'starlink').map((object) => object.name))]
+    return { ok: true, objects: objects.length, starlink: objects.filter((object) => object.kind === 'starlink').length, trains }
   } catch {
-    if (stored && stored.objects.length > 0) {
-      const catalog = serve(stored, 'cache', staleCatalogNotice(stored.fetchedAt))
-      memory = { expires: Date.now() + RETRY_MS, catalog }
-      return catalog
+    if (previousObjects.length > 0) {
+      return {
+        ok: true,
+        objects: previousObjects.length,
+        starlink: previousObjects.filter((object) => object.kind === 'starlink').length,
+        trains: [...new Set(previousObjects.filter((object) => object.kind === 'starlink').map((object) => object.name))],
+      }
     }
-    const catalog = serve(
-      { objects: [], fetchedAt: new Date().toISOString(), notice: emptyCatalogNotice() },
-      'none',
-      emptyCatalogNotice(),
-    )
-    memory = { expires: Date.now() + RETRY_MS, catalog }
-    return catalog
+    return { ok: false, objects: 0, starlink: 0, trains: [] }
   }
 }
 
-async function fetchLive(): Promise<Stored | null> {
-  const [stations, hubble, visual, starlink] = await Promise.all([
-    readGp(SKY_STATIONS_URL),
-    readGp(SKY_HUBBLE_URL),
-    readGp(SKY_VISUAL_URL),
-    readStarlink(),
-  ])
-  const objects = assembleSkyElements({
-    stations: stations ?? [],
-    hubble: hubble ?? [],
-    visual: visual ?? [],
-    starlink: starlink.sats,
-  })
-  if (objects.length === 0) return null
-  return {
-    objects,
-    fetchedAt: new Date().toISOString(),
-    notice: catalogNotice({
-      stations: Boolean(stations && stations.length > 0),
-      hubble: Boolean(hubble && hubble.length > 0),
-      visual: Boolean(visual && visual.length > 0),
-      starlink: starlink.state,
-      hasHubble: objects.some((object) => object.kind === 'hubble'),
-    }),
+async function readStarlink(dates: { dates: Record<string, string>; designators: string[] | null }): Promise<SkyElement[] | null> {
+  const recentText = await celestrakText(SKY_RECENT_URL, { timeoutMs: 25_000 })
+  if (recentText) {
+    try {
+      const rows = JSON.parse(recentText) as unknown
+      if (Array.isArray(rows)) {
+        const trains = trainsFromGp(rows, dates.dates)
+        if (trains.length > 0) return toElements(trains)
+      }
+    } catch {
+      // Fall through to one launch file at a time.
+    }
   }
-}
-
-async function readStarlink(): Promise<{ state: 'ok' | 'empty' | 'fail'; sats: ParsedTle[] }> {
-  const designators = await fetchDesignators()
-  if (designators === null) return { state: 'fail', sats: [] }
-  if (designators.length === 0) return { state: 'empty', sats: [] }
+  if (!dates.designators) return null
   const groups: ParsedTle[][] = []
-  let any = false
-  for (const designator of designators) {
+  for (const designator of dates.designators) {
     const url = starlinkLaunchUrl(designator)
     if (!url) continue
-    const rows = await readGp(url)
+    const rows = await readGp(url, 12_000)
     if (!rows) continue
-    any = true
-    groups.push(rows.slice(0, 80))
+    const named = limitStarlinkGroups([rows.filter((sat) => /starlink/i.test(sat.name))], 12).map((sat) => ({
+      ...sat,
+      name: starlinkTrainName(dates.dates[launchDesignator(designator) ?? designator] ?? null),
+    }))
+    if (named.length > 0) groups.push(named)
   }
-  if (!any) return { state: 'fail', sats: [] }
-  const sats = limitStarlinkGroups(groups)
-  return sats.length > 0 ? { state: 'ok', sats } : { state: 'empty', sats: [] }
+  const flat = groups.flat()
+  return flat.length > 0 ? toElements(flat) : []
 }
 
-async function fetchDesignators(): Promise<string[] | null> {
+async function launchDates(): Promise<{ dates: Record<string, string>; designators: string[] | null }> {
   try {
-    const response = await fetch('https://ll.thespacedevs.com/2.3.0/launches/previous/?search=Starlink&limit=8&mode=list', {
+    const response = await fetch('https://ll.thespacedevs.com/2.3.0/launches/previous/?search=Starlink&limit=12&mode=list', {
       headers: { Accept: 'application/json', 'User-Agent': 'LiftoffClub/1.0 (family sky; cache 24h; +https://liftoffclub.app)' },
-      signal: AbortSignal.timeout(6_000),
+      signal: AbortSignal.timeout(8_000),
       cache: 'no-store',
     })
-    if (!response.ok) return null
+    if (!response.ok) return { dates: {}, designators: null }
     const body = (await response.json()) as {
       results?: Array<{ name?: string; net?: string; status?: { name?: string }; launch_designator?: string }>
     }
@@ -150,14 +153,23 @@ async function fetchDesignators(): Promise<string[] | null> {
       statusName: row.status?.name,
       designator: row.launch_designator,
     }))
-    return recentStarlinkDesignators(rows, Date.now())
+    const dates: Record<string, string> = {}
+    for (const row of rows) {
+      const designator = row.designator ? launchDesignator(row.designator) : null
+      if (designator && row.net) dates[designator] = row.net
+    }
+    return { dates, designators: recentStarlinkDesignators(rows, Date.now()) }
   } catch {
-    return null
+    return { dates: {}, designators: null }
   }
 }
 
-async function readGp(url: string): Promise<ParsedTle[] | null> {
-  const text = await celestrakText(url, { timeoutMs: 8_000 })
+function toElements(sats: ParsedTle[]): SkyElement[] {
+  return assembleSkyElements({ stations: [], hubble: [], visual: [], starlink: sats })
+}
+
+async function readGp(url: string, timeoutMs: number): Promise<ParsedTle[] | null> {
+  const text = await celestrakText(url, { timeoutMs })
   if (!text) return null
   try {
     const rows = parseGpJson(JSON.parse(text))
@@ -167,23 +179,19 @@ async function readGp(url: string): Promise<ParsedTle[] | null> {
   }
 }
 
-function serve(stored: Stored, source: SkyCatalog['source'], notice: string | null): SkyCatalog {
+function serve(stored: Stored, source: SkyCatalog['source']): SkyCatalog {
   return {
     objects: stored.objects,
     fetchedAt: stored.fetchedAt,
     source,
-    notice,
+    notice: visitorCatalogNotice(stored.objects.length),
     credit: CREDIT,
   }
 }
 
 async function readStored(): Promise<Stored | null> {
   try {
-    const parsed = JSON.parse(await readFile(skyCatalogCachePath(), 'utf8')) as Partial<Stored>
-    if (!parsed || !Array.isArray(parsed.objects) || typeof parsed.fetchedAt !== 'string') return null
-    const objects = parsed.objects.map(sanitizeElement).filter((object): object is SkyElement => Boolean(object))
-    if (objects.length === 0) return null
-    return { objects, fetchedAt: parsed.fetchedAt, notice: typeof parsed.notice === 'string' ? plain(parsed.notice) : null }
+    return parseStored(await readFile(skyCatalogCachePath(), 'utf8'))
   } catch {
     return null
   }
@@ -195,7 +203,62 @@ async function writeStored(stored: Stored): Promise<void> {
     await mkdir(path.dirname(file), { recursive: true })
     await writeFile(file, JSON.stringify(stored))
   } catch {
-    // The memory copy still covers this process.
+    // The shared copy still covers other instances.
+  }
+}
+
+function sharedEnv(): { url: string; token: string } | null {
+  const url = (process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL || '').trim()
+  const token = (process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN || '').trim()
+  if (!url || !token) return null
+  return { url, token }
+}
+
+async function readShared(): Promise<Stored | null> {
+  const env = sharedEnv()
+  if (!env) return null
+  try {
+    const response = await fetch(env.url, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${env.token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(['GET', SHARED_KEY]),
+      cache: 'no-store',
+      signal: AbortSignal.timeout(4_000),
+    })
+    if (!response.ok) return null
+    const payload = (await response.json()) as { result?: string | null }
+    if (!payload.result) return null
+    return parseStored(payload.result)
+  } catch {
+    return null
+  }
+}
+
+async function writeShared(stored: Stored): Promise<void> {
+  const env = sharedEnv()
+  if (!env) return
+  try {
+    await fetch(env.url, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${env.token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(['SET', SHARED_KEY, JSON.stringify(stored)]),
+      cache: 'no-store',
+      signal: AbortSignal.timeout(4_000),
+    })
+  } catch {
+    // /tmp still serves this instance.
+  }
+}
+
+function parseStored(raw: string): Stored | null {
+  try {
+    const parsed = JSON.parse(raw) as Partial<Stored>
+    if (!parsed || !Array.isArray(parsed.objects) || typeof parsed.fetchedAt !== 'string') return null
+    const objects = parsed.objects.map(sanitizeElement).filter((object): object is SkyElement => Boolean(object))
+    if (objects.length === 0) return null
+    return { objects, fetchedAt: parsed.fetchedAt, notice: null }
+  } catch {
+    return null
   }
 }
 
@@ -205,13 +268,13 @@ function sanitizeElement(value: unknown): SkyElement | null {
   if (typeof row.line1 !== 'string' || typeof row.line2 !== 'string') return null
   if (!row.line1.startsWith('1 ') || !row.line2.startsWith('2 ')) return null
   const kind = row.kind
-  if (kind !== 'station' && kind !== 'hubble' && kind !== 'bright' && kind !== 'starlink') return null
+  if (!isKind(kind)) return null
   const norad = typeof row.noradId === 'string' ? row.noradId.trim() : ''
-  const name = typeof row.name === 'string' ? plain(row.name) : ''
+  const name = typeof row.name === 'string' ? row.name.replace(/[—–-]/g, ' ').replace(/\s+/g, ' ').trim() : ''
   if (!norad || !name) return null
   return { noradId: norad, name, kind, line1: row.line1.trim(), line2: row.line2.trim() }
 }
 
-function plain(text: string): string {
-  return text.replace(/[—–-]/g, ' ').replace(/\s+/g, ' ').trim()
+function isKind(kind: unknown): kind is SkyKind {
+  return kind === 'station' || kind === 'hubble' || kind === 'bright' || kind === 'starlink'
 }

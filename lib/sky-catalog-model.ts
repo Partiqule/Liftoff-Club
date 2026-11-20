@@ -1,15 +1,17 @@
 import { starlinkLaunchUrl } from '@/lib/celestrak-query'
-import { altitudeKmFromMotion, meanMotion, noradId, type ParsedTle } from '@/lib/tle-select'
+import { altitudeKmFromMotion, meanMotion, noradId, tleFromOmm, type OmmRecord, type ParsedTle } from '@/lib/tle-select'
 import type { SkyElement, SkyKind } from '@/lib/sky-point'
 
 export const SKY_STATIONS_URL = 'https://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=JSON'
 export const SKY_VISUAL_URL = 'https://celestrak.org/NORAD/elements/gp.php?GROUP=visual&FORMAT=JSON'
 export const SKY_HUBBLE_URL = 'https://celestrak.org/NORAD/elements/gp.php?CATNR=20580&FORMAT=JSON'
+/** Recent launches only. This is not the full Starlink fleet file. */
+export const SKY_RECENT_URL = 'https://celestrak.org/NORAD/elements/gp.php?GROUP=last-30-days&FORMAT=JSON'
 
 const ISS_ID = '25544'
 const TIANGONG_ID = '48274'
 const HUBBLE_ID = '20580'
-const STARLINK_WINDOW_MS = 14 * 24 * 60 * 60 * 1000
+const STARLINK_WINDOW_MS = 45 * 24 * 60 * 60 * 1000
 
 const CAP: Record<SkyKind, number> = {
   station: 24,
@@ -26,6 +28,7 @@ export function friendlySatelliteName(raw: string, id: string, kind: SkyKind): s
   if (id === HUBBLE_ID || /^HST\b/i.test(raw.trim())) return 'Hubble'
   if (id === ISS_ID || /ZARYA/i.test(raw)) return 'ISS'
   if (id === TIANGONG_ID || /TIANHE/i.test(raw)) return 'Tiangong'
+  if (/^Starlink train\b/.test(raw.trim())) return raw.trim()
   if (kind === 'starlink' || /starlink/i.test(raw)) {
     const digits = raw.match(/(\d{3,6})/)
     return digits ? `Starlink ${digits[1]}` : 'Starlink'
@@ -113,6 +116,71 @@ export function limitStarlinkGroups(groups: ParsedTle[][], cap = CAP.starlink): 
   return chosen
 }
 
+export function starlinkTrainName(launchedAt: string | null): string {
+  const day = formatTrainDay(launchedAt)
+  return day ? `Starlink train (launched ${day})` : 'Starlink train'
+}
+
+export function launchDesignator(objectId: string): string | null {
+  const match = objectId.trim().toUpperCase().match(/^(\d{4})-(\d{1,4})/)
+  if (!match) return null
+  return `${match[1]}-${match[2].padStart(3, '0').slice(-3)}`
+}
+
+export function launchIsRecent(launchedAt: string | null, now: number): boolean {
+  if (!launchedAt) return true
+  const when = Date.parse(launchedAt)
+  if (!Number.isFinite(when) || when > now) return false
+  return now - when <= STARLINK_WINDOW_MS
+}
+
+/** Low, new Starlink trains from a mixed recent launch file. The full fleet file is never read. */
+export function trainsFromGp(rows: unknown[], dates: Record<string, string>, now = Date.now()): ParsedTle[] {
+  const buckets = new Map<string, { launchedAt: string | null; sats: ParsedTle[] }>()
+  for (const row of rows) {
+    if (!row || typeof row !== 'object') continue
+    const record = row as OmmRecord
+    if (!/starlink/i.test(record.OBJECT_NAME ?? '')) continue
+    const tle = tleFromOmm(record)
+    if (!tle) continue
+    const alt = altitudeKmFromMotion(meanMotion(tle.line2))
+    if (!(alt > 200 && alt < 600)) continue
+    const designator = launchDesignator(record.OBJECT_ID ?? '')
+    if (!designator) continue
+    const launchedAt = dates[designator] ?? null
+    if (!launchIsRecent(launchedAt, now)) continue
+    const bucket = buckets.get(designator) ?? { launchedAt, sats: [] }
+    if (!bucket.launchedAt && launchedAt) bucket.launchedAt = launchedAt
+    bucket.sats.push({ ...tle, name: starlinkTrainName(bucket.launchedAt) })
+    buckets.set(designator, bucket)
+  }
+  const ordered = [...buckets.values()].sort((a, b) => Date.parse(b.launchedAt ?? '') - Date.parse(a.launchedAt ?? ''))
+  const chosen: ParsedTle[] = []
+  for (const bucket of ordered.slice(0, 3)) {
+    const name = starlinkTrainName(bucket.launchedAt)
+    for (const sat of bucket.sats.slice(0, 12)) {
+      if (chosen.length >= 36) return chosen
+      chosen.push({ ...sat, name })
+    }
+  }
+  return chosen
+}
+
+export function mergeSkyKinds(previous: SkyElement[], nextByKind: Partial<Record<SkyKind, SkyElement[] | null>>): SkyElement[] {
+  const kinds: SkyKind[] = ['station', 'hubble', 'bright', 'starlink']
+  const out: SkyElement[] = []
+  for (const kind of kinds) {
+    const incoming = nextByKind[kind]
+    if (incoming && incoming.length > 0) out.push(...incoming)
+    else out.push(...previous.filter((object) => object.kind === kind))
+  }
+  return out
+}
+
+export function visitorCatalogNotice(objectCount: number): string | null {
+  return objectCount > 0 ? null : emptyCatalogNotice()
+}
+
 export function recentStarlinkDesignators(
   rows: Array<{ name?: string; net?: string; statusName?: string; designator?: string }>,
   now: number,
@@ -164,6 +232,13 @@ export function formatSavedDay(iso: string): string {
   const time = Date.parse(iso)
   if (!Number.isFinite(time)) return 'earlier'
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(new Date(time))
+}
+
+function formatTrainDay(iso: string | null): string | null {
+  if (!iso) return null
+  const time = Date.parse(iso)
+  if (!Number.isFinite(time)) return null
+  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(time))
 }
 
 function capitalize(text: string): string {
