@@ -98,11 +98,11 @@ function PassList({
         const clock = `${formatClock(pass.start, timeZone)} ${zoneAbbrev(timeZone)}`
         const plan = planForPass(pass, place, clock)
         const judgement = skyAt(weather, pass.peak)
-        const glow = judgement.call === 'nogo' || pass.grade === 'poor' ? 'fade' : pass.grade === 'great' || pass.grade === 'good' ? 'strong' : 'mid'
+        const tone = judgement.call === 'nogo' || pass.grade === 'poor' ? 'fade' : pass.grade === 'great' || pass.grade === 'good' ? 'strong' : 'mid'
         return (
-          <li className={`pass light-${glow}`} key={pass.id}>
+          <li className={`pass light-${tone}`} key={pass.id}>
             <div>
-              <Trail glow={glow} />
+              <Trail tone={tone} />
               <div className="pass-time">{clock}</div>
               <div className="meta">{Math.round(pass.durationSec / 60)} min</div>
             </div>

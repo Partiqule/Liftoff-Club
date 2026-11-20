@@ -3,7 +3,7 @@ import 'server-only'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
-import { CELESTRAK_FRESH_MS, celestrakShouldHalt } from '@/lib/celestrak-query'
+import { CELESTRAK_TIMEOUT_MS, celestrakShouldHalt, haltAfterTimeout } from '@/lib/celestrak-query'
 
 /**
  * CelesTrak asks machines to stop on a block or a server error, especially 403.
@@ -15,7 +15,7 @@ import { CELESTRAK_FRESH_MS, celestrakShouldHalt } from '@/lib/celestrak-query'
 const COOL_MS = 12 * 60 * 60 * 1000
 const USER_AGENT = 'LiftoffClub/1.0 (family sky; cache 24h; +https://liftoffclub.app)'
 
-export { CELESTRAK_FRESH_MS, ISS_GP_URL, catalogCsvUrl, catalogGroupAllowed, starlinkLaunchUrl } from '@/lib/celestrak-query'
+export { CELESTRAK_FRESH_MS, CELESTRAK_TIMEOUT_MS, SATCAT_TIMEOUT_MS, ISS_GP_URL, catalogCsvUrl, catalogGroupAllowed, haltAfterTimeout, starlinkLaunchUrl } from '@/lib/celestrak-query'
 
 type Halt = { until: string }
 
@@ -25,17 +25,18 @@ export function celestrakHalted(now = Date.now()): boolean {
   return memoryHaltUntil > now
 }
 
-export async function celestrakText(url: string, options?: { tolerateTimeout?: boolean }): Promise<string | null> {
+export async function celestrakText(url: string, options?: { timeoutMs?: number }): Promise<string | null> {
   if (celestrakHalted() || (await haltActive())) return null
   let response: Response
   try {
     response = await fetch(url, {
       headers: { 'User-Agent': USER_AGENT, Accept: 'application/json, text/csv;q=0.9' },
-      signal: AbortSignal.timeout(20_000),
+      signal: AbortSignal.timeout(options?.timeoutMs ?? CELESTRAK_TIMEOUT_MS),
       cache: 'no-store',
     })
   } catch {
-    if (!options?.tolerateTimeout) await halt()
+    // A timeout or a dropped connection is not a 403. Leave the other groups free to load.
+    if (haltAfterTimeout()) await halt()
     return null
   }
   if (!response.ok) {

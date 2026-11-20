@@ -139,6 +139,38 @@ describe('the brief', () => {
     })
     expect(week.launches).toHaveLength(2)
   })
+
+  it('drops a flown launch and keeps the current mission name', () => {
+    const now = Date.parse('2026-11-20T18:00:00Z')
+    const message = buildBrief({
+      period: 'day',
+      now,
+      launches: [
+        {
+          ...source,
+          id: 'flown',
+          name: 'Long March 8A | SatNet LEO Group TBD?',
+          net: '2026-11-20T11:59:00Z',
+          statusName: 'Launch Successful',
+          statusAbbrev: 'Success',
+        },
+        {
+          ...source,
+          id: 'past-go',
+          name: 'Already off the pad',
+          net: '2026-11-20T17:30:00Z',
+          statusName: 'Go for Launch',
+          statusAbbrev: 'Go',
+        },
+        { ...source, id: 'next', name: 'Falcon 9 | USSF-317', net: '2026-11-21T04:20:00Z' },
+      ],
+      passes: [],
+      placeLabel: null,
+    })
+    expect(message.launches.map((item) => item.name)).toEqual(['Falcon 9 | USSF-317'])
+    expect(message.text).not.toContain('TBD')
+    expect(message.text).not.toContain('Already off the pad')
+  })
 })
 
 describe('follows', () => {

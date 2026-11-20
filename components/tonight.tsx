@@ -26,15 +26,15 @@ export function Tonight() {
   const next = pickNext(briefs, now)
   const lead = skyState === 'ready' ? leadPass(passes, now) : null
   const judgement = lead ? skyAt(weather, lead.peak) : null
-  const glow = judgement?.call === 'nogo' ? 'fade' : judgement?.call === 'go' ? 'strong' : 'mid'
+  const tone = judgement?.call === 'nogo' ? 'fade' : judgement?.call === 'go' ? 'strong' : 'mid'
   const direction = lead ? compass8(lead.riseAzimuth) : null
   const clock = lead ? `${formatClock(lead.start, zone)} ${zoneAbbrev(zone)}` : null
   const who = lead ? (lead.kind === 'iss' ? 'The station rises' : 'A dim Starlink crosses') : null
 
   return (
-    <section className={`tonight wrap light-${glow}`} aria-busy={skyState === 'loading' || skyState === 'idle'}>
+    <section className={`tonight wrap light-${tone}`} aria-busy={skyState === 'loading' || skyState === 'idle'}>
       <p className="kicker">{place ? `Tonight over ${town}` : 'Set your location'}</p>
-      <Trail glow={glow} span="hero" />
+      <Trail tone={tone} span="hero" />
       <p className="flourish">Ad astra</p>
       <h1>
         {place ? `Tonight over ${town}` : 'Tonight'}

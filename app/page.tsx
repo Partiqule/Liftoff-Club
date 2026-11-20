@@ -1,4 +1,5 @@
 import { FlightStrip } from '@/components/flight-strip'
+import type { Launch } from '@/lib/types'
 import { TierCompare } from '@/components/tier-compare'
 import Link from 'next/link'
 import { SourceNote } from '@/components/source-note'
@@ -6,10 +7,16 @@ import { Tonight } from '@/components/tonight'
 import { getLaunches } from '@/lib/launches'
 import { isStillAhead, pickNext } from '@/lib/schedule'
 
+export const revalidate = 300
+
+function featuredNext(launches: Launch[]) {
+  return pickNext(launches, Date.now(), (launch) => launch.featured)
+}
+
 export default async function HomePage() {
   const board = await getLaunches()
   const ahead = board.launches.filter((launch) => isStillAhead(launch))
-  const featured = pickNext(ahead, Date.now(), (launch) => launch.featured)
+  const featured = featuredNext(ahead)
   const rest = ahead.filter((launch) => launch.id !== featured?.id).slice(0, 6)
   return (
     <main id="content">

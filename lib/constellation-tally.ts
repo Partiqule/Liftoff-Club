@@ -112,6 +112,19 @@ export type AheadLaunch = {
   net: string | null
 }
 
+/** Keep the last good tally when a later fetch for that group did not answer. A miss is not zero. */
+export function keepKnownCounts(
+  previous: Record<string, ConstellationCounts>,
+  incoming: Record<string, ConstellationCounts | null>,
+): Record<string, ConstellationCounts> {
+  const next = { ...previous }
+  for (const [id, counts] of Object.entries(incoming)) {
+    if (!counts || !Number.isFinite(counts.inOrbit)) continue
+    next[id] = counts
+  }
+  return next
+}
+
 export function countAheadThisYear(launches: AheadLaunch[], pattern: RegExp, year: number, now: number): number {
   return launches.filter((launch) => {
     if (!pattern.test(`${launch.name} ${launch.missionName ?? ''} ${launch.rocketName}`)) return false

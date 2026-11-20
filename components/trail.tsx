@@ -1,14 +1,14 @@
 export function Trail({
-  glow = 'mid',
+  tone = 'mid',
   span = 'inline',
 }: {
-  glow?: 'strong' | 'mid' | 'fade'
+  tone?: 'strong' | 'mid' | 'fade'
   span?: 'inline' | 'hero' | 'load'
 }) {
   const wide = span === 'hero'
   return (
     <svg
-      className={`trail trail-${span} light-${glow}`}
+      className={`trail trail-${span} light-${tone}`}
       viewBox={wide ? '0 0 1200 160' : '0 0 220 40'}
       aria-hidden="true"
     >

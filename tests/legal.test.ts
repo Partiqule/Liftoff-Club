@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { catalogGroupAllowed, celestrakShouldHalt, starlinkLaunchUrl } from '@/lib/celestrak-query'
+import { SATCAT_TIMEOUT_MS, catalogGroupAllowed, celestrakShouldHalt, haltAfterTimeout, starlinkLaunchUrl } from '@/lib/celestrak-query'
 import { PRIVACY, SUPPORT } from '@/lib/legal'
 import { parseCatalogCsv } from '@/lib/constellation-tally'
 import { PRO_COPY } from '@/lib/pro/copy'
@@ -31,6 +31,8 @@ describe('celestrak limits', () => {
     expect(celestrakShouldHalt(500)).toBe(true)
     expect(celestrakShouldHalt(200)).toBe(false)
     expect(celestrakShouldHalt(404)).toBe(false)
+    expect(haltAfterTimeout()).toBe(false)
+    expect(SATCAT_TIMEOUT_MS).toBeGreaterThan(20_000)
     const rows = parseCatalogCsv('OBJECT_TYPE,OBJECT_ID,LAUNCH_DATE,DECAY_DATE\nPAY,2024-001A,2024-01-02,\n')
     expect(rows[0]?.objectType).toBe('PAY')
     expect(rows[0]?.decayDate).toBeNull()
