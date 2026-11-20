@@ -7,6 +7,7 @@ import { loadProBoard } from '@/lib/pro/load'
 import { readViewer } from '@/lib/pro/viewer'
 
 export const revalidate = 3600
+export const maxDuration = 60
 
 export const metadata: Metadata = {
   title: 'Tracker',

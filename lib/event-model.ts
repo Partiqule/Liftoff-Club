@@ -40,6 +40,17 @@ const KID: Record<string, string> = {
   'Sounding Rocket Launch': 'A small rocket goes up and comes back down, without staying in orbit.',
 }
 
+/** Launch Library prose often uses an en dash or an em dash. The club does not. */
+export function plainSpoken(value: string): string {
+  return value
+    .replace(/\s*[—–]\s*/g, ', ')
+    .replace(/\s+,/g, ',')
+    .replace(/,\s*,+/g, ',')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/,\s*\./g, '.')
+    .trim()
+}
+
 export function normalizeEvents(values: unknown): PublicEvent[] {
   if (!Array.isArray(values)) return []
   return values.map(normalizeEvent).filter((event): event is PublicEvent => Boolean(event))
@@ -63,22 +74,24 @@ export function normalizeEvent(value: unknown): PublicEvent | null {
   const infos = Array.isArray(item.info_urls) ? item.info_urls : []
   const info = record(infos[0])
   const infoUrl = text(info?.url)
+  const spokenType = plainSpoken(type)
+  const spokenName = plainSpoken(name)
   return {
     id,
-    name,
-    type,
+    name: spokenName,
+    type: spokenType,
     when: text(item.date),
     precision: text(record(item.date_precision)?.name) ?? text(item.date_precision),
-    location: text(item.location),
-    description: text(item.description),
-    kid: KID[type] ?? `This is a ${type} on the public event list.`,
+    location: text(item.location) ? plainSpoken(text(item.location) as string) : null,
+    description: text(item.description) ? plainSpoken(text(item.description) as string) : null,
+    kid: plainSpoken(KID[type] ?? `This is a ${spokenType} on the public event list.`),
     agencies,
     agencySlugs: agencies.map((agency) => resolveCompany(agency).slug),
     launchNames,
     rocketIds: rocketIdsFor(`${name} ${launchNames.join(' ')}`),
     sourceUrl: `https://ll.thespacedevs.com/2.3.0/events/${id}/`,
     infoUrl: infoUrl && infoUrl.startsWith('https://') ? infoUrl : null,
-    infoTitle: text(info?.title),
+    infoTitle: text(info?.title) ? plainSpoken(text(info?.title) as string) : null,
   }
 }
 

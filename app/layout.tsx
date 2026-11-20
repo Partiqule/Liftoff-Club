@@ -14,7 +14,7 @@ import { NativeBridge } from '@/components/native-bridge'
 import { RememberSchedule } from '@/components/remember-schedule'
 import { iosSchedule } from '@/lib/ios/schedule'
 import { getLaunches } from '@/lib/launches'
-import { toBrief } from '@/lib/schedule'
+import { briefsForShell, toBrief } from '@/lib/schedule'
 import { siteUrl } from '@/lib/site'
 import './globals.css'
 
@@ -47,11 +47,11 @@ export const viewport: Viewport = {
   initialScale: 1,
 }
 
-export const revalidate = 3600
+export const revalidate = 300
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const board = await getLaunches()
-  const briefs = board.launches.map(toBrief)
+  const briefs = briefsForShell(board.launches).map(toBrief)
   const schedule = iosSchedule(board.launches, siteUrl())
   return (
     <html lang="en" suppressHydrationWarning>

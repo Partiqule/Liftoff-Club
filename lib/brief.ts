@@ -4,10 +4,14 @@ export type BriefSource = {
   id: string
   name: string
   net: string | null
+  windowEnd?: string | null
   providerName: string
   rocketName: string
   padName: string
   padLocation: string | null
+  statusAbbrev?: string
+  statusName?: string
+  historical?: boolean
 }
 
 export type BriefPeriod = 'day' | 'week'
@@ -25,6 +29,16 @@ export type BriefMessage = {
   text: string
   launches: BriefLaunch[]
   sky: string
+}
+
+/** A flown launch is not upcoming, even if the net was only a few minutes ago or the old name is still in memory. */
+function stillUpcoming(launch: BriefSource, now: number): boolean {
+  if (launch.historical) return false
+  const status = `${launch.statusAbbrev ?? ''} ${launch.statusName ?? ''}`.toLowerCase()
+  if (status.includes('fail') || status.includes('success')) return false
+  if (!launch.net) return false
+  const when = Date.parse(launch.net)
+  return Number.isFinite(when) && when > now
 }
 
 /**
@@ -45,10 +59,10 @@ export function buildBrief(input: {
 }): BriefMessage {
   const horizon = input.now + (input.period === 'day' ? 1 : 7) * 86_400_000
   const launches = input.launches
+    .filter((launch) => stillUpcoming(launch, input.now))
     .filter((launch) => {
-      if (!launch.net) return false
-      const when = Date.parse(launch.net)
-      return Number.isFinite(when) && when >= input.now - 60 * 60 * 1000 && when <= horizon
+      const when = Date.parse(launch.net ?? '')
+      return Number.isFinite(when) && when <= horizon
     })
     .slice(0, input.period === 'day' ? 8 : 20)
     .map((launch) => ({

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { citedProblems } from '@/lib/cited'
 import { CONSTELLATIONS } from '@/lib/constellation-data'
-import { countAheadThisYear, tallyCatalog, type CatalogObject } from '@/lib/constellation-tally'
+import { countAheadThisYear, keepKnownCounts, tallyCatalog, type CatalogObject, type ConstellationCounts } from '@/lib/constellation-tally'
 import { aiNotesForCompany, aiNotesForLaunch } from '@/lib/ai-orbit'
 
 const pay = (partial: Partial<CatalogObject>): CatalogObject => ({
@@ -48,6 +48,18 @@ describe('catalog counts', () => {
       { name: 'Falcon 9 | NROL-1', missionName: null, rocketName: 'Falcon 9', net: '2026-12-01T00:00:00Z' },
     ]
     expect(countAheadThisYear(launches, /starlink/i, 2026, Date.parse('2026-06-01T00:00:00Z'))).toBe(1)
+  })
+})
+
+describe('a missed catalog', () => {
+  const saved: ConstellationCounts = { launched: 100, inOrbit: 90, launchesThisYear: 4, latestLaunchDate: '2026-11-01' }
+
+  it('keeps the last good tally and does not turn a miss into zero', () => {
+    const next = keepKnownCounts({ starlink: saved, oneweb: saved }, { starlink: null, kuiper: { launched: 8, inOrbit: 8, launchesThisYear: 2, latestLaunchDate: '2026-10-01' } })
+    expect(next.starlink).toEqual(saved)
+    expect(next.oneweb).toEqual(saved)
+    expect(next.kuiper?.inOrbit).toBe(8)
+    expect(Object.values(next).some((counts) => counts.inOrbit === 0 && counts.launched === 0)).toBe(false)
   })
 })
 

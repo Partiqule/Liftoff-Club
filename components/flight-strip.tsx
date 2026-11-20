@@ -20,7 +20,7 @@ export function FlightStrip({
   return (
     <article className={featured ? 'featured light-strong' : 'light-mid'}>
       <Link className="strip-link" href={`/launches/${launch.id}`}>
-        {trail ? <Trail glow={featured ? 'strong' : 'mid'} /> : null}
+        {trail ? <Trail tone={featured ? 'strong' : 'mid'} /> : null}
         <div className="strip-copy">
           <StatusStamp abbrev={launch.statusAbbrev} name={launch.statusName} />
           {flightKind(launch) ? <p className="kicker">{flightKind(launch)}</p> : null}

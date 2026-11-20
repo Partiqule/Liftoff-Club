@@ -10,9 +10,17 @@ import { recordNetSlips } from '@/lib/pro/net-slip-store'
 import { recordSlips } from '@/lib/slip-store'
 import type { Launch, LaunchBoard } from '@/lib/types'
 
-const USER_AGENT = 'LiftoffClub/1.0 (family launch companion; cache 1h; +https://thespacedevs.com)'
+const USER_AGENT = 'LiftoffClub/1.0 (family launch companion; cache 5m; +https://thespacedevs.com)'
 const PAGE_SIZE = 100
 const MAX_PAGES = 6
+/**
+ * Shared board lifetime for the home page, the brief, the shell, and the Launch Library fetch.
+ * Short enough that a slip shows up in minutes. Long enough that a busy hour does not refetch every view.
+ * A 429 holds the last good board longer so a rate limit does not turn into a retry loop.
+ */
+/** Keep this aligned with the literal `revalidate = 300` on the home page, the brief, the shell, and the sitemap. */
+export const BOARD_REVALIDATE_SECONDS = 300
+const RATE_LIMIT_BACKOFF_MS = 30 * 60 * 1000
 export { upcomingPageUrl }
 /** Recent flights the upcoming list drops once they have flown. No provider or pad filter. */
 const RECENT_TESTS = [
@@ -25,7 +33,7 @@ const NAMED_UPCOMING = [
   'https://ll.thespacedevs.com/2.3.0/launches/upcoming/?search=Falcon%20Heavy&mode=normal&limit=30',
 ]
 
-const FRESH_MS = 50 * 60 * 1000
+const FRESH_MS = BOARD_REVALIDATE_SECONDS * 1000
 const STALE_OK_MS = 7 * 24 * 60 * 60 * 1000
 
 let memory: { expires: number; board: LaunchBoard } | null = null
@@ -104,13 +112,17 @@ async function loadBoard(): Promise<LaunchBoard> {
         stale: age > FRESH_MS,
         notice: `The live feed is resting (${message}). Showing the board saved ${new Date(cached.fetchedAt).toUTCString()}.`,
       }
-      memory = { expires: Date.now() + 5 * 60 * 1000, board }
+      memory = { expires: Date.now() + (rateLimited(message) ? RATE_LIMIT_BACKOFF_MS : FRESH_MS), board }
       return board
     }
     const fallback = await readFallback(message)
-    memory = { expires: Date.now() + 5 * 60 * 1000, board: fallback }
+    memory = { expires: Date.now() + (rateLimited(message) ? RATE_LIMIT_BACKOFF_MS : FRESH_MS), board: fallback }
     return fallback
   }
+}
+
+function rateLimited(message: string): boolean {
+  return /few free requests|429/i.test(message)
 }
 
 async function fetchLive(): Promise<LaunchBoard> {
@@ -118,40 +130,54 @@ async function fetchLive(): Promise<LaunchBoard> {
   let total: number | null = null
   let upcoming = 0
   let stoppedEarly = false
-  for (let page = 0; page < MAX_PAGES; page += 1) {
-    let body: { count?: number; next?: string | null; results?: unknown }
-    try {
-      body = await fetchJson(upcomingPageUrl(page * PAGE_SIZE))
-    } catch (error) {
-      if (seen.size === 0) throw error
+  const extrasPromise = Promise.all([
+    ...NAMED_UPCOMING.map(async (url) => {
+      try {
+        const body = await fetchJson(url)
+        return { historical: false, launches: normalizeLaunches(body.results) }
+      } catch {
+        return { historical: false, launches: [] as Launch[] }
+      }
+    }),
+    ...RECENT_TESTS.map(async (url) => {
+      try {
+        const body = await fetchJson(url)
+        return { historical: true, launches: normalizeLaunches(body.results) }
+      } catch {
+        return { historical: true, launches: [] as Launch[] }
+      }
+    }),
+  ])
+  const first = await fetchJson(upcomingPageUrl(0))
+  if (typeof first.count === 'number') total = first.count
+  const firstPage = normalizeLaunches(first.results)
+  for (const launch of firstPage) seen.set(launch.id, launch)
+  upcoming += firstPage.length
+  const needMore = firstPage.length === PAGE_SIZE && (total == null || upcoming < total)
+  const extraPages = needMore ? Math.min(MAX_PAGES, total != null ? Math.ceil(total / PAGE_SIZE) : MAX_PAGES) - 1 : 0
+  const bodies = await Promise.all(
+    Array.from({ length: extraPages }, (_, index) => fetchJson(upcomingPageUrl((index + 1) * PAGE_SIZE)).catch(() => null)),
+  )
+  const extras = await extrasPromise
+  for (const body of bodies) {
+    if (!body) {
       stoppedEarly = true
-      break
+      continue
     }
     if (typeof body.count === 'number') total = body.count
     const launches = normalizeLaunches(body.results)
-    if (launches.length === 0) break
+    if (launches.length === 0) continue
     for (const launch of launches) seen.set(launch.id, launch)
     upcoming += launches.length
-    if (launches.length < PAGE_SIZE) break
-    if (total != null && upcoming >= total) break
   }
-  for (const url of NAMED_UPCOMING) {
-    try {
-      const body = await fetchJson(url)
-      for (const launch of normalizeLaunches(body.results)) seen.set(launch.id, { ...launch, historical: false })
-    } catch {
-      // The upcoming pages are the board. Named searches fill gaps when the feed allows another request.
-    }
-  }
-  for (const url of RECENT_TESTS) {
-    try {
-      const body = await fetchJson(url)
-      for (const launch of normalizeLaunches(body.results)) {
+  for (const extra of extras) {
+    for (const launch of extra.launches) {
+      if (extra.historical) {
         if (seen.has(launch.id)) continue
         seen.set(launch.id, { ...launch, historical: true })
+      } else {
+        seen.set(launch.id, { ...launch, historical: false })
       }
-    } catch {
-      // Past test flights stay off the next launch pick. They are added only when the feed allows another request.
     }
   }
   const launches = [...seen.values()].sort((a, b) => {
@@ -184,7 +210,7 @@ async function fetchJson(url: string): Promise<{ count?: number; next?: string |
   const response = await fetch(url, {
     headers,
     signal: AbortSignal.timeout(25_000),
-    next: { revalidate: 3600 },
+    next: { revalidate: BOARD_REVALIDATE_SECONDS },
   })
   if (response.status === 429) {
     throw new Error('Launch Library allows only a few free requests an hour')

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { flightKind, listsStarbase } from '@/lib/flight-kind'
 import { normalizeEvent } from '@/lib/event-model'
+import { boardSlice } from '@/lib/board-window'
 import { upcomingPageUrl } from '@/lib/launch-query'
 import { normalizeLaunch } from '@/lib/normalize'
 import { isRideshareLaunch } from '@/lib/pro/manifest-intel'
@@ -68,5 +69,25 @@ describe('full public board', () => {
     expect(event?.sourceUrl).toBe('https://ll.thespacedevs.com/2.3.0/events/1570/')
     const eva = normalizeEvent({ id: 3, name: 'Station spacewalk', type: { name: 'EVA' }, date: '2026-12-01T12:00:00Z' })
     expect(eva?.kid.toLowerCase()).not.toContain('walk')
+  })
+
+  it('turns Launch Library dashes into plain words and pages the board', () => {
+    const event = normalizeEvent({
+      id: 42,
+      name: 'Solar Orbiter',
+      type: { name: 'Mission – Docking' },
+      description: 'the best – and first – views of the Sun’s poles',
+      location: 'Sun – Earth',
+    })
+    expect(event?.type).toBe('Mission, Docking')
+    expect(event?.description).toBe('the best, and first, views of the Sun’s poles')
+    expect(event?.location).toBe('Sun, Earth')
+    expect(`${event?.name} ${event?.type} ${event?.description} ${event?.location}`).not.toMatch(/[—–]/)
+    const shown = boardSlice(Array.from({ length: 45 }, (_, index) => index), 20)
+    expect(shown.items).toHaveLength(20)
+    expect(shown.start).toBe(20)
+    expect(shown.nextStart).toBe(40)
+    expect(shown.prevStart).toBe(0)
+    expect(boardSlice([1, 2, 3], 0).nextStart).toBeNull()
   })
 })

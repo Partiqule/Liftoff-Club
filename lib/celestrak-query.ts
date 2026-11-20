@@ -1,4 +1,12 @@
 export const CELESTRAK_FRESH_MS = 24 * 60 * 60 * 1000
+/** GP element files are small. The SATCAT group file, especially Starlink, is about a megabyte. */
+export const CELESTRAK_TIMEOUT_MS = 20_000
+export const SATCAT_TIMEOUT_MS = 45_000
+
+/** A timeout is a slow file, not a block. It must not close every later catalog call. */
+export function haltAfterTimeout(): boolean {
+  return false
+}
 
 export const ISS_GP_URL = 'https://celestrak.org/NORAD/elements/gp.php?CATNR=25544&FORMAT=JSON'
 

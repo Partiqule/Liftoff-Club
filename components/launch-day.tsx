@@ -26,15 +26,8 @@ export function LaunchDayScreen({ launch }: { launch: Launch }) {
   return (
     <section className="day-screen">
       <svg className="day-arc" viewBox="0 0 1000 640" preserveAspectRatio="none" aria-hidden="true">
-        <defs>
-          <linearGradient id="dayglow" x1="0" y1="1" x2="1" y2="0">
-            <stop offset="0" stopColor="#6d628c" stopOpacity="0" />
-            <stop offset="0.45" stopColor="#c5d2e2" stopOpacity="0.7" />
-            <stop offset="1" stopColor="#f3d7b0" />
-          </linearGradient>
-        </defs>
         <path d="M30 560C280 560 460 80 970 120" />
-        <circle cx="970" cy="120" r="5" fill="#f3d7b0" />
+        <circle cx="970" cy="120" r="5" fill="#c5d2e2" />
       </svg>
       <div className="day-top">
         <Link className="brand" href={`/launches/${launch.id}`}>

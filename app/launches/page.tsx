@@ -4,6 +4,7 @@ import { FlightStrip } from '@/components/flight-strip'
 import { SourceNote } from '@/components/source-note'
 import { isLocalSite, siteUrl } from '@/lib/site'
 import { webcalFeedUrl } from '@/lib/calendar'
+import { boardSlice } from '@/lib/board-window'
 import { getLaunches } from '@/lib/launches'
 import { getPads } from '@/lib/pads'
 import { filterLaunches, isStillAhead } from '@/lib/schedule'
@@ -13,20 +14,33 @@ export const metadata: Metadata = {
   description: 'Upcoming launches worldwide, with a calendar you can subscribe to when a rocket slips.',
 }
 
+function launchesHref(filter: { who?: string; when?: string; site?: string }, offset: number): string {
+  const params = new URLSearchParams()
+  if (filter.who) params.set('who', filter.who)
+  if (filter.when) params.set('when', filter.when)
+  if (filter.site) params.set('site', filter.site)
+  if (offset > 0) params.set('offset', String(offset))
+  const query = params.toString()
+  return query ? `/launches?${query}` : '/launches'
+}
+
 export default async function LaunchesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ who?: string; when?: string; site?: string }>
+  searchParams: Promise<{ who?: string; when?: string; site?: string; offset?: string }>
 }) {
   const query = await searchParams
   const who = query.who === 'spacex' || query.who === 'crew' ? query.who : undefined
   const when = query.when === 'week' ? query.when : undefined
   const site = query.site?.toLowerCase() === 'starbase' ? 'starbase' : undefined
+  const offset = Number(query.offset)
   const board = await getLaunches()
   const pads = site === 'starbase' ? await getPads() : null
   const filtered = filterLaunches(board.launches, { who, when, site })
   const ahead = filtered.filter((launch) => isStillAhead(launch))
   const recent = filtered.filter((launch) => !isStillAhead(launch))
+  const shown = boardSlice(ahead, offset)
+  const filter = { who, when, site }
   const base = siteUrl()
   const local = isLocalSite(base)
   const webcal = webcalFeedUrl(base)
@@ -36,7 +50,7 @@ export default async function LaunchesPage({
       <p className="kicker">Every provider · SpaceX called out</p>
       <h1>The board</h1>
       <p className="lede">
-        Every upcoming launch on the public list, including suborbital flights and test flights. A test flight keeps that label when the listing says so. Times refresh about once an hour. <Link href="/events">Tests and events</Link> are separate from launches.
+        Every upcoming launch on the public list, including suborbital flights and test flights. A test flight keeps that label when the listing says so. Times refresh every few minutes. <Link href="/events">Tests and events</Link> are separate from launches.
       </p>
       <SourceNote board={board} />
       <nav className="filters" aria-label="Filter launches">
@@ -74,13 +88,20 @@ export default async function LaunchesPage({
       ) : null}
       {ahead.length === 0 ? <p className="note">Nothing in this filter is still ahead.</p> : null}
       <ul className="board">
-        {ahead.map((launch) => (
+        {shown.items.map((launch) => (
           <li key={launch.id}>
             <FlightStrip launch={launch} />
           </li>
         ))}
       </ul>
-      {recent.length > 0 ? (
+      {shown.prevStart != null || shown.nextStart != null ? (
+        <p className="note">
+          {shown.prevStart != null ? <Link href={launchesHref(filter, shown.prevStart)}>Earlier launches</Link> : null}
+          {shown.prevStart != null && shown.nextStart != null ? ' · ' : null}
+          {shown.nextStart != null ? <Link href={launchesHref(filter, shown.nextStart)}>More launches</Link> : null}
+        </p>
+      ) : null}
+      {shown.start === 0 && recent.length > 0 ? (
         <section>
           <div className="section-head">
             <h2>Just happened</h2>

@@ -75,6 +75,24 @@ export function filterLaunches(launches: Launch[], filter: LaunchFilter, now = D
   })
 }
 
+const SHELL_HORIZON_MS = 8 * 86_400_000
+
+/**
+ * Launches the shell needs for tonight, the week brief, and reminders.
+ * The full board stays on /launches. A flown row is not part of this list.
+ */
+export function briefsForShell(launches: Launch[], now = Date.now()): Launch[] {
+  const ahead = launches.filter((launch) => isStillAhead(launch, now))
+  const soon = ahead.filter((launch) => {
+    if (!launch.net) return false
+    const when = Date.parse(launch.net)
+    return Number.isFinite(when) && when <= now + SHELL_HORIZON_MS
+  })
+  const next = pickNext(ahead, now)
+  if (next && !soon.some((launch) => launch.id === next.id)) return [next, ...soon]
+  return soon
+}
+
 export function toBrief(launch: Launch) {
   return {
     id: launch.id,

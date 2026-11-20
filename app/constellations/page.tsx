@@ -6,6 +6,7 @@ import type { CitedFigure } from '@/lib/cited'
 import type { ConstellationCounts } from '@/lib/constellation-tally'
 
 export const revalidate = 3600
+export const maxDuration = 60
 
 export const metadata: Metadata = {
   title: 'Constellations',
