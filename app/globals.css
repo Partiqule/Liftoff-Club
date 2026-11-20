@@ -273,8 +273,8 @@ h3 { font-size: 1.25rem; line-height: 1.2; }
 .tonight h1 .dir { display: block; color: var(--core); font-weight: 500; }
 .tonight h1 .when { display: block; }
 .hero-actions { display: flex; flex-wrap: wrap; gap: 1.25rem; align-items: center; margin-top: 1.4rem; }
-.soon-card { margin: 1.5rem 0 0.2rem; padding-top: 0.9rem; border-top: 1px solid var(--line); max-width: var(--measure); }
-.soon-card h2 { margin: 0.15rem 0 0.45rem; font-size: clamp(1.7rem, 4vw, 2.2rem); }
+.finder-card { margin: 1.5rem 0 0.2rem; padding-top: 0.9rem; border-top: 1px solid var(--line); max-width: var(--measure); }
+.finder-card h2 { margin: 0.15rem 0 0.45rem; font-size: clamp(1.7rem, 4vw, 2.2rem); }
 .hero-next { margin: 0.8rem 0 0; max-width: var(--measure); }
 .hero-next a { text-decoration: none; }
 .sky-skeleton { display: grid; gap: 0.7rem; margin: 0.6rem 0 1rem; max-width: 28rem; }
@@ -996,3 +996,56 @@ body:has(.mission-screen) .skip,
 body:has(.mission-screen) .galaxy { display: none; }
 body:has(.day-screen),
 body:has(.mission-screen) { padding-bottom: 0; background: var(--void); }
+
+.sky-guide {
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 4vw, 2.5rem);
+  line-height: 1.15;
+  margin: 0.4rem 0 0.8rem;
+  max-width: 18em;
+}
+.sky-dial {
+  width: min(12rem, 64vw);
+  margin: 0 0 1rem;
+  color: var(--core);
+}
+.sky-dial svg { display: block; width: 100%; height: auto; }
+.sky-dome { width: min(28rem, 100%); height: auto; color: var(--cold); }
+.sky-ring { fill: none; stroke: var(--line); stroke-width: 1; }
+.sky-dir, .sky-tick, .sky-name-label {
+  font-family: var(--font-data);
+  fill: var(--ink-quiet);
+  font-size: 4.2px;
+  letter-spacing: 0.06em;
+}
+.sky-tick { font-size: 3.6px; fill: var(--cold); }
+.sky-name-label { fill: var(--ink); letter-spacing: 0.02em; }
+.sky-dot { fill: var(--ink-quiet); }
+.sky-dot-visible { fill: var(--ink); }
+.sky-dot-selected { fill: var(--core); }
+.sky-rim { stroke: var(--core); stroke-width: 1.6; }
+.sky-block { margin-top: 1.6rem; }
+.sky-block h2 { margin: 0 0 0.35rem; }
+.sky-list { list-style: none; margin: 0; padding: 0; }
+.sky-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.35rem 1rem;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.75rem 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  text-align: left;
+}
+.sky-row[aria-pressed="true"] .sky-name { color: var(--core); }
+.sky-name { display: block; font-family: var(--font-text); }
+.sky-figure {
+  font-family: var(--font-data);
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.35rem;
+  color: var(--ink);
+}

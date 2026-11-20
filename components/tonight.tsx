@@ -14,7 +14,7 @@ import { zoneAbbrev } from '@/lib/pro/time'
 import { formatClock } from '@/lib/time'
 import { useActiveZone } from '@/components/use-zone'
 import { pickNext } from '@/lib/schedule'
-import { SkyFinderSoon } from '@/components/sky-finder-soon'
+import { SkyFinderCard } from '@/components/sky-finder-card'
 import { LocationPrompt } from '@/components/location-prompt'
 
 export function Tonight() {
@@ -90,7 +90,7 @@ export function Tonight() {
           Plan the viewing
         </Link>
       </div>
-      <SkyFinderSoon />
+      <SkyFinderCard />
     </section>
   )
 }
