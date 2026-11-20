@@ -18,6 +18,7 @@ import {
   recentStarlinkDesignators,
   skyGroupUrls,
   staleCatalogNotice,
+  starlinkFromText,
   starlinkTrainName,
   trainsFromGp,
   visitorCatalogNotice,
@@ -35,7 +36,7 @@ import {
   type SkyElement,
 } from '@/lib/sky-point'
 import { runtimeCachePath } from '@/lib/runtime-cache'
-import { ISS_FALLBACK, type ParsedTle } from '@/lib/tle-select'
+import { catalogField, ISS_FALLBACK, tleFromOmm, type ParsedTle } from '@/lib/tle-select'
 
 function expectPlain(text: string) {
   expect(text.toLowerCase()).not.toContain('walk')
@@ -244,7 +245,17 @@ describe('sky finder orbits', () => {
       { '2026-256': '2026-11-12T22:47:36Z', '2026-100': '2026-09-01T00:00:00Z' },
       now,
     )
-    expect(trains.map((sat) => sat.name)).toEqual(['Starlink train (launched Nov 12)'])
+    expect(trains.map((sat) => sat.name)).toEqual(['Starlink train (launched Nov 12)', 'Starlink train (launched Sep 1)'])
+    const high = trainsFromGp([gp('STARLINK-90000', '2026-256B', 100000, 15.5)], { '2026-256': '2026-11-12T22:47:36Z' }, now)
+    expect(high.map((sat) => sat.name)).toEqual(['Starlink train (launched Nov 12)'])
+    expect(high[0]?.line1.slice(2, 7)).toBe('A0000')
+    expect(catalogField(100000)).toBe('A0000')
+    expect(high[0]?.line1).toHaveLength(69)
+    expect(satellite.alpha5ToNumber(high[0]?.line1.slice(2, 7) ?? '')).toBe(100000)
+    expect(satellite.twoline2satrec(high[0]?.line1 ?? '', high[0]?.line2 ?? '').error).toBe(0)
+    const asText = ['STARLINK-90000', high[0]?.line1 ?? '', high[0]?.line2 ?? ''].join('\n')
+    expect(starlinkFromText(asText, { '2026-256': '2026-11-12T22:47:36Z' }, now).map((sat) => sat.name)).toEqual(['Starlink train (launched Nov 12)'])
+    expect(tleFromOmm(gp('STARLINK-1', '2026-256A', 61000, 15.5))?.line1.slice(2, 7)).toBe('61000')
     const keptStarlink = { noradId: '1', name: 'Starlink train (launched Nov 12)', kind: 'starlink' as const, line1: ISS_FALLBACK.line1, line2: ISS_FALLBACK.line2 }
     const merged = mergeSkyKinds([keptStarlink], { station: [objects[0]], hubble: null, bright: null, starlink: null })
     expect(merged.some((object) => object.kind === 'starlink')).toBe(true)

@@ -136,12 +136,24 @@ export type OmmRecord = {
   EPHEMERIS_TYPE?: number
 }
 
-/** Build a two line element from a CelesTrak JSON or CSV row. Catalog numbers above 99999 are skipped. */
+const ALPHA5 = '0123456789ABCDEFGHJKLMNPQRSTUVWXYZ'
+
+/** Five character catalog field. Numbers past 99999 use the Alpha 5 letter form satellite.js can read. */
+export function catalogField(cat: number): string | null {
+  if (!Number.isInteger(cat) || cat < 1 || cat > 339999) return null
+  if (cat < 100000) return String(cat).padStart(5, '0')
+  const letter = ALPHA5[Math.floor(cat / 10000)]
+  if (!letter) return null
+  return `${letter}${String(cat % 10000).padStart(4, '0')}`
+}
+
+/** Build a two line element from a CelesTrak JSON or CSV row. */
 export function tleFromOmm(row: OmmRecord): ParsedTle | null {
-  const cat = row.NORAD_CAT_ID
-  if (cat == null || !Number.isInteger(cat) || cat < 1 || cat > 99999) return null
+  const rawCat = row.NORAD_CAT_ID as unknown
+  const cat = typeof rawCat === 'number' ? rawCat : typeof rawCat === 'string' ? Number(rawCat.trim()) : Number.NaN
+  const catalog = catalogField(cat)
+  if (!catalog) return null
   if (!row.EPOCH || row.MEAN_MOTION == null || row.INCLINATION == null) return null
-  const catalog = String(cat).padStart(5, '0')
   const designator = designatorField(row.OBJECT_ID ?? '')
   const epoch = epochField(row.EPOCH)
   if (!epoch) return null
@@ -195,6 +207,7 @@ function scientific(value: number): string {
     mant = 10_000
     exp += 1
   }
+  if (Math.abs(exp) > 9) return ' 00000+0'
   const expSign = exp < 0 ? '-' : '+'
   return `${sign}${String(mant).padStart(5, '0')}${expSign}${Math.abs(exp)}`
 }

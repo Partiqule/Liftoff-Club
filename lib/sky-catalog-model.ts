@@ -1,5 +1,5 @@
 import { starlinkLaunchUrl } from '@/lib/celestrak-query'
-import { altitudeKmFromMotion, meanMotion, noradId, tleFromOmm, type OmmRecord, type ParsedTle } from '@/lib/tle-select'
+import { altitudeKmFromMotion, meanMotion, noradId, parseTle, tleFromOmm, type OmmRecord, type ParsedTle } from '@/lib/tle-select'
 import type { SkyElement, SkyKind } from '@/lib/sky-point'
 
 export const SKY_STATIONS_URL = 'https://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=JSON'
@@ -171,29 +171,67 @@ export function parseGpCsv(text: string): OmmRecord[] {
   })
 }
 
+/** Recent Starlink trains from a CelesTrak JSON array, an OMM CSV, or a three line element file. */
+export function starlinkFromText(text: string, dates: Record<string, string>, now = Date.now()): ParsedTle[] {
+  const trimmed = text.trim().replace(/^\uFEFF/, '')
+  if (!trimmed) return []
+  if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(trimmed) as unknown
+      const rows = Array.isArray(parsed)
+        ? parsed
+        : parsed && typeof parsed === 'object' && Array.isArray((parsed as { data?: unknown }).data)
+          ? (parsed as { data: unknown[] }).data
+          : []
+      return trainsFromGp(rows, dates, now)
+    } catch {
+      return []
+    }
+  }
+  const head = trimmed.slice(0, 1200)
+  if (/OBJECT_NAME/i.test(head) && /NORAD_CAT_ID/i.test(head)) return trainsFromGp(parseGpCsv(trimmed), dates, now)
+  return groupStarlinkTrains(parseTle(trimmed), dates, now)
+}
+
 export function trainsFromGp(rows: unknown[], dates: Record<string, string>, now = Date.now()): ParsedTle[] {
-  const buckets = new Map<string, { designator: string; launchedAt: string | null; sats: ParsedTle[] }>()
+  const sats: ParsedTle[] = []
   for (const row of rows) {
     if (!row || typeof row !== 'object') continue
     const record = row as OmmRecord
     if (!/starlink/i.test(record.OBJECT_NAME ?? '')) continue
     const tle = tleFromOmm(record)
-    if (!tle) continue
+    if (tle) sats.push(tle)
+  }
+  return groupStarlinkTrains(sats, dates, now)
+}
+
+/**
+ * Group low Starlink elements into a few trains.
+ * A launch day from the library is only the label. An older day must not drop a satellite that is already in the recent file.
+ */
+export function groupStarlinkTrains(sats: ParsedTle[], dates: Record<string, string>, now = Date.now()): ParsedTle[] {
+  const buckets = new Map<string, { designator: string; launchedAt: string | null; sats: ParsedTle[] }>()
+  for (const tle of sats) {
+    if (!/starlink/i.test(tle.name)) continue
     const alt = altitudeKmFromMotion(meanMotion(tle.line2))
-    if (!(alt > 200 && alt < 600)) continue
-    const designator = launchDesignator(record.OBJECT_ID ?? '')
+    if (!(alt > 200 && alt < 800)) continue
+    const designator = launchDesignator(objectIdFromTle(tle.line1))
     if (!designator) continue
-    const launchedAt = dates[designator] ?? null
-    if (!launchIsRecent(launchedAt, now)) continue
+    const known = dates[designator]
+    const when = known ? Date.parse(known) : Number.NaN
+    const launchedAt = Number.isFinite(when) && when < now + 86_400_000 ? known : null
     const bucket = buckets.get(designator) ?? { designator, launchedAt, sats: [] }
     if (!bucket.launchedAt && launchedAt) bucket.launchedAt = launchedAt
-    bucket.sats.push({ ...tle, name: starlinkTrainName(bucket.launchedAt) })
+    bucket.sats.push(tle)
     buckets.set(designator, bucket)
   }
   const ordered = [...buckets.values()].sort((a, b) => {
     const ad = Date.parse(a.launchedAt ?? '')
     const bd = Date.parse(b.launchedAt ?? '')
-    if (Number.isFinite(ad) && Number.isFinite(bd) && ad !== bd) return bd - ad
+    const aOk = Number.isFinite(ad)
+    const bOk = Number.isFinite(bd)
+    if (aOk && bOk && ad !== bd) return bd - ad
+    if (aOk !== bOk) return aOk ? -1 : 1
     return b.designator.localeCompare(a.designator)
   })
   const chosen: ParsedTle[] = []
@@ -205,6 +243,15 @@ export function trainsFromGp(rows: unknown[], dates: Record<string, string>, now
     }
   }
   return chosen
+}
+
+function objectIdFromTle(line1: string): string {
+  const field = line1.slice(9, 17).trim().toUpperCase()
+  const match = field.match(/^(\d{2})(\d{3})[A-Z]{0,3}$/)
+  if (!match) return ''
+  const yy = Number(match[1])
+  const year = yy >= 57 ? 1900 + yy : 2000 + yy
+  return `${year}-${match[2]}`
 }
 
 export function mergeSkyKinds(previous: SkyElement[], nextByKind: Partial<Record<SkyKind, SkyElement[] | null>>): SkyElement[] {
