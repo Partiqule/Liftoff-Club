@@ -72,7 +72,24 @@ export function assembleSkyElements(groups: {
       line2: item.tle.line2.trim(),
     })
   }
-  return objects
+  return collapseSharedStationOrbits(objects)
+}
+
+/** Docked modules share a station orbit. Keep ISS and Tiangong, and anything on its own path. */
+export function collapseSharedStationOrbits(objects: SkyElement[]): SkyElement[] {
+  const coreKeys = new Set(
+    objects.filter((object) => object.noradId === ISS_ID || object.noradId === TIANGONG_ID).map((object) => orbitKey(object.line2)),
+  )
+  return objects.filter((object) => {
+    if (object.kind !== 'station') return true
+    if (object.noradId === ISS_ID || object.noradId === TIANGONG_ID) return true
+    return !coreKeys.has(orbitKey(object.line2))
+  })
+}
+
+function orbitKey(line2: string): string {
+  const motion = Number(line2.slice(52, 63))
+  return `${line2.slice(8, 16).trim()}|${line2.slice(17, 25).trim()}|${Number.isFinite(motion) ? motion.toFixed(3) : ''}`
 }
 
 /** Keep satellites from the newest launch groups. Skip the full fleet file. */

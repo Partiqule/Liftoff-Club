@@ -92,10 +92,7 @@ async function fetchLive(): Promise<Stored | null> {
     readGp(SKY_STATIONS_URL),
     readGp(SKY_HUBBLE_URL),
     readGp(SKY_VISUAL_URL),
-    Promise.race([
-      readStarlink(),
-      new Promise<{ state: 'fail'; sats: ParsedTle[] }>((resolve) => setTimeout(() => resolve({ state: 'fail', sats: [] }), 8_000)),
-    ]),
+    readStarlink(),
   ])
   const objects = assembleSkyElements({
     stations: stations ?? [],
@@ -140,7 +137,7 @@ async function fetchDesignators(): Promise<string[] | null> {
   try {
     const response = await fetch('https://ll.thespacedevs.com/2.3.0/launches/previous/?search=Starlink&limit=8&mode=list', {
       headers: { Accept: 'application/json', 'User-Agent': 'LiftoffClub/1.0 (family sky; cache 24h; +https://liftoffclub.app)' },
-      signal: AbortSignal.timeout(12_000),
+      signal: AbortSignal.timeout(6_000),
       cache: 'no-store',
     })
     if (!response.ok) return null

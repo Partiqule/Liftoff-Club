@@ -6,6 +6,7 @@ import {
   SKY_STATIONS_URL,
   SKY_VISUAL_URL,
   assembleSkyElements,
+  collapseSharedStationOrbits,
   catalogNotice,
   emptyCatalogNotice,
   formatSavedDay,
@@ -172,6 +173,11 @@ describe('sky finder orbits', () => {
     expect(objects.map((object) => object.name)).toEqual(['ISS', 'Tiangong', 'Hubble', 'Starlink 3210', 'NOAA 18'])
     for (const object of objects) expectPlain(object.name)
     expect(objects.filter((object) => object.noradId === '25544')).toHaveLength(1)
+    const docked = collapseSharedStationOrbits([
+      { noradId: '25544', name: 'ISS', kind: 'station', line1: ISS_FALLBACK.line1, line2: ISS_FALLBACK.line2 },
+      { noradId: '36086', name: 'POISK', kind: 'station', line1: ISS_FALLBACK.line1.replace('25544', '36086'), line2: ISS_FALLBACK.line2.replace('25544', '36086') },
+    ])
+    expect(docked.map((object) => object.name)).toEqual(['ISS'])
     const kept = limitStarlinkGroups([[line('54321', 'STARLINK-3210'), line('11111', 'STARLINK-1', '1.00270000')]])
     expect(kept.map((sat) => sat.name)).toEqual(['STARLINK-3210'])
     const now = Date.parse('2026-11-20T20:00:00Z')
