@@ -8,6 +8,7 @@ import { eventsForRocket, getEvents } from '@/lib/events'
 import { getLaunches } from '@/lib/launches'
 import { isStillAhead } from '@/lib/schedule'
 import { historyForRocket } from '@/lib/history'
+import { starshipChangeFor } from '@/lib/starship-changes'
 import { catalogRocket } from '@/lib/rocket-catalog'
 import { ROCKET_CATALOG } from '@/lib/rocket-catalog'
 import { ROCKET_PHOTOS, rocketId } from '@/lib/rocket-photos'
@@ -79,11 +80,20 @@ export default async function RocketPage({ params }: { params: Promise<{ slug: s
         <section>
           <h2>Recent flights</h2>
           <ul className="board">
-            {flown.slice(0, 6).map((launch) => (
-              <li key={launch.id}>
-                <FlightStrip launch={launch} trail={!photo} />
-              </li>
-            ))}
+            {flown.slice(0, 6).map((launch) => {
+              const change = starshipChangeFor(launch.name)
+              return (
+                <li key={launch.id}>
+                  <FlightStrip launch={launch} trail={!photo} />
+                  {change ? (
+                    <p className="note">
+                      What changed from the last flight: {change.note}{' '}
+                      <a href={change.sourceUrl}>{change.sourceTitle}</a>
+                    </p>
+                  ) : null}
+                </li>
+              )
+            })}
           </ul>
         </section>
       ) : null}

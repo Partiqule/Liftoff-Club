@@ -12,11 +12,14 @@ import { LaunchViewed } from '@/components/analytics'
 import { LaunchRemind } from '@/components/launch-remind'
 import { ShareLaunch } from '@/components/share-launch'
 import { whenLabel } from '@/lib/ios/schedule'
+import { OrbitGlobe } from '@/components/orbit-globe'
 import { RocketFigure } from '@/components/rocket-figure'
 import { StatusStamp } from '@/components/status-stamp'
 import { VisibilityCard } from '@/components/visibility-card'
 import { aiNotesForLaunch } from '@/lib/ai-orbit'
 import { explainLaunch } from '@/lib/explain'
+import { orbitSpecForLaunch } from '@/lib/orbit-pattern'
+import { starshipChangeFor } from '@/lib/starship-changes'
 import { getLaunch, getLaunches, launchesToPrerender } from '@/lib/launches'
 import { publishedReason } from '@/lib/slip'
 import { slipsFor } from '@/lib/slip-store'
@@ -51,6 +54,8 @@ export default async function LaunchPage({ params }: { params: Promise<{ id: str
   const history = await slipsFor(launch.id)
   const reason = publishedReason(launch)
   const spots = spotsForLaunch(launch.padName, launch.padLocation)
+  const orbit = orbitSpecForLaunch(launch)
+  const change = starshipChangeFor(launch.name)
   return (
     <main id="content" className="wrap page">
       <LaunchViewed />
@@ -96,6 +101,18 @@ export default async function LaunchPage({ params }: { params: Promise<{ id: str
               : 'Story written from the public listing. A model key can be added later; none is required.'}
           </p>
           <VisibilityCard launch={launch} />
+          {orbit ? <OrbitGlobe spec={orbit} /> : null}
+          {change ? (
+            <>
+              <h2>What changed from the last flight</h2>
+              <p>
+                <GlossaryText text={change.note} />
+              </p>
+              <p className="meta">
+                Source: <a href={change.sourceUrl}>{change.sourceTitle}</a>
+              </p>
+            </>
+          ) : null}
         </article>
         <aside>
           <p className="kicker">Flight plate</p>
