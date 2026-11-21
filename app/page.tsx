@@ -1,61 +1,18 @@
-import { FlightRadar } from '@/components/flight-radar'
-import { FlightStrip } from '@/components/flight-strip'
-import type { Launch } from '@/lib/types'
+import { HomeLive } from '@/components/home-live'
 import { TierCompare } from '@/components/tier-compare'
-import Link from 'next/link'
 import { SourceNote } from '@/components/source-note'
 import { Tonight } from '@/components/tonight'
 import { getLaunches } from '@/lib/launches'
-import { radarLaunchFrom } from '@/lib/radar'
-import { isStillAhead, pickNext } from '@/lib/schedule'
+import { homeCandidates } from '@/lib/schedule'
 
 export const revalidate = 300
 
-function featuredNext(launches: Launch[]) {
-  return pickNext(launches, Date.now(), (launch) => launch.featured)
-}
-
 export default async function HomePage() {
   const board = await getLaunches()
-  const ahead = board.launches.filter((launch) => isStillAhead(launch))
-  const featured = featuredNext(ahead)
-  const next = pickNext(ahead)
-  const rest = ahead.filter((launch) => launch.id !== featured?.id).slice(0, 6)
+  const candidates = homeCandidates(board.launches)
   return (
     <main id="content">
-      <FlightRadar launch={radarLaunchFrom(next)} />
-      <Tonight />
-      <div className="wrap page" style={{ paddingTop: 0 }}>
-        <SourceNote board={board} />
-        <section>
-          <div className="section-head">
-            <h2>Next SpaceX</h2>
-            <Link href="/launches?who=spacex">SpaceX only</Link>
-          </div>
-          {featured ? (
-            <FlightStrip launch={featured} featured />
-          ) : (
-            <p className="note">
-              Next launch not posted yet. <Link href="/launches">See the full schedule</Link>
-            </p>
-          )}
-        </section>
-        <section>
-          <div className="section-head">
-            <h2>Also on the board</h2>
-            <Link href="/launches">The whole board</Link>
-          </div>
-          {rest.length === 0 ? <p className="note">The board is empty right now. The feed may be resting.</p> : null}
-          <ul className="board">
-            {rest.map((launch) => (
-              <li key={launch.id}>
-                <FlightStrip launch={launch} />
-              </li>
-            ))}
-          </ul>
-        </section>
-        <TierCompare />
-      </div>
+      <HomeLive launches={candidates} middle={<Tonight />} note={<SourceNote board={board} />} footer={<TierCompare />} />
     </main>
   )
 }

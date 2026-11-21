@@ -16,6 +16,7 @@ import {
   emptyCatalogNotice,
   launchDesignator,
   mergeSkyKinds,
+  mergeVisibleStarlinks,
   recentStarlinkDesignators,
   starlinkFromText,
   visitorCatalogNotice,
@@ -107,13 +108,11 @@ export async function refreshSkyCatalog(): Promise<{ ok: boolean; objects: numbe
 }
 
 async function readStarlink(dates: { dates: Record<string, string>; designators: string[] | null }): Promise<SkyElement[] | null> {
-  const fromLaunches = await readByDesignator(dates)
-  if (fromLaunches && fromLaunches.length > 0) return fromLaunches
-  const recentText = await readText(SKY_RECENT_URL, 20_000)
-  if (!recentText) return fromLaunches
-  const trains = starlinkFromText(recentText, dates.dates)
-  if (trains.length > 0) return toElements(trains)
-  if (/starlink/i.test(recentText)) {
+  const [fromLaunches, recentText] = await Promise.all([readByDesignator(dates), readText(SKY_RECENT_URL, 20_000)])
+  const extra = recentText ? toElements(starlinkFromText(recentText, dates.dates)) : []
+  const merged = mergeVisibleStarlinks(fromLaunches ?? [], extra)
+  if (merged.length > 0) return merged
+  if (recentText && /starlink/i.test(recentText)) {
     console.info(`sky starlink empty bytes ${recentText.length} head ${recentText.slice(0, 80).replace(/\s+/g, ' ')}`)
   }
   return fromLaunches
@@ -134,9 +133,9 @@ async function readByDesignator(dates: { dates: Record<string, string>; designat
       const csv = await readText(url.replace('FORMAT=JSON', 'FORMAT=CSV'), 20_000)
       trains = csv ? starlinkFromText(csv, dateMap) : []
     }
-    groups.push(...trains.slice(0, 12))
+    groups.push(...trains)
   }
-  return groups.length > 0 ? toElements(groups.slice(0, 36)) : []
+  return groups.length > 0 ? toElements(groups) : []
 }
 
 async function launchDates(): Promise<{ dates: Record<string, string>; designators: string[] | null }> {
@@ -151,7 +150,7 @@ async function launchDates(): Promise<{ dates: Record<string, string>; designato
     // The public board is only a hint. The launch search below still counts.
   }
   try {
-    const response = await fetch('https://ll.thespacedevs.com/2.3.0/launches/previous/?search=Starlink&limit=12&mode=list', {
+    const response = await fetch('https://ll.thespacedevs.com/2.3.0/launches/previous/?search=Starlink&limit=20&mode=list', {
       headers: { Accept: 'application/json', 'User-Agent': 'LiftoffClub/1.0 (family sky; cache 24h; +https://liftoffclub.app)' },
       signal: AbortSignal.timeout(12_000),
       cache: 'no-store',

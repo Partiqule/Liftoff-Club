@@ -1008,7 +1008,7 @@ body:has(.pro-app) { padding-bottom: 0; }
   width: 100%;
   height: 100%;
 }
-.radar-over { touch-action: none; }
+.radar-over, .sky-frame { touch-action: pan-y; }
 .radar-over:focus-visible { outline: 2px solid var(--core); outline-offset: 4px; }
 .radar-name {
   font-family: var(--font-display);
@@ -1033,6 +1033,46 @@ body:has(.pro-app) { padding-bottom: 0; }
 }
 .radar-card { margin-top: 0.4rem; }
 .radar-gesture { margin-top: 0; }
+.radar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.9rem;
+  list-style: none;
+  margin: 0.15rem 0 0.45rem;
+  padding: 0;
+  font-family: var(--font-data);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cold);
+}
+.radar-legend li { display: inline-flex; align-items: center; min-height: 1.4rem; }
+.radar-legend i {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  margin-right: 0.4rem;
+  background: var(--ink-quiet);
+}
+.radar-you { background: transparent; border: 1.5px solid var(--ink); box-sizing: border-box; }
+.radar-path { color: var(--core); }
+.sky-tools { display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 0.4rem 0 0.2rem; }
+.sky-tools button {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 0.8rem;
+  border: 1px solid var(--line);
+  background: var(--dust);
+  color: var(--ink);
+  font-family: var(--font-data);
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.sky-tools button[aria-pressed="true"] { color: var(--core); border-color: var(--core); }
+.sky-frame { width: min(28rem, 100%); margin: 0 auto; }
+.sky-hit { fill: transparent; cursor: pointer; }
+.sky-path { stroke: var(--core); stroke-width: 0.7; stroke-linejoin: round; stroke-linecap: round; }
 
 body:has(.day-screen) .topbar,
 body:has(.day-screen) .tabbar,

@@ -5,21 +5,28 @@ import { subsolar } from '@/lib/mission'
 import {
   EARTH_TEXTURE,
   RADAR_COPY,
-  RADAR_HOME_VIEW,
   RADAR_K,
-  viewLookingAt,
-  ascentProgress,
+  clampDistance,
+  clampPitch,
+  dragFollow,
+  globeRadiusPx,
+  latLonAt,
+  launchPhase,
   lerpFixes,
+  openingView,
+  pathCaption,
   projectRadar,
   spherePoint,
+  wheelDistance,
   type RadarFix,
   type RadarLaunch,
+  type RadarTarget,
   type RadarView,
 } from '@/lib/radar'
 import { fixesAt, orbitTrack, prepareBodies, type RadarBody } from '@/lib/radar-propagate'
 import type { SkyElement } from '@/lib/sky-point'
 
-type Hit = { id: string; x: number; y: number; kind: RadarFix['kind'] }
+type Hit = { target: RadarTarget; x: number; y: number; rank: number }
 
 const DOT: Record<RadarFix['kind'], string> = {
   station: '#f3d7b0',
@@ -33,10 +40,11 @@ const RANK: Record<RadarFix['kind'], number> = { bright: 0, starlink: 1, hubble:
 type Props = {
   objects: SkyElement[]
   place: { lat: number; lon: number } | null
+  timeZone: string | null
   launch: RadarLaunch | null
   reduced: boolean
-  selectedId: string | null
-  onSelect: (id: string | null) => void
+  selected: RadarTarget | null
+  onSelect: (target: RadarTarget | null) => void
   onFix: (fix: RadarFix | null) => void
   onLive: () => void
   onFallback: () => void
@@ -59,8 +67,8 @@ export function RadarScene(props: Props) {
     if (!wrap || !glCanvas || !over) return
     const gl = glCanvas.getContext('webgl', {
       alpha: true,
-      antialias: false,
-      depth: false,
+      antialias: true,
+      depth: true,
       stencil: false,
       powerPreference: 'low-power',
       premultipliedAlpha: true,
@@ -74,25 +82,43 @@ export function RadarScene(props: Props) {
       propsRef.current.onFallback()
       return
     }
-    const mesh = buildSphere(gl, 32, 48)
+    const mesh = buildSphere(gl, 48, 64)
     const texture = gl.createTexture()
     if (!texture) {
       propsRef.current.onFallback()
       return
     }
+    gl.enable(gl.DEPTH_TEST)
+    gl.depthFunc(gl.LEQUAL)
+    gl.enable(gl.CULL_FACE)
+    gl.cullFace(gl.BACK)
+    gl.disable(gl.BLEND)
+
     let dead = false
     let textured = false
     const image = new Image()
+    image.crossOrigin = 'anonymous'
     image.decoding = 'async'
     image.onload = () => {
       if (dead) return
+      const source = fitTexture(gl, image)
+      gl.getError()
       gl.bindTexture(gl.TEXTURE_2D, texture)
       gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image)
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source)
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+      const pot = isPowerOfTwo(source.width) && isPowerOfTwo(source.height)
+      if (pot) {
+        gl.generateMipmap(gl.TEXTURE_2D)
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
+      }
+      if (gl.getError() !== gl.NO_ERROR) {
+        propsRef.current.onFallback()
+        return
+      }
       textured = true
       propsRef.current.onLive()
     }
@@ -107,8 +133,11 @@ export function RadarScene(props: Props) {
       return
     }
 
-    const opening = propsRef.current.launch
-    const view: RadarView = opening ? viewLookingAt(opening.padLat, opening.padLon, 2.65) : { ...RADAR_HOME_VIEW }
+    const view: RadarView = openingView({
+      place: propsRef.current.place,
+      timeZone: propsRef.current.timeZone,
+      launch: propsRef.current.launch,
+    })
     let bodies: RadarBody[] = []
     let prev: { at: number; fixes: RadarFix[] } | null = null
     let next: { at: number; fixes: RadarFix[] } | null = null
@@ -119,9 +148,15 @@ export function RadarScene(props: Props) {
     let frame = 0
     let timer = 0
     let idle = 0
-    const pointers = new Map<number, { x: number; y: number }>()
-    let drag = { x: 0, y: 0, moved: 0, yaw: view.yaw, pitch: view.pitch }
+    let userMoved = false
+    let gesture: 'idle' | 'undecided' | 'scroll' | 'turn' | 'pinch' = 'idle'
+    let activePointer: number | null = null
+    let grab: { lat: number; lon: number } | null = null
     let pinch: { dist: number; distance: number } | null = null
+    let spin = { yaw: 0, pitch: 0 }
+    let moved = 0
+    let downAt = { x: 0, y: 0 }
+    const pointers = new Map<number, { x: number; y: number }>()
 
     const resize = () => {
       const rect = wrap.getBoundingClientRect()
@@ -137,13 +172,21 @@ export function RadarScene(props: Props) {
       gl.viewport(0, 0, glCanvas.width, glCanvas.height)
     }
 
+    const canvasPoint = (clientX: number, clientY: number) => {
+      const rect = over.getBoundingClientRect()
+      const scaleX = over.width / Math.max(1, rect.width)
+      const scaleY = over.height / Math.max(1, rect.height)
+      return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY }
+    }
+
     const recompute = () => {
       const fixes = fixesAt(bodies, new Date())
       const now = Date.now()
       prev = next
       next = { at: now, fixes }
-      const selected = propsRef.current.selectedId
-      propsRef.current.onFix(selected ? (fixes.find((fix) => fix.noradId === selected) ?? null) : null)
+      const selected = propsRef.current.selected
+      const id = selected?.type === 'sat' ? selected.id : null
+      propsRef.current.onFix(id ? (fixes.find((fix) => fix.noradId === id) ?? null) : null)
     }
 
     const shownFixes = () => {
@@ -166,22 +209,45 @@ export function RadarScene(props: Props) {
       recompute()
     }
 
+    const applyOpening = () => {
+      const framed = openingView({
+        place: propsRef.current.place,
+        timeZone: propsRef.current.timeZone,
+        launch: propsRef.current.launch,
+      })
+      view.yaw = framed.yaw
+      view.pitch = framed.pitch
+      view.distance = framed.distance
+    }
+
     const draw = () => {
       syncBodies()
-      const selected = propsRef.current.selectedId
-      if (selected !== trackId) {
-        const body = selected ? bodies.find((item) => item.noradId === selected) : undefined
+      if (!userMoved && gesture !== 'turn' && gesture !== 'pinch') applyOpening()
+      else if (pointers.size === 0 && gesture !== 'pinch') {
+        if (Math.abs(spin.yaw) > 0.00004 || Math.abs(spin.pitch) > 0.00004) {
+          view.yaw += spin.yaw
+          view.pitch = clampPitch(view.pitch + spin.pitch)
+          spin.yaw *= 0.92
+          spin.pitch *= 0.92
+          idle = Date.now()
+        }
+      }
+      const selected = propsRef.current.selected
+      const selectedId = selected?.type === 'sat' ? selected.id : null
+      if (selectedId !== trackId) {
+        const body = selectedId ? bodies.find((item) => item.noradId === selectedId) : undefined
         track = body ? orbitTrack(body, new Date()) : []
-        trackId = selected
+        trackId = selectedId
         recompute()
       }
       resize()
       const size = glCanvas.width
-      if (!paused && !propsRef.current.reduced && pointers.size === 0 && Date.now() - idle > 1200) {
-        view.yaw += 0.0008
+      if (!paused && !propsRef.current.reduced && pointers.size === 0 && gesture !== 'pinch' && Date.now() - idle > 1600) {
+        if (Math.abs(spin.yaw) < 0.00004 && Math.abs(spin.pitch) < 0.00004) view.yaw += 0.0006
       }
       gl.clearColor(0, 0, 0, 0)
-      gl.clear(gl.COLOR_BUFFER_BIT)
+      gl.clearDepth(1)
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
       if (textured) {
         const sun = subsolar(Date.now())
         const aim = spherePoint(sun.lat, sun.lon)
@@ -206,25 +272,23 @@ export function RadarScene(props: Props) {
       overlay.clearRect(0, 0, size, size)
       hits.length = 0
       const launch = propsRef.current.launch
-      if (launch) {
+      const phase = launch ? launchPhase(launch, Date.now()) : 'flown'
+      const caption = launch && phase !== 'flown' ? pathCaption(launch, phase) : null
+      if (launch && phase !== 'flown') {
         const width = Math.max(2, size / 280)
-        if (propsRef.current.reduced) {
-          strokeChain(overlay, launch.track, view, size, '#f3d7b0', width)
-        } else {
-          const headCount = Math.max(1, Math.round(ascentProgress(Date.now(), false) * (launch.track.length - 1)))
-          strokeChain(overlay, launch.track, view, size, 'rgba(243, 215, 176, 0.35)', Math.max(1.5, size / 420))
-          strokeChain(overlay, launch.track.slice(0, headCount + 1), view, size, '#f3d7b0', width)
-          const head = launch.track[Math.min(launch.track.length - 1, headCount)]
-          const spot = head ? projectRadar(head.lat, head.lon, view, size) : null
-          if (spot) {
+        strokeChain(overlay, launch.track, view, size, '#f3d7b0', width)
+        const pad = projectRadar(launch.padLat, launch.padLon, view, size)
+        if (pad) {
+          diamond(overlay, pad.x, pad.y, Math.max(6, size / 80), '#f3d7b0')
+          hits.push({ target: { type: 'pad' }, x: pad.x, y: pad.y, rank: 5 })
+          if (caption) {
+            overlay.font = `${Math.max(13, size / 34)}px Barlow, sans-serif`
             overlay.fillStyle = '#f6f3ec'
-            overlay.beginPath()
-            overlay.arc(spot.x, spot.y, Math.max(3.5, size / 140), 0, Math.PI * 2)
-            overlay.fill()
+            overlay.textAlign = 'left'
+            overlay.textBaseline = 'bottom'
+            overlay.fillText(caption, pad.x + size / 28, pad.y - size / 11)
           }
         }
-        const pad = projectRadar(launch.padLat, launch.padLon, view, size)
-        if (pad) diamond(overlay, pad.x, pad.y, Math.max(5, size / 90), '#f3d7b0')
       }
       if (track.length > 1) strokeChain(overlay, track, view, size, '#c5d2e2', Math.max(1.6, size / 360))
       const fixes = shownFixes()
@@ -232,13 +296,13 @@ export function RadarScene(props: Props) {
       for (const fix of ordered) {
         const spot = projectRadar(fix.lat, fix.lon, view, size)
         if (!spot) continue
-        const selected = fix.noradId === propsRef.current.selectedId
-        const radius = (fix.kind === 'station' ? 7 : fix.kind === 'hubble' ? 5.5 : 4) * (size / 700) * (selected ? 1.45 : 1)
+        const chosen = selected?.type === 'sat' && fix.noradId === selected.id
+        const radius = (fix.kind === 'station' ? 7 : fix.kind === 'hubble' ? 5.5 : 4) * (size / 700) * (chosen ? 1.45 : 1)
         overlay.fillStyle = DOT[fix.kind]
         overlay.beginPath()
-        overlay.arc(spot.x, spot.y, Math.max(2.2, radius), 0, Math.PI * 2)
+        overlay.arc(spot.x, spot.y, Math.max(2.4, radius), 0, Math.PI * 2)
         overlay.fill()
-        hits.push({ id: fix.noradId, x: spot.x, y: spot.y, kind: fix.kind })
+        hits.push({ target: { type: 'sat', id: fix.noradId }, x: spot.x, y: spot.y, rank: 2 + RANK[fix.kind] })
       }
       const you = propsRef.current.place
       if (you) {
@@ -247,12 +311,13 @@ export function RadarScene(props: Props) {
           overlay.strokeStyle = '#f6f3ec'
           overlay.lineWidth = Math.max(1.5, size / 400)
           overlay.beginPath()
-          overlay.arc(spot.x, spot.y, Math.max(5, size / 80), 0, Math.PI * 2)
+          overlay.arc(spot.x, spot.y, Math.max(6, size / 70), 0, Math.PI * 2)
           overlay.stroke()
           overlay.fillStyle = '#f6f3ec'
           overlay.beginPath()
-          overlay.arc(spot.x, spot.y, Math.max(2, size / 180), 0, Math.PI * 2)
+          overlay.arc(spot.x, spot.y, Math.max(2.2, size / 170), 0, Math.PI * 2)
           overlay.fill()
+          hits.push({ target: { type: 'you' }, x: spot.x, y: spot.y, rank: 4 })
         }
       }
     }
@@ -287,80 +352,157 @@ export function RadarScene(props: Props) {
       } else start()
     }
 
-    const pick = (cssX: number, cssY: number) => {
-      const scale = over.width / Math.max(1, over.clientWidth)
-      const x = cssX * scale
-      const y = cssY * scale
-      const reach = Math.max(14, over.width * 0.035)
-      let closest = reach
-      for (const hit of hits) closest = Math.min(closest, Math.hypot(hit.x - x, hit.y - y))
+    const pick = (pixelX: number, pixelY: number) => {
+      const reach = Math.max(44 * (over.width / Math.max(1, over.clientWidth)), over.width * 0.07)
       let best: Hit | null = null
       let bestDist = reach
       for (const hit of hits) {
-        const dist = Math.hypot(hit.x - x, hit.y - y)
-        if (dist > reach || dist > closest + 6) continue
-        if (!best || RANK[hit.kind] > RANK[best.kind] || (RANK[hit.kind] === RANK[best.kind] && dist < bestDist)) {
+        const dist = Math.hypot(hit.x - pixelX, hit.y - pixelY)
+        if (dist > reach) continue
+        if (!best || hit.rank > best.rank || (hit.rank === best.rank && dist < bestDist)) {
           best = hit
           bestDist = dist
         }
       }
-      propsRef.current.onSelect(best ? best.id : null)
+      const launch = propsRef.current.launch
+      const phase = launch ? launchPhase(launch, Date.now()) : 'flown'
+      if (!best && launch && phase !== 'flown') {
+        const along = chainDistance(pixelX, pixelY, launch.track, view, over.width)
+        if (along <= reach) {
+          propsRef.current.onSelect({ type: 'path' })
+          return
+        }
+      }
+      propsRef.current.onSelect(best ? best.target : null)
     }
 
     const onDown = (event: PointerEvent) => {
-      try {
-        over.setPointerCapture(event.pointerId)
-      } catch {
-        // The pointer can end before capture.
-      }
+      if (event.pointerType === 'mouse' && event.button !== 0) return
+      const point = canvasPoint(event.clientX, event.clientY)
       pointers.set(event.pointerId, { x: event.clientX, y: event.clientY })
-      idle = Date.now()
-      drag = { x: event.clientX, y: event.clientY, moved: 0, yaw: view.yaw, pitch: view.pitch }
-      pinch = null
-      if (pointers.size === 2) {
+      if (pointers.size >= 2) {
+        gesture = 'pinch'
+        grab = null
         const [a, b] = [...pointers.values()]
         pinch = { dist: Math.hypot(a.x - b.x, a.y - b.y) || 1, distance: view.distance }
+        return
+      }
+      activePointer = event.pointerId
+      downAt = point
+      moved = 0
+      idle = Date.now()
+      spin = { yaw: 0, pitch: 0 }
+      const radius = globeRadiusPx(over.width, view.distance)
+      const center = over.width / 2
+      const inside = Math.hypot(point.x - center, point.y - center) <= radius
+      if (event.pointerType === 'mouse') {
+        gesture = inside ? 'turn' : 'scroll'
+      } else {
+        gesture = inside ? 'undecided' : 'scroll'
+      }
+      if (gesture === 'turn') {
+        userMoved = true
+        grab = latLonAt(point.x, point.y, view, over.width) ?? propsRef.current.place
+        try {
+          over.setPointerCapture(event.pointerId)
+        } catch {
+          // The pointer can end before capture.
+        }
       }
     }
     const onMove = (event: PointerEvent) => {
       if (!pointers.has(event.pointerId)) return
       pointers.set(event.pointerId, { x: event.clientX, y: event.clientY })
-      idle = Date.now()
-      if (pointers.size >= 2 && pinch) {
-        const [a, b] = [...pointers.values()]
-        const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1
-        view.distance = clamp(pinch.distance * (pinch.dist / dist), 1.7, 5.6)
-        return
+      if (pointers.size >= 2 || gesture === 'pinch') return
+      if (event.pointerId !== activePointer || gesture === 'scroll') return
+      const point = canvasPoint(event.clientX, event.clientY)
+      const dx = point.x - downAt.x
+      const dy = point.y - downAt.y
+      moved = Math.max(moved, Math.hypot(dx, dy))
+      if (gesture === 'undecided') {
+        if (moved < 10) return
+        if (Math.abs(dy) > Math.abs(dx) * 1.15) {
+          gesture = 'scroll'
+          grab = null
+          return
+        }
+        gesture = 'turn'
+        userMoved = true
+        grab = latLonAt(downAt.x, downAt.y, view, over.width) ?? propsRef.current.place
+        try {
+          over.setPointerCapture(event.pointerId)
+        } catch {
+          // Capture can fail if the finger already left.
+        }
       }
-      const dx = event.clientX - drag.x
-      const dy = event.clientY - drag.y
-      drag.moved = Math.max(drag.moved, Math.hypot(dx, dy))
-      view.yaw = drag.yaw + dx * 0.005
-      view.pitch = clamp(drag.pitch + dy * 0.005, -1.15, 1.15)
+      if (gesture !== 'turn' || !grab) return
+      const before = { yaw: view.yaw, pitch: view.pitch }
+      const followed = dragFollow(view, grab, point.x, point.y, over.width)
+      view.yaw = followed.yaw
+      view.pitch = followed.pitch
+      const now = performance.now()
+      const dt = Math.max(16, now - idle)
+      spin = { yaw: ((view.yaw - before.yaw) / dt) * 16, pitch: ((view.pitch - before.pitch) / dt) * 16 }
+      idle = now
     }
     const onUp = (event: PointerEvent) => {
-      const wasTap = pointers.size === 1 && drag.moved < 8
+      const point = canvasPoint(event.clientX, event.clientY)
+      const wasTap = pointers.size <= 1 && gesture !== 'scroll' && gesture !== 'pinch' && moved < 12
+      const wasTurn = gesture === 'turn' && moved >= 12
       pointers.delete(event.pointerId)
-      if (wasTap) {
-        const rect = over.getBoundingClientRect()
-        pick(event.clientX - rect.left, event.clientY - rect.top)
+      if (wasTap) pick(point.x, point.y)
+      if (!wasTurn) spin = { yaw: 0, pitch: 0 }
+      if (pointers.size < 2) {
+        pinch = null
+        if (gesture === 'pinch') gesture = 'idle'
       }
-      if (pointers.size < 2) pinch = null
+      if (event.pointerId === activePointer) {
+        activePointer = null
+        grab = null
+        if (gesture !== 'pinch') gesture = 'idle'
+      }
       idle = Date.now()
+      if (Math.hypot(spin.yaw, spin.pitch) < 0.0008) spin = { yaw: 0, pitch: 0 }
+    }
+    const onTouchStart = (event: TouchEvent) => {
+      if (event.touches.length < 2) return
+      event.preventDefault()
+      gesture = 'pinch'
+      grab = null
+      const [a, b] = [event.touches[0], event.touches[1]]
+      pinch = { dist: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) || 1, distance: view.distance }
+    }
+    const onTouchMove = (event: TouchEvent) => {
+      if (event.touches.length >= 2 && pinch) {
+        event.preventDefault()
+        const [a, b] = [event.touches[0], event.touches[1]]
+        const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) || 1
+        const target = clampDistance(pinch.distance * (pinch.dist / dist))
+        view.distance += (target - view.distance) * 0.65
+        userMoved = true
+        idle = Date.now()
+        spin = { yaw: 0, pitch: 0 }
+        return
+      }
+      if (gesture === 'turn') event.preventDefault()
     }
     const onWheel = (event: WheelEvent) => {
       event.preventDefault()
+      userMoved = true
       idle = Date.now()
-      view.distance = clamp(view.distance * (event.deltaY > 0 ? 1.06 : 0.94), 1.7, 5.6)
+      spin = { yaw: 0, pitch: 0 }
+      view.distance = wheelDistance(view.distance, event.deltaY, event.deltaMode)
     }
     const onKey = (event: KeyboardEvent) => {
+      userMoved = true
       idle = Date.now()
+      spin = { yaw: 0, pitch: 0 }
       if (event.key === 'ArrowLeft') view.yaw += 0.08
       else if (event.key === 'ArrowRight') view.yaw -= 0.08
-      else if (event.key === 'ArrowUp') view.pitch = clamp(view.pitch + 0.06, -1.15, 1.15)
-      else if (event.key === 'ArrowDown') view.pitch = clamp(view.pitch - 0.06, -1.15, 1.15)
-      else if (event.key === '+' || event.key === '=') view.distance = clamp(view.distance * 0.94, 1.7, 5.6)
-      else if (event.key === '-' || event.key === '_') view.distance = clamp(view.distance * 1.06, 1.7, 5.6)
+      else if (event.key === 'ArrowUp') view.pitch = clampPitch(view.pitch + 0.06)
+      else if (event.key === 'ArrowDown') view.pitch = clampPitch(view.pitch - 0.06)
+      else if (event.key === '+' || event.key === '=') view.distance = clampDistance(view.distance * 0.94)
+      else if (event.key === '-' || event.key === '_') view.distance = clampDistance(view.distance * 1.06)
       else if (event.key === 'Escape') propsRef.current.onSelect(null)
       else return
       event.preventDefault()
@@ -380,6 +522,8 @@ export function RadarScene(props: Props) {
     over.addEventListener('pointermove', onMove)
     over.addEventListener('pointerup', onUp)
     over.addEventListener('pointercancel', onUp)
+    over.addEventListener('touchstart', onTouchStart, { passive: false })
+    over.addEventListener('touchmove', onTouchMove, { passive: false })
     over.addEventListener('wheel', onWheel, { passive: false })
     over.addEventListener('keydown', onKey)
     glCanvas.addEventListener('webglcontextlost', onLost)
@@ -394,6 +538,8 @@ export function RadarScene(props: Props) {
       over.removeEventListener('pointermove', onMove)
       over.removeEventListener('pointerup', onUp)
       over.removeEventListener('pointercancel', onUp)
+      over.removeEventListener('touchstart', onTouchStart)
+      over.removeEventListener('touchmove', onTouchMove)
       over.removeEventListener('wheel', onWheel)
       over.removeEventListener('keydown', onKey)
       glCanvas.removeEventListener('webglcontextlost', onLost)
@@ -413,8 +559,57 @@ export function RadarScene(props: Props) {
   )
 }
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value))
+function fitTexture(gl: WebGLRenderingContext, image: HTMLImageElement): HTMLImageElement | HTMLCanvasElement {
+  const max = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 2048
+  const width = image.naturalWidth || image.width
+  const height = image.naturalHeight || image.height
+  if (width > 0 && height > 0 && width <= max && height <= max && isPowerOfTwo(width) && isPowerOfTwo(height)) return image
+  const canvas = document.createElement('canvas')
+  const limit = Math.min(max, 2048)
+  const scale = Math.min(1, limit / Math.max(width, height, 1))
+  canvas.width = potFloor(Math.max(2, Math.round(width * scale)))
+  canvas.height = potFloor(Math.max(2, Math.round(height * scale)))
+  canvas.getContext('2d')?.drawImage(image, 0, 0, canvas.width, canvas.height)
+  return canvas
+}
+
+function potFloor(value: number): number {
+  let pot = 1
+  while (pot * 2 <= value) pot *= 2
+  return pot
+}
+
+function isPowerOfTwo(value: number): boolean {
+  return value > 0 && (value & (value - 1)) === 0
+}
+
+function chainDistance(
+  x: number,
+  y: number,
+  points: { lat: number; lon: number }[],
+  view: RadarView,
+  size: number,
+): number {
+  let best = Number.POSITIVE_INFINITY
+  let prev: { x: number; y: number } | null = null
+  for (const point of points) {
+    const spot = projectRadar(point.lat, point.lon, view, size)
+    if (!spot || (prev && Math.hypot(spot.x - prev.x, spot.y - prev.y) > size * 0.34)) {
+      prev = spot
+      continue
+    }
+    if (prev) best = Math.min(best, segmentDistance(x, y, prev, spot))
+    prev = spot
+  }
+  return best
+}
+
+function segmentDistance(x: number, y: number, a: { x: number; y: number }, b: { x: number; y: number }): number {
+  const dx = b.x - a.x
+  const dy = b.y - a.y
+  const len = dx * dx + dy * dy
+  const t = len === 0 ? 0 : Math.min(1, Math.max(0, ((x - a.x) * dx + (y - a.y) * dy) / len))
+  return Math.hypot(x - (a.x + dx * t), y - (a.y + dy * t))
 }
 
 function strokeChain(
@@ -556,8 +751,9 @@ void main() {
   vUv = aUv;
   vObj = aPos;
   vec3 p = rotX(rotY(aPos, uYaw), uPitch);
-  float w = uDist - p.z;
-  gl_Position = vec4(p.x * uK / w, p.y * uK / w, 0.0, 1.0);
+  float dist = max(uDist - p.z, 0.05);
+  float ndc = clamp((dist - 0.25) / 7.5, 0.0, 1.0);
+  gl_Position = vec4(p.x * uK, p.y * uK, ndc * dist, dist);
 }
 `
 
@@ -569,7 +765,8 @@ varying vec2 vUv;
 varying vec3 vObj;
 void main() {
   float light = dot(normalize(vObj), normalize(uSun));
-  float shade = 0.5 + 0.5 * clamp(light, 0.0, 1.0);
-  gl_FragColor = vec4(texture2D(uTex, vUv).rgb * shade, 1.0);
+  float shade = 0.55 + 0.45 * clamp(light, 0.0, 1.0);
+  vec3 color = texture2D(uTex, vUv).rgb * shade;
+  gl_FragColor = vec4(color, 1.0);
 }
 `

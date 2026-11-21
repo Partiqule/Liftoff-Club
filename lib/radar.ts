@@ -1,4 +1,5 @@
 import { approximateInclination, groundTrack, launchAzimuthDeg } from '@/lib/mission'
+import { homePhase, type HomePhase } from '@/lib/schedule'
 import type { SkyElement, SkyKind } from '@/lib/sky-point'
 
 /** Equirectangular NASA Blue Marble (Visible Earth land, ocean, ice), public domain. */
@@ -10,9 +11,16 @@ export const RADAR_COPY = {
   kicker: 'In orbit now',
   legend: 'Stations, Hubble, bright satellites, and recent Starlink trains.',
   hint: 'Tap a dot for a name, altitude, speed, and the next orbit.',
-  gesture: 'Drag to turn. Pinch or scroll to zoom.',
+  gesture: 'Drag sideways to turn the Earth. A straight swipe up or down scrolls the page. Pinch to zoom.',
   stillAlt: 'Earth',
-  liveLabel: 'Earth. Drag to turn. Pinch or scroll to zoom. Tap a satellite.',
+  liveLabel: 'Earth. Drag sideways to turn. Pinch to zoom. Tap a satellite, the path, or your town.',
+  drawing: 'Drawing the Earth.',
+  legendStations: 'Stations',
+  legendTrains: 'Starlink trains',
+  legendBright: 'Bright satellites',
+  legendYou: 'You',
+  youNote: 'Your town on the Earth.',
+  padLabel: 'Launch pad',
   fallback: 'This screen keeps a still picture of Earth.',
   loading: 'Checking saved orbits.',
   empty: 'No saved orbits yet. The Earth is still here.',
@@ -32,7 +40,7 @@ export const RADAR_COPY = {
 const CAPS: Record<SkyKind, number> = {
   station: 6,
   hubble: 2,
-  starlink: 16,
+  starlink: 32,
   bright: 24,
 }
 
@@ -40,27 +48,152 @@ const KIND_ORDER: SkyKind[] = ['station', 'hubble', 'starlink', 'bright']
 
 export type RadarLaunch = {
   name: string
+  rocketName: string
   padName: string
   padLat: number
   padLon: number
   track: { lat: number; lon: number }[]
+  net: string | null
+  statusAbbrev: string
+  statusName: string
 }
+
+export type RadarTarget = { type: 'sat'; id: string } | { type: 'you' } | { type: 'pad' } | { type: 'path' }
 
 export type RadarView = { yaw: number; pitch: number; distance: number }
 
 export const RADAR_K = 2.7
+export const PITCH_MAX = 1.02
+export const DIST_MIN = 1.7
+export const DIST_MAX = 5.6
 export const RADAR_HOME_VIEW: RadarView = {
   yaw: (95 * Math.PI) / 180,
   pitch: (22 * Math.PI) / 180,
   distance: 2.95,
 }
 
+const ZONE_FOCUS: Array<[RegExp, number, number]> = [
+  [/^America\/(Denver|Boise|Phoenix|Edmonton|Cambridge_Bay|Inuvik|Yellowknife|Dawson|Whitehorse|Mazatlan|Chihuahua|Hermosillo|Ojinaga|Creston|Shiprock|Fort_Nelson)/, 39.7, -104.9],
+  [/^America\/(Los_Angeles|Vancouver|Tijuana|Santa_Isabel)/, 37.5, -122],
+  [/^America\/(Chicago|Winnipeg|Mexico_City|Rainy_River|Rankin_Inlet|Resolute|Matamoros|Monterrey|Merida|Bahia_Banderas|North_Dakota|Indiana|Menominee|Knox|Tell_City)/, 41, -93],
+  [/^America\/(New_York|Toronto|Detroit|Kentucky|Montreal|Nassau|Iqaluit|Pangnirtung|Thunder_Bay|Nipigon|Atikokan|Jamaica|Port-au-Prince|Havana|Panama)/, 40.5, -74],
+  [/^America\/(Anchorage|Juneau|Nome|Sitka|Yakutat|Metlakatla|Adak)/, 61, -150],
+  [/^Pacific\/Honolulu|^America\/Honolulu/, 21.3, -157.8],
+  [/^America\/(Halifax|Glace_Bay|Moncton|Goose_Bay|Blanc-Sablon|Puerto_Rico|St_Thomas|St_Johns|Barbados|Martinique)/, 44, -63],
+  [/^America\/(Sao_Paulo|Argentina|Buenos_Aires|Cordoba|Mendoza|Santiago|La_Paz|Asuncion|Montevideo)/, -25, -58],
+  [/^Europe\/(London|Dublin|Lisbon)/, 51.5, -0.1],
+  [/^Europe\//, 50, 10],
+  [/^Asia\/(Tokyo|Seoul)/, 36, 138],
+  [/^Asia\/(Shanghai|Hong_Kong|Singapore|Taipei|Manila)/, 31, 121],
+  [/^Asia\/(Kolkata|Calcutta|Colombo)/, 22, 78],
+  [/^Asia\//, 35, 100],
+  [/^Australia\/(Sydney|Melbourne|Brisbane|Hobart)/, -33, 151],
+  [/^Australia\//, -25, 134],
+  [/^Pacific\/Auckland/, -37, 175],
+  [/^Africa\//, 5, 20],
+  [/^America\//, 40, -98],
+]
+
+/** A map center for a device time zone. UTC has no place, so the caller can try the pad. */
+export function focusForTimeZone(zone: string | null | undefined): { lat: number; lon: number } | null {
+  if (!zone) return null
+  const name = zone.trim()
+  if (!name || name === 'UTC' || name === 'Etc/UTC' || name === 'Etc/GMT' || name === 'GMT') return null
+  for (const [test, lat, lon] of ZONE_FOCUS) {
+    if (test.test(name)) return { lat, lon }
+  }
+  return null
+}
+
+export function clampPitch(pitch: number): number {
+  return Math.min(PITCH_MAX, Math.max(-PITCH_MAX, pitch))
+}
+
+export function clampDistance(distance: number): number {
+  return Math.min(DIST_MAX, Math.max(DIST_MIN, distance))
+}
+
+/** Town, then time zone, then the next pad, then the middle of North America. */
+export function openingView(input: {
+  place: { lat: number; lon: number } | null
+  timeZone: string | null
+  launch: { padLat: number; padLon: number } | null
+}): RadarView {
+  const place = input.place && Number.isFinite(input.place.lat) && Number.isFinite(input.place.lon) ? input.place : null
+  const zone = place ? null : focusForTimeZone(input.timeZone)
+  const pad =
+    !place && !zone && input.launch && Number.isFinite(input.launch.padLat) && Number.isFinite(input.launch.padLon)
+      ? { lat: input.launch.padLat, lon: input.launch.padLon }
+      : null
+  const focus = place ?? zone ?? pad ?? { lat: 40, lon: -98 }
+  const view = viewLookingAt(focus.lat, focus.lon, 2.85)
+  const tilt = Math.abs(focus.lat) < 20 ? 0.16 : 0
+  return { ...view, pitch: clampPitch(view.pitch + tilt) }
+}
+
+/** Move the grabbed town so it stays under the finger. Pitch stays short of upside down. */
+export function dragFollow(
+  view: RadarView,
+  grabbed: { lat: number; lon: number },
+  fingerX: number,
+  fingerY: number,
+  size: number,
+): RadarView {
+  let yaw = view.yaw
+  let pitch = clampPitch(view.pitch)
+  for (let step = 0; step < 6; step += 1) {
+    const trial = { yaw, pitch, distance: view.distance }
+    const spot = projectRadar(grabbed.lat, grabbed.lon, trial, size)
+    if (!spot) break
+    const errX = fingerX - spot.x
+    const errY = fingerY - spot.y
+    if (errX * errX + errY * errY < 0.36) break
+    const eps = 0.0015
+    const sx = projectRadar(grabbed.lat, grabbed.lon, { ...trial, yaw: yaw + eps }, size)
+    const sy = projectRadar(grabbed.lat, grabbed.lon, { ...trial, pitch: clampPitch(pitch + eps) }, size)
+    if (!sx || !sy) break
+    const jxx = (sx.x - spot.x) / eps
+    const jyx = (sx.y - spot.y) / eps
+    const jxy = (sy.x - spot.x) / eps
+    const jyy = (sy.y - spot.y) / eps
+    const det = jxx * jyy - jxy * jyx
+    if (Math.abs(det) < 1e-4) break
+    const dyaw = (errX * jyy - errY * jxy) / det
+    const dpitch = (jxx * errY - jyx * errX) / det
+    const limit = 0.35
+    yaw += Math.min(limit, Math.max(-limit, dyaw))
+    pitch = clampPitch(pitch + Math.min(limit, Math.max(-limit, dpitch)))
+  }
+  return { yaw, pitch, distance: view.distance }
+}
+
+export function wheelDistance(distance: number, deltaY: number, deltaMode = 0): number {
+  const pixels = deltaMode === 1 ? deltaY * 16 : deltaMode === 2 ? deltaY * 400 : deltaY
+  return clampDistance(distance * Math.exp(pixels * 0.0011))
+}
+
+export function globeRadiusPx(size: number, distance: number): number {
+  const nx = RADAR_K / Math.max(distance - 0.2, 0.45)
+  return Math.min(size * 0.48, nx * 0.5 * size)
+}
+
+export function pathCaption(launch: { rocketName: string; name: string }, phase: HomePhase): string | null {
+  if (phase === 'flown') return null
+  const rocket = (launch.rocketName || launch.name).replace(/[—–-]/g, ' ').replace(/\s+/g, ' ').trim() || 'Rocket'
+  if (phase === 'lifting') return `${rocket} path, lifting off`
+  return `${rocket} path, next launch`
+}
+
+export function launchPhase(launch: { net: string | null; statusAbbrev?: string; statusName?: string }, now = Date.now()): HomePhase {
+  return homePhase(launch, now)
+}
+
 /** Put a latitude and longitude at the middle of the disc. */
 export function viewLookingAt(lat: number, lon: number, distance = 2.8): RadarView {
   return {
     yaw: (-lon * Math.PI) / 180,
-    pitch: (lat * Math.PI) / 180,
-    distance,
+    pitch: clampPitch((lat * Math.PI) / 180),
+    distance: clampDistance(distance),
   }
 }
 
@@ -126,11 +259,15 @@ export function elementsFromTleBundle(body: {
 export function radarLaunchFrom(
   launch: {
     name: string
+    rocketName?: string | null
     padName: string
     padLat: number | null
     padLon: number | null
     orbitName: string | null
     orbitAbbrev: string | null
+    net?: string | null
+    statusAbbrev?: string | null
+    statusName?: string | null
   } | null,
 ): RadarLaunch | null {
   if (!launch || launch.padLat == null || launch.padLon == null) return null
@@ -139,7 +276,17 @@ export function radarLaunchFrom(
   if (azimuth == null) return null
   const track = groundTrack(launch.padLat, launch.padLon, azimuth)
   if (track.length < 2) return null
-  return { name: launch.name, padName: launch.padName, padLat: launch.padLat, padLon: launch.padLon, track }
+  return {
+    name: launch.name,
+    rocketName: (launch.rocketName || launch.name).trim(),
+    padName: launch.padName,
+    padLat: launch.padLat,
+    padLon: launch.padLon,
+    track,
+    net: launch.net ?? null,
+    statusAbbrev: launch.statusAbbrev ?? '',
+    statusName: launch.statusName ?? '',
+  }
 }
 
 export function ascentProgress(nowMs: number, reduced: boolean, periodMs = 18000): number {
@@ -170,6 +317,31 @@ export function rotX(p: Vec3, angle: number): Vec3 {
 
 export function viewPoint(lat: number, lon: number, view: RadarView): Vec3 {
   return rotX(rotY(spherePoint(lat, lon), view.yaw), view.pitch)
+}
+
+/** Latitude and longitude under a canvas pixel. Null when the finger misses the Earth. */
+export function latLonAt(x: number, y: number, view: RadarView, size: number): { lat: number; lon: number } | null {
+  if (!(size > 0)) return null
+  const nx = (x / size - 0.5) * 2
+  const ny = (0.5 - y / size) * 2
+  const s = nx / RADAR_K
+  const t = ny / RADAR_K
+  const a = s * s + t * t
+  const A = a + 1
+  const B = -2 * a * view.distance
+  const C = a * view.distance * view.distance - 1
+  const disc = B * B - 4 * A * C
+  if (disc < 0 || A === 0) return null
+  const root = Math.sqrt(disc)
+  const u = Math.max((-B + root) / (2 * A), (-B - root) / (2 * A))
+  if (u <= 0.02) return null
+  const q = { x: s * (view.distance - u), y: t * (view.distance - u), z: u }
+  const objectPoint = rotY(rotX(q, -view.pitch), -view.yaw)
+  const lat = (Math.asin(Math.max(-1, Math.min(1, objectPoint.y))) * 180) / Math.PI
+  let lon = (Math.atan2(objectPoint.x, objectPoint.z) * 180) / Math.PI
+  if (lon > 180) lon -= 360
+  if (lon < -180) lon += 360
+  return { lat, lon }
 }
 
 /** Screen point for a canvas of `size` pixels. Null when the place faces away. */

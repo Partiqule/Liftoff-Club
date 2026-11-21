@@ -1,13 +1,15 @@
 'use client'
 
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { LocationPrompt } from '@/components/location-prompt'
 import { SkyDome, type SkyDot } from '@/components/sky-dome'
+import { formatAltitudeKm, formatSpeedKms, radarKindLabel } from '@/lib/radar'
 import { useClub } from '@/components/club-provider'
 import { compass8, heightPhrase } from '@/lib/geo'
 import { watchingPlace } from '@/lib/places'
 import {
   SKY_COPY,
+  clampSkyZoom,
   compassNeedsTap,
   guideAngle,
   guidePhrase,
@@ -19,6 +21,7 @@ import {
   type SkyFix,
   type SkyKind,
 } from '@/lib/sky-point'
+import type { SkyPass } from '@/lib/sky-propagate'
 
 type Mode = 'checking' | 'tap' | 'on' | 'denied' | 'unavailable'
 type CompassSupport = 'server' | 'missing' | 'tap' | 'listen'
@@ -40,6 +43,10 @@ export function SkyFinder() {
   const [fixes, setFixes] = useState<SkyFix[]>([])
   const [nowMs, setNowMs] = useState(() => Date.now())
   const [selected, setSelected] = useState<string | null>(null)
+  const [skyView, setSkyView] = useState<'map' | 'compass'>('map')
+  const [zoom, setZoom] = useState(1)
+  const [detail, setDetail] = useState<{ id: string; pass: SkyPass } | null>(null)
+  const setZoomSafe = useCallback((value: number) => setZoom(clampSkyZoom(value)), [])
   const support = useSyncExternalStore(subscribeCompass, compassSupport, () => 'server' as const)
   const [armed, setArmed] = useState(false)
   const [sensor, setSensor] = useState<'checking' | 'on' | 'denied' | 'unavailable'>('checking')
@@ -103,6 +110,23 @@ export function SkyFinder() {
   }, [place, catalog])
 
   useEffect(() => {
+    if (!place || !selected || !catalog) return
+    const object = catalog.objects.find((item) => item.noradId === selected)
+    if (!object) return
+    let cancel = false
+    const id = selected
+    ;(async () => {
+      const mod = await import('@/lib/sky-propagate')
+      if (cancel) return
+      const pass = mod.skyPass(object, place, new Date())
+      if (!cancel && pass) setDetail({ id, pass })
+    })()
+    return () => {
+      cancel = true
+    }
+  }, [place, selected, catalog])
+
+  useEffect(() => {
     if (support === 'listen') listenStop.current = startListening(setReading, setSensor)
     return () => {
       listenStop.current?.()
@@ -156,8 +180,9 @@ export function SkyFinder() {
           riseAzimuth: picked.riseAzimuth,
         })
       : null
-  const dots = domeDots(above, selected)
+  const dots = domeDots(above, selected, zoom)
   const notice = catalogState === 'error' ? SKY_COPY.loadFailed : catalog?.notice
+  const headingForMap = skyView === 'compass' ? heading : null
 
   return (
     <section className="wrap page">
@@ -209,8 +234,33 @@ export function SkyFinder() {
               </svg>
             </div>
           )}
-          <SkyDome dots={dots} rimAzimuth={picked && !picked.above ? picked.riseAzimuth : null} />
-          <p className="note">{SKY_COPY.domeNote}</p>
+          <div className="sky-tools">
+            <button type="button" aria-pressed={skyView === 'compass'} onClick={() => setSkyView('compass')}>
+              {SKY_COPY.compassMode}
+            </button>
+            <button type="button" aria-pressed={skyView === 'map'} onClick={() => setSkyView('map')}>
+              {SKY_COPY.mapMode}
+            </button>
+            <button type="button" onClick={() => setZoomSafe(zoom / 1.25)} aria-label={SKY_COPY.zoomOut}>
+              {SKY_COPY.zoomOut}
+            </button>
+            <button type="button" onClick={() => setZoomSafe(zoom * 1.25)} aria-label={SKY_COPY.zoomIn}>
+              {SKY_COPY.zoomIn}
+            </button>
+          </div>
+          <p className="note">{SKY_COPY.skyGesture}</p>
+          <SkyDome
+            key={zoom > 1.01 ? 'zoomed' : 'flat'}
+            dots={dots}
+            path={detail?.id === selected ? detail.pass.path : []}
+            heading={headingForMap}
+            zoom={zoom}
+            label={skyView === 'compass' ? SKY_COPY.compassNote : SKY_COPY.domeNote}
+            onZoom={setZoomSafe}
+            onPick={setSelected}
+          />
+          <p className="note">{skyView === 'compass' ? SKY_COPY.compassNote : SKY_COPY.domeNote}</p>
+          {picked ? <SkyDetail row={picked} detail={detail?.id === picked.noradId ? detail.pass : null} nowMs={nowMs} /> : null}
           <SkyList title={SKY_COPY.aboveTitle} rows={above} selected={selected} nowMs={nowMs} empty={SKY_COPY.noneAbove} onPick={setSelected} />
           <SkyList title={SKY_COPY.soonTitle} rows={soon} selected={selected} nowMs={nowMs} empty={SKY_COPY.noneSoon} onPick={setSelected} />
         </>
@@ -265,13 +315,14 @@ function SkyList({
   )
 }
 
-function domeDots(above: Row[], selected: string | null): SkyDot[] {
+function domeDots(above: Row[], selected: string | null, zoom: number): SkyDot[] {
   const labeled = new Set<string>()
+  const cap = zoom >= 2.2 ? 24 : zoom >= 1.4 ? 14 : 8
   for (const row of above) {
     if (row.noradId === selected || row.name === 'ISS' || row.name === 'Tiangong' || row.name === 'Hubble') labeled.add(row.noradId)
   }
   for (const row of above) {
-    if (labeled.size >= 8) break
+    if (labeled.size >= cap) break
     if (row.visible) labeled.add(row.noradId)
   }
   return above.map((row) => ({
@@ -283,6 +334,37 @@ function domeDots(above: Row[], selected: string | null): SkyDot[] {
     selected: row.noradId === selected,
     showLabel: labeled.has(row.noradId),
   }))
+}
+
+function SkyDetail({ row, detail, nowMs }: { row: Row; detail: SkyPass | null; nowMs: number }) {
+  const rise = riseMinutes(row.above ? null : (detail?.riseAt ?? row.riseAt), nowMs)
+  const set = riseMinutes(row.above ? (detail?.setAt ?? null) : null, nowMs)
+  const riseDir = compass8(detail?.riseAzimuth ?? row.riseAzimuth ?? row.azimuth)
+  const setDir = compass8(detail?.setAzimuth ?? row.azimuth)
+  const when = row.above
+    ? set
+      ? `Sets in ${set} min toward the ${setDir}.`
+      : `Toward the ${compass8(row.azimuth)}, ${Math.round(row.elevation)}° up.`
+    : `Rises ${rise == null ? 'soon' : rise <= 1 ? 'within a minute' : `in ${rise} min`} toward the ${riseDir}.`
+  return (
+    <div className="radar-card" aria-live="polite">
+      <p className="kicker">{radarKindLabel(row.kind)}</p>
+      <p className="radar-name">{row.name}</p>
+      <p className="radar-figure">
+        <span>{SKY_COPY.altitude}</span>
+        {detail ? formatAltitudeKm(detail.altKm) : 'checking'}
+      </p>
+      <p className="radar-figure">
+        <span>{SKY_COPY.speed}</span>
+        {detail ? formatSpeedKms(detail.speedKms) : 'checking'}
+      </p>
+      <p className="meta">
+        {SKY_COPY.direction}: {heightPhrase(row.elevation)}, toward the {compass8(row.azimuth)}.
+      </p>
+      <p className="meta">{when}</p>
+      <p className="meta">{SKY_COPY.pathLabel}</p>
+    </div>
+  )
 }
 
 function joinRows(fixes: SkyFix[], objects: SkyElement[]): Row[] {
