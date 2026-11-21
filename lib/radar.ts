@@ -68,7 +68,17 @@ export type RadarTarget =
 
 export type RadarOverlay = {
   chains: { id: string; color: string; points: { lat: number; lon: number; radius?: number }[] }[]
-  marks: { id: string; lat: number; lon: number; radius?: number; shape?: 'dot' | 'diamond' | 'moon' }[]
+  marks: {
+    id: string
+    lat: number
+    lon: number
+    radius?: number
+    shape?: 'dot' | 'diamond' | 'moon'
+    canvas?: string
+    side?: 'up' | 'down' | 'left' | 'right'
+  }[]
+  /** Draw the line once from the start, then leave it in place. */
+  traceMs?: number
 }
 
 export type RadarView = { yaw: number; pitch: number; distance: number }

@@ -11,7 +11,7 @@ export const GEO_DRAW_RADIUS = 1.18
 export const GTO_PERIGEE_RADIUS = 1.04
 export const GTO_APOGEE_RADIUS = 1.16
 /** Camera distance for a lunar sketch so Earth and the Moon both sit inside the frame. */
-export const LUNAR_DISTANCE = 6.8
+export const LUNAR_DISTANCE = 7.4
 
 export type OrbitKind = 'leo' | 'sso' | 'polar' | 'geo' | 'gto' | 'lunar' | 'escape' | 'suborbital'
 
@@ -35,6 +35,11 @@ export type OrbitSpec = {
     launch: OrbitAnchor
     splashdown: OrbitAnchor
     apex: OrbitAnchor
+    /** Parking-orbit loops before the path leaves for the Moon. A sketch count, not a measured track. */
+    parkingTurns?: number
+    parking?: { label: string; detail: string }
+    tli?: { label: string; detail: string }
+    tank?: { label: string; detail: string }
   }
 }
 
@@ -42,7 +47,15 @@ export type OrbitPoint = { lat: number; lon: number; radius: number }
 
 export type OrbitChain = { id: string; color: string; points: OrbitPoint[] }
 
-export type OrbitMark = OrbitAnchor & { id: string; lat: number; lon: number; radius: number; shape?: 'dot' | 'diamond' | 'moon' }
+export type OrbitMark = OrbitAnchor & {
+  id: string
+  lat: number
+  lon: number
+  radius: number
+  shape?: 'dot' | 'diamond' | 'moon'
+  canvas?: string
+  side?: 'up' | 'down' | 'left' | 'right'
+}
 
 export type OrbitPattern = {
   kind: OrbitKind
@@ -56,6 +69,8 @@ export type OrbitPattern = {
   distance: number
   chains: OrbitChain[]
   marks: OrbitMark[]
+  /** Trace the line once when the globe opens. */
+  traceMs?: number
 }
 
 const PATH = '#f3d7b0'
@@ -108,6 +123,7 @@ export function buildOrbitPattern(spec: OrbitSpec): OrbitPattern {
     distance: built.distance,
     chains: built.chains,
     marks: built.marks,
+    traceMs: built.traceMs,
   }
 }
 
@@ -286,7 +302,7 @@ function geometry(
   altitudeKm: number,
   anchor: { lat: number; lon: number },
   lunar: OrbitSpec['lunar'],
-): { chains: OrbitChain[]; marks: OrbitMark[]; focus: { lat: number; lon: number }; distance: number } {
+): { chains: OrbitChain[]; marks: OrbitMark[]; focus: { lat: number; lon: number }; distance: number; traceMs?: number } {
   if (kind === 'geo') return geoGeometry(anchor)
   if (kind === 'gto') return gtoGeometry(inclinationDeg, anchor)
   if (kind === 'lunar' && lunar) return lunarGeometry(lunar)
@@ -380,10 +396,20 @@ function gtoGeometry(inclinationDeg: number, anchor: { lat: number; lon: number 
 
 function lunarGeometry(lunar: NonNullable<OrbitSpec['lunar']>) {
   const baseLon = lunar.launch.lon
-  const path = figureEight(baseLon)
-  const moon = viewPointToGeo(1.45, 0.04, 1.12, baseLon)
+  const turns = lunar.parkingTurns
+  const built = turns ? parkingThenMoon(baseLon, turns) : { points: figureEight(baseLon), beats: null }
+  const moon = viewPointToGeo(1.7, 0.0, 0.85, baseLon)
   const marks: OrbitMark[] = [
-    { id: 'launch', ...lunar.launch, radius: 1 },
+    {
+      id: 'launch',
+      lat: built.beats?.launch.lat ?? lunar.launch.lat,
+      lon: built.beats?.launch.lon ?? lunar.launch.lon,
+      radius: built.beats?.launch.radius ?? 1,
+      label: lunar.launch.label,
+      detail: lunar.launch.detail,
+      canvas: 'Launch',
+      side: 'left',
+    },
     {
       id: 'moon',
       lat: moon.lat,
@@ -393,31 +419,135 @@ function lunarGeometry(lunar: NonNullable<OrbitSpec['lunar']>) {
       label: 'Moon',
       detail: 'The Moon sits off to one side. The path loops behind it and comes back. The real Moon is much farther away, and this drawing is not to scale.',
     },
-    { id: 'splash', ...lunar.splashdown, radius: 1 },
+    {
+      id: 'splash',
+      lat: built.beats?.splash.lat ?? lunar.splashdown.lat,
+      lon: built.beats?.splash.lon ?? lunar.splashdown.lon,
+      radius: built.beats?.splash.radius ?? 1,
+      label: lunar.splashdown.label,
+      detail: lunar.splashdown.detail,
+      canvas: 'Splashdown',
+      side: 'down',
+    },
   ]
+  if (built.beats) {
+    marks.splice(1, 0, {
+      id: 'parking',
+      ...built.beats.parking,
+      label: lunar.parking?.label ?? 'Parking orbit',
+      detail:
+        lunar.parking?.detail ??
+        'A low loop around Earth before the burn that leaves for the Moon. The loops are a sketch, not a counted track.',
+      canvas: 'Parking',
+      side: 'up',
+    })
+    marks.splice(2, 0, {
+      id: 'tli',
+      ...built.beats.tli,
+      label: lunar.tli?.label ?? 'Translunar injection',
+      detail: lunar.tli?.detail ?? 'The burn that leaves Earth orbit for the Moon. On this drawing it is where the loops end.',
+      canvas: 'TLI',
+      side: 'down',
+    })
+    marks.push({
+      id: 'behind',
+      ...built.beats.behind,
+      label: 'Behind the Moon',
+      detail: 'The far side of the loop stands in for the swing behind the Moon. The distance is not to scale.',
+      canvas: 'Behind',
+      side: 'right',
+    })
+    if (lunar.tank) {
+      marks.push({
+        id: 'tank',
+        ...built.beats.tank,
+        label: lunar.tank.label,
+        detail: lunar.tank.detail,
+        canvas: 'Tank',
+        side: 'up',
+      })
+    }
+  }
   return {
-    chains: [{ id: 'path', color: PATH, points: path }],
+    chains: [{ id: 'path', color: PATH, points: built.points }],
     marks,
     focus: { lat: 0, lon: baseLon },
     distance: LUNAR_DISTANCE,
+    traceMs: 8000,
   }
 }
 
-/**
- * Figure eight in view space: the near side leaves Earth, the far side loops past the Moon.
- * x is screen right, y is screen up, z is toward the camera.
- */
+function parkingThenMoon(baseLon: number, turns: number): {
+  points: OrbitPoint[]
+  beats: { launch: OrbitPoint; parking: OrbitPoint; tli: OrbitPoint; tank: OrbitPoint; behind: OrbitPoint; splash: OrbitPoint }
+} {
+  const revs = Math.min(2, Math.max(1, turns))
+  const z = 0.5
+  const start = Math.PI * 0.9
+  const sweep = revs * Math.PI * 2
+  const parkSteps = Math.round(100 * revs)
+  const points: OrbitPoint[] = []
+  let parkingIndex = 0
+  let highest = -Infinity
+  for (let index = 0; index <= parkSteps; index += 1) {
+    const along = index / parkSteps
+    const theta = start + along * sweep
+    const ring = 1.06 + along * 0.1
+    const y = ring * Math.sin(theta)
+    points.push(viewPointToGeo(ring * Math.cos(theta), y, z, baseLon))
+    if (y > highest) {
+      highest = y
+      parkingIndex = points.length - 1
+    }
+  }
+  const end = start + sweep
+  const endRing = 1.16
+  const tliView = { x: endRing * Math.cos(end), y: endRing * Math.sin(end), z }
+  const far = { x: 2.05, y: 0.0, z: 0.7 }
+  const splashView = { x: 0.05, y: -1.2, z: 0.48 }
+  const leg = 64
+  for (let index = 1; index <= leg; index += 1) {
+    const u = index / leg
+    const bow = Math.sin(Math.PI * u)
+    points.push(
+      viewPointToGeo(
+        tliView.x + (far.x - tliView.x) * u,
+        tliView.y * (1 - u) + bow * 0.42,
+        z + (far.z - z) * u,
+        baseLon,
+      ),
+    )
+  }
+  for (let index = 1; index <= leg; index += 1) {
+    const u = index / leg
+    const bow = Math.sin(Math.PI * u)
+    points.push(
+      viewPointToGeo(
+        far.x + (splashView.x - far.x) * u,
+        bow * -0.38 + splashView.y * u,
+        far.z + (splashView.z - far.z) * u,
+        baseLon,
+      ),
+    )
+  }
+  const launch = points[0]
+  const parking = points[parkingIndex]
+  const tli = points[parkSteps]
+  const tank = points[parkSteps + Math.floor(leg * 0.22)]
+  const behind = points[parkSteps + leg]
+  const splash = points[points.length - 1]
+  return { points, beats: { launch, parking, tli, tank, behind, splash } }
+}
+
+/** Face-on figure eight used when a listing has no parking-orbit count. */
 function figureEight(baseLon: number): OrbitPoint[] {
   const points: OrbitPoint[] = []
-  const steps = 240
+  const steps = 220
   for (let index = 0; index <= steps; index += 1) {
     const t = (index / steps) * Math.PI * 2
     const s = Math.sin(t)
     const c = Math.cos(t)
-    const x = 0.82 + 1.02 * s
-    const y = 0.92 * s * c
-    const z = 1.08
-    points.push(viewPointToGeo(x, y, z, baseLon))
+    points.push(viewPointToGeo(0.7 + 0.95 * s, 0.7 * s * c, 1.05, baseLon))
   }
   return points
 }

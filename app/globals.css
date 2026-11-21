@@ -1053,12 +1053,14 @@ body:has(.pro-app) { padding-bottom: 0; }
   text-transform: uppercase;
   color: var(--cold);
 }
-.radar-legend li { display: inline-flex; align-items: center; min-height: 1.4rem; }
+.radar-legend li { display: inline-flex; align-items: center; min-height: 1.6rem; }
 .radar-legend i {
+  display: inline-block;
+  flex: none;
   width: 0.55rem;
   height: 0.55rem;
   border-radius: 50%;
-  margin-right: 0.4rem;
+  margin-right: 0.45rem;
   background: var(--ink-quiet);
 }
 .radar-you { background: transparent; border: 1.5px solid var(--ink); box-sizing: border-box; }

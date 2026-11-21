@@ -140,7 +140,16 @@ function overlayFor(pattern: OrbitPattern, ascent: { lat: number; lon: number }[
   }
   return {
     chains,
-    marks: pattern.marks.map((mark) => ({ id: mark.id, lat: mark.lat, lon: mark.lon, radius: mark.radius, shape: mark.shape })),
+    marks: pattern.marks.map((mark) => ({
+      id: mark.id,
+      lat: mark.lat,
+      lon: mark.lon,
+      radius: mark.radius,
+      shape: mark.shape,
+      canvas: mark.canvas,
+      side: mark.side,
+    })),
+    traceMs: pattern.traceMs,
   }
 }
 

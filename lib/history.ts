@@ -37,28 +37,46 @@ export const HISTORY_SEEDS: HistorySeed[] = []
 const NOTABLE = /starship|falcon heavy|saturn|shuttle|artemis|apollo|\bsls\b|new shepard|hubble/i
 
 /**
- * Splashdown 21 deg 38 min 24 sec south, 165 deg 21 min 42 sec west, from the
- * Apollo 13 Mission Report, September 1970, NASA:
+ * Apollo 13 Mission Report, September 1970, NASA (mileage in nautical miles):
  * https://sma.nasa.gov/SignificantIncidents/assets/apollo-13-mission-report.pdf
- * The tank event is at 55 hours 54 minutes 53 seconds after liftoff in that report.
+ * S-IVB cutoff 00:12:30. Parking orbit 100.2 by 98.0 miles.
+ * S-IVB second ignition (translunar injection) 2:35:46.4.
+ * Oxygen tank 55:54:53. Splashdown 21 deg 38 min 24 sec south, 165 deg 21 min 42 sec west.
+ * The report does not print a revolution count. From those two clocks the coast is 2 hours 23 minutes,
+ * a little more than one and a half loops of a parking orbit at that height. The drawing uses that shape.
  * The story on the page follows https://www.nasa.gov/missions/apollo/apollo-13-mission-details/
  */
 const APOLLO_13_ORBIT: OrbitSpec = {
   kind: 'lunar',
   inclinationDeg: 32,
-  altitudeKm: 180,
+  altitudeKm: 185,
   altitudeIsTypical: true,
   anchor: { lat: 28.6, lon: -80.6 },
   label: 'Free return',
   explanation:
-    'A free return leaves Earth, loops behind the Moon, and comes home even if an engine does not fire again. Apollo 13 had left that path, then got back on it. This drawing is a sketch. The Moon is much farther than it looks here, and the path is not to scale.',
-  detail: 'The line leaves Earth, goes behind the Moon, and comes back. It is a sketch, not a measured track.',
+    'The ship first circled Earth, then a burn sent it toward the Moon. A free return can loop behind the Moon and come home even if an engine does not fire again. Apollo 13 had left that path, then got back on it. This drawing is a sketch, not to scale. The Moon is much farther than it looks here.',
+  detail: 'Parking loops, then translunar injection, then the loop behind the Moon, then splashdown. Not a measured track.',
   lunar: {
+    parkingTurns: 1.6,
     launch: {
       lat: 28.6,
       lon: -80.6,
       label: 'Launch',
-      detail: 'They left Florida on April 11, 1970.',
+      detail: 'They left Kennedy Space Center on April 11, 1970.',
+    },
+    parking: {
+      label: 'Parking orbit',
+      detail:
+        'The S-IVB shut down at 12 minutes 30 seconds. The mission report lists the parking orbit as 100.2 by 98.0 nautical miles. It does not print a revolution count. The next burn was 2 hours 23 minutes later, a little more than one and a half loops at that height. The loops here are a sketch.',
+    },
+    tli: {
+      label: 'Translunar injection',
+      detail: 'The S-IVB lit again at 2 hours 35 minutes 46 seconds. That burn left Earth orbit for the Moon.',
+    },
+    tank: {
+      label: 'Oxygen tank problem',
+      detail:
+        'An oxygen tank in the service module failed at 55 hours 54 minutes 53 seconds after liftoff. The mark sits on the way to the Moon. It is not a measured position.',
     },
     apex: {
       lat: 5,
@@ -90,14 +108,16 @@ export const HISTORY: HistoryMission[] = [
     orbit: {
       kind: 'lunar',
       inclinationDeg: 32,
-      altitudeKm: 180,
+      altitudeKm: 185,
       altitudeIsTypical: true,
       anchor: { lat: 28.6, lon: -80.6 },
       label: 'Lunar transfer',
-      explanation: 'A sketch of the trip from Earth, around the Moon, and back. Two people landed. The Moon is drawn close so the trip fits. It is not to scale.',
-      detail: 'The line is a sketch of a lunar trip, not a measured track.',
+      explanation:
+        'A sketch of a parking loop around Earth, the burn that leaves for the Moon, and the swing behind the Moon. Two people landed. The Moon is drawn close so the trip fits. It is not to scale, and this drawing does not use a counted number of loops.',
+      detail: 'Parking orbit, then translunar injection, then the Moon. Not a measured track.',
       lunar: {
-        launch: { lat: 28.6, lon: -80.6, label: 'Launch', detail: 'They left Florida for the Moon.' },
+        parkingTurns: 1.5,
+        launch: { lat: 28.6, lon: -80.6, label: 'Launch', detail: 'They left Kennedy Space Center for the Moon.' },
         apex: { lat: 8, lon: 30, label: 'The Moon', detail: 'Two people landed. One stayed in orbit around the Moon. The distance is not to scale.' },
         splashdown: { lat: 13, lon: -169, label: 'Return', detail: 'Everyone came back to Earth. This end of the line is a sketch, not a measured splash point.' },
       },
@@ -109,9 +129,9 @@ export const HISTORY: HistoryMission[] = [
     rocket: 'Saturn V',
     rocketId: 'saturn-v',
     when: 'April 11 to 17, 1970',
-    kid: 'Three people were flying to the Moon when an oxygen tank failed. They used the Moon lander as a lifeboat, looped around the Moon, and splashed down in the ocean.',
+    kid: 'Three people circled Earth, then flew toward the Moon. An oxygen tank failed. They used the Moon lander as a lifeboat, looped around the Moon, and splashed down in the ocean.',
     adult:
-      'James Lovell, Jack Swigert, and Fred Haise left on April 11, 1970. The flight started on a free return path, then a course change aimed it at a landing. Nearly 56 hours after liftoff an oxygen tank in the service module failed. The crew powered up the lunar module and fired its engine to get back on a free return path. They swung around the Moon, made another burn to aim for the South Pacific, and splashed down on April 17, 1970. They did not land.',
+      'James Lovell, Jack Swigert, and Fred Haise left Kennedy Space Center on April 11, 1970. They circled Earth, then a burn sent them toward the Moon on a free return path. A course change aimed them at a landing. At 55 hours 54 minutes an oxygen tank in the service module failed. The crew powered up the lunar module and fired its engine to get back on a free return path. They swung around the Moon, made another burn to aim for the South Pacific, and splashed down on April 17, 1970. They did not land.',
     sourceTitle: 'NASA, Apollo 13',
     sourceUrl: 'https://www.nasa.gov/missions/apollo/apollo-13-mission-details/',
     orbit: APOLLO_13_ORBIT,
@@ -133,10 +153,12 @@ export const HISTORY: HistoryMission[] = [
       altitudeIsTypical: true,
       anchor: { lat: 28.6, lon: -80.6 },
       label: 'Around the Moon',
-      explanation: 'A sketch of a loop out to the Moon and back. Nobody landed. The Moon is drawn close so the trip fits. It is not to scale.',
-      detail: 'The line leaves Earth, bends around the far end, and comes back.',
+      explanation:
+        'A sketch of a parking loop around Earth, the burn that leaves for the Moon, and the swing behind the Moon. Nobody landed. The Moon is drawn close so the trip fits. It is not to scale, and this drawing does not use a counted number of loops.',
+      detail: 'Parking orbit, then translunar injection, then the Moon. Not a measured track.',
       lunar: {
-        launch: { lat: 28.6, lon: -80.6, label: 'Launch', detail: 'They left Florida.' },
+        parkingTurns: 1.5,
+        launch: { lat: 28.6, lon: -80.6, label: 'Launch', detail: 'They left Kennedy Space Center.' },
         apex: { lat: 0, lon: 50, label: 'Around the Moon', detail: 'They flew around the Moon. Nobody landed. The distance is not to scale.' },
         splashdown: { lat: 8, lon: -165, label: 'Return', detail: 'They came back to Earth. This end of the line is a sketch, not a measured splash point.' },
       },

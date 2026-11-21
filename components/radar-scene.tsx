@@ -172,6 +172,7 @@ export function RadarScene(props: Props) {
     let moved = 0
     let downAt = { x: 0, y: 0 }
     let lastDraw = performance.now()
+    let traceOrigin = -1
     let lastTap: { t: number; x: number; y: number } | null = null
     let tapTimer = 0
     let holdTimer = 0
@@ -345,8 +346,15 @@ export function RadarScene(props: Props) {
       const pattern = propsRef.current.overlay
       if (pattern) {
         const width = Math.max(2, size / 280)
+        if (pattern.traceMs && traceOrigin < 0) traceOrigin = nowMs
+        const trace = !propsRef.current.reduced && pattern.traceMs && pattern.traceMs > 0 ? Math.min(1, (nowMs - traceOrigin) / pattern.traceMs) : 1
+        const total = pattern.chains.reduce((sum, chain) => sum + Math.max(0, chain.points.length - 1), 0) || 1
+        let budget = trace * total
         for (const chain of pattern.chains) {
-          strokeChain(overlay, chain.points, view, size, chain.color, width)
+          const span = Math.max(0, chain.points.length - 1)
+          const take = trace >= 1 ? chain.points.length : Math.min(chain.points.length, Math.floor(budget) + 1)
+          if (take > 1) strokeChain(overlay, chain.points.slice(0, take), view, size, chain.color, width)
+          budget -= span
         }
         for (const mark of pattern.marks) {
           const spot = projectRadar(mark.lat, mark.lon, view, size, mark.radius ?? 1)
@@ -385,6 +393,7 @@ export function RadarScene(props: Props) {
             overlay.fill()
           }
           hits.push({ target: { type: 'orbit', id: mark.id }, x: spot.x, y: spot.y, rank: 6 })
+          if (mark.canvas) labelOutward(overlay, spot.x, spot.y, radius + 4, size, mark.canvas, mark.side)
         }
       }
       const fixes = shownFixes()
@@ -817,6 +826,28 @@ function strokeChain(
     prev = spot
   }
   ctx.stroke()
+}
+
+function labelOutward(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  pad: number,
+  size: number,
+  text: string,
+  side?: 'up' | 'down' | 'left' | 'right',
+) {
+  const shift = side === 'left' ? [-1, 0] : side === 'right' ? [1, 0] : side === 'down' ? [0, 1] : side === 'up' ? [0, -1] : null
+  const dx = shift ? shift[0] : x - size / 2
+  const dy = shift ? shift[1] : y - size / 2
+  const len = Math.hypot(dx, dy) || 1
+  const lx = Math.min(size - 46, Math.max(46, x + (dx / len) * (pad + 18)))
+  const ly = Math.min(size - 16, Math.max(16, y + (dy / len) * (pad + 16)))
+  ctx.font = `${Math.max(12, size / 34)}px Barlow, sans-serif`
+  ctx.fillStyle = '#f6f3ec'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(text, lx, ly)
 }
 
 function diamond(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, color: string) {
