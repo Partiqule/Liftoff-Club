@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatMountain, isTimeZone, zoneAbbrev } from '@/lib/pro/time'
+import { formatMountain, isTimeZone, zoneAbbrev, zoneStatusCopy } from '@/lib/pro/time'
 import { sanitizeSettings } from '@/lib/settings'
 
 describe('visitor time zone', () => {
@@ -14,5 +14,6 @@ describe('visitor time zone', () => {
   it('defaults to the device zone and can store a chosen zone', () => {
     expect(sanitizeSettings({}).zoneMode).toBe('auto')
     expect(sanitizeSettings({ zoneMode: 'chosen', zone: 'Asia/Tokyo' }).zone).toBe('Asia/Tokyo')
+    expect(zoneStatusCopy('UTC', 'auto', false)).toBe('Times follow this device.')
   })
 })

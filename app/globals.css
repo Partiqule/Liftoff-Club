@@ -269,7 +269,7 @@ h3 { font-size: 1.25rem; line-height: 1.2; }
 .section-head h2 { margin: 0; }
 .section-head a { color: var(--cold); text-decoration: none; }
 
-.tonight { padding: 7.5rem 0 0.5rem; min-height: 0; display: flex; flex-direction: column; justify-content: flex-end; }
+.tonight { padding: 1.75rem 0 0.5rem; min-height: 0; display: flex; flex-direction: column; justify-content: flex-end; }
 .tonight h1 .dir { display: block; color: var(--core); font-weight: 500; }
 .tonight h1 .when { display: block; }
 .hero-actions { display: flex; flex-wrap: wrap; gap: 1.25rem; align-items: center; margin-top: 1.4rem; }
@@ -725,7 +725,7 @@ html:not([data-voice]) .when-adult { display: none; }
   .top-nav, .place-chip { display: flex; }
   .tabbar { display: none; }
   body { padding-bottom: 0; }
-  .tonight { padding-top: 11rem; }
+  .tonight { padding-top: 2rem; }
   .logo-mark { width: 40px; height: 40px; }
   .strip-link { grid-template-columns: auto 1fr auto; }
   .strip-count { grid-column: auto; text-align: right; }
@@ -983,6 +983,56 @@ body:has(.pro-app) { padding-bottom: 0; }
 @media (prefers-reduced-motion: reduce) {
   .mission-dot, .mission-globe * { transition: none !important; animation: none !important; }
 }
+
+.radar-hero { padding: 0.6rem 0 0.2rem; }
+.radar-stage {
+  position: relative;
+  width: min(100%, 34rem);
+  margin: 0.2rem auto 0.35rem;
+  aspect-ratio: 1;
+  user-select: none;
+}
+.radar-still {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  background: #071018;
+}
+.radar-stage.is-live .radar-still { opacity: 0; }
+.radar-live, .radar-gl, .radar-over {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.radar-over { touch-action: none; }
+.radar-over:focus-visible { outline: 2px solid var(--core); outline-offset: 4px; }
+.radar-name {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 4vw, 2.5rem);
+  line-height: 1.05;
+  margin: 0.15rem 0 0.45rem;
+}
+.radar-figure {
+  font-family: var(--font-data);
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.45rem;
+  margin: 0.1rem 0;
+}
+.radar-figure span {
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  color: var(--cold);
+  margin-right: 0.6rem;
+}
+.radar-card { margin-top: 0.4rem; }
+.radar-gesture { margin-top: 0; }
 
 body:has(.day-screen) .topbar,
 body:has(.day-screen) .tabbar,
