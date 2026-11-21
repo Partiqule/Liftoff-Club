@@ -1,4 +1,5 @@
 import { approximateInclination } from '@/lib/mission'
+import { FITTED_DISTANCE, distanceForDisc } from '@/lib/radar'
 
 /** Earth radius used only to turn a height into an orbit period. */
 const EARTH_KM = 6371
@@ -9,7 +10,8 @@ const EARTH_ROT = 7.292115e-5
 export const GEO_DRAW_RADIUS = 1.18
 export const GTO_PERIGEE_RADIUS = 1.04
 export const GTO_APOGEE_RADIUS = 1.16
-export const LUNAR_PEAK_RADIUS = 1.62
+/** Camera distance for a lunar sketch so Earth and the Moon both sit inside the frame. */
+export const LUNAR_DISTANCE = 6.8
 
 export type OrbitKind = 'leo' | 'sso' | 'polar' | 'geo' | 'gto' | 'lunar' | 'escape' | 'suborbital'
 
@@ -40,7 +42,7 @@ export type OrbitPoint = { lat: number; lon: number; radius: number }
 
 export type OrbitChain = { id: string; color: string; points: OrbitPoint[] }
 
-export type OrbitMark = OrbitAnchor & { id: string; lat: number; lon: number; radius: number }
+export type OrbitMark = OrbitAnchor & { id: string; lat: number; lon: number; radius: number; shape?: 'dot' | 'diamond' | 'moon' }
 
 export type OrbitPattern = {
   kind: OrbitKind
@@ -253,8 +255,8 @@ function lunarSpec(anchor?: { lat: number; lon: number }): OrbitSpec {
     altitudeIsTypical: true,
     anchor: launch,
     label: 'Lunar transfer',
-    explanation: 'A sketch of a path that leaves Earth, bends around the Moon, and can come home. The Moon is much farther than this drawing.',
-    detail: 'The line is a sketch of a transfer, not a measured track.',
+    explanation: 'A sketch of a path that leaves Earth, loops behind the Moon, and can come home. The Moon is drawn close so the trip fits. It is not to scale.',
+    detail: 'The line is a sketch of a lunar trip, not a measured track.',
     lunar: {
       launch: {
         lat: launch.lat,
@@ -320,7 +322,7 @@ function closedGeometry(kind: OrbitKind, inclinationDeg: number, altitudeKm: num
       },
     ],
     focus: { lat: 12, lon: nodeLon },
-    distance: 2.9,
+    distance: FITTED_DISTANCE,
   }
 }
 
@@ -343,7 +345,7 @@ function geoGeometry(anchor: { lat: number; lon: number }) {
       },
     ],
     focus: { lat: 0, lon: anchor.lon },
-    distance: 3.15,
+    distance: distanceForDisc(0.66),
   }
 }
 
@@ -372,23 +374,66 @@ function gtoGeometry(inclinationDeg: number, anchor: { lat: number; lon: number 
       },
     ],
     focus: { lat: 0, lon: anchor.lon },
-    distance: 3.2,
+    distance: distanceForDisc(0.66),
   }
 }
 
 function lunarGeometry(lunar: NonNullable<OrbitSpec['lunar']>) {
-  const outbound = spaceArc(lunar.launch, lunar.apex, 56, (t) => 1 + (LUNAR_PEAK_RADIUS - 1) * t)
-  const inbound = spaceArc(lunar.apex, lunar.splashdown, 72, (t) => LUNAR_PEAK_RADIUS + (1 - LUNAR_PEAK_RADIUS) * t).slice(1)
+  const baseLon = lunar.launch.lon
+  const path = figureEight(baseLon)
+  const moon = viewPointToGeo(1.45, 0.04, 1.12, baseLon)
   const marks: OrbitMark[] = [
     { id: 'launch', ...lunar.launch, radius: 1 },
-    { id: 'apex', ...lunar.apex, radius: LUNAR_PEAK_RADIUS },
+    {
+      id: 'moon',
+      lat: moon.lat,
+      lon: moon.lon,
+      radius: moon.radius,
+      shape: 'moon',
+      label: 'Moon',
+      detail: 'The Moon sits off to one side. The path loops behind it and comes back. The real Moon is much farther away, and this drawing is not to scale.',
+    },
     { id: 'splash', ...lunar.splashdown, radius: 1 },
   ]
   return {
-    chains: [{ id: 'path', color: PATH, points: [...outbound, ...inbound] }],
+    chains: [{ id: 'path', color: PATH, points: path }],
     marks,
-    focus: { lat: lunar.apex.lat, lon: lunar.apex.lon },
-    distance: 4.35,
+    focus: { lat: 0, lon: baseLon },
+    distance: LUNAR_DISTANCE,
+  }
+}
+
+/**
+ * Figure eight in view space: the near side leaves Earth, the far side loops past the Moon.
+ * x is screen right, y is screen up, z is toward the camera.
+ */
+function figureEight(baseLon: number): OrbitPoint[] {
+  const points: OrbitPoint[] = []
+  const steps = 240
+  for (let index = 0; index <= steps; index += 1) {
+    const t = (index / steps) * Math.PI * 2
+    const s = Math.sin(t)
+    const c = Math.cos(t)
+    const x = 0.82 + 1.02 * s
+    const y = 0.92 * s * c
+    const z = 1.08
+    points.push(viewPointToGeo(x, y, z, baseLon))
+  }
+  return points
+}
+
+function viewPointToGeo(x: number, y: number, z: number, baseLon: number): OrbitPoint {
+  const lon0 = (baseLon * Math.PI) / 180
+  const c = Math.cos(lon0)
+  const s = Math.sin(lon0)
+  const px = c * x + s * z
+  const py = y
+  const pz = -s * x + c * z
+  const radius = Math.hypot(px, py, pz) || 1
+  return {
+    lat: (Math.asin(clamp(py / radius, -1, 1)) * 180) / Math.PI,
+    lon: wrapLon((Math.atan2(px, pz) * 180) / Math.PI),
+    radius,
   }
 }
 
@@ -436,7 +481,7 @@ function hopGeometry(anchor: { lat: number; lon: number }) {
       },
     ],
     focus: anchor,
-    distance: 2.7,
+    distance: FITTED_DISTANCE,
   }
 }
 

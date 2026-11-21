@@ -68,7 +68,7 @@ export type RadarTarget =
 
 export type RadarOverlay = {
   chains: { id: string; color: string; points: { lat: number; lon: number; radius?: number }[] }[]
-  marks: { id: string; lat: number; lon: number; radius?: number; shape?: 'dot' | 'diamond' }[]
+  marks: { id: string; lat: number; lon: number; radius?: number; shape?: 'dot' | 'diamond' | 'moon' }[]
 }
 
 export type RadarView = { yaw: number; pitch: number; distance: number }
@@ -76,11 +76,22 @@ export type RadarView = { yaw: number; pitch: number; distance: number }
 export const RADAR_K = 2.7
 export const PITCH_MAX = 1.02
 export const DIST_MIN = 1.7
-export const DIST_MAX = 5.6
+export const DIST_MAX = 8
+/** Limb sits inside the square so the disc stays round, with room at the edges. */
+export const DISC_MARGIN = 0.78
+export function discNdc(distance: number): number {
+  const safe = Math.max(distance, 1.05)
+  return RADAR_K / Math.sqrt(safe * safe - 1)
+}
+export function distanceForDisc(margin = DISC_MARGIN): number {
+  const target = Math.min(0.92, Math.max(0.45, margin))
+  return Math.sqrt(1 + (RADAR_K / target) ** 2)
+}
+export const FITTED_DISTANCE = distanceForDisc()
 export const RADAR_HOME_VIEW: RadarView = {
   yaw: (95 * Math.PI) / 180,
   pitch: (22 * Math.PI) / 180,
-  distance: 2.95,
+  distance: FITTED_DISTANCE,
 }
 
 const ZONE_FOCUS: Array<[RegExp, number, number]> = [
@@ -141,7 +152,7 @@ export function openingView(input: {
   const pattern =
     !place && !zone && !pad && input.focus && Number.isFinite(input.focus.lat) && Number.isFinite(input.focus.lon) ? input.focus : null
   const focus = place ?? zone ?? pad ?? pattern ?? { lat: 40, lon: -98 }
-  const view = viewLookingAt(focus.lat, focus.lon, input.distance ?? 2.85)
+  const view = viewLookingAt(focus.lat, focus.lon, input.distance ?? FITTED_DISTANCE)
   const tilt = Math.abs(focus.lat) < 20 ? 0.16 : 0
   return { ...view, pitch: clampPitch(view.pitch + tilt) }
 }

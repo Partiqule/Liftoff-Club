@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { pointAlong } from '@/lib/mission'
 import { ORBIT_UI } from '@/lib/orbit-pattern'
-import { EARTH_STILL, RADAR_COPY, type RadarOverlay, type RadarTarget } from '@/lib/radar'
+import { EARTH_STILL, FITTED_DISTANCE, RADAR_COPY, type RadarOverlay, type RadarTarget } from '@/lib/radar'
 
 const RadarScene = dynamic(() => import('@/components/radar-scene').then((mod) => mod.RadarScene), { ssr: false })
 
@@ -78,7 +78,7 @@ export function PathGlobe({
             selected={toTarget(selected)}
             overlay={overlay}
             focus={focus}
-            distance={2.75}
+            distance={FITTED_DISTANCE}
             ariaLabel={`${PATH_COPY.kicker}. ${ORBIT_UI.gesture}`}
             onSelect={(target) => setSelected(fromTarget(target))}
             onFix={() => undefined}
@@ -117,9 +117,7 @@ export function PathGlobe({
             {ORBIT_UI.close}
           </button>
         </div>
-      ) : (
-        <p className="meta">Tap the path, the pad, or the Earth.</p>
-      )}
+      ) : null}
       <ul className="orbit-taps">
         <li>
           <button className="btn btn-quiet" type="button" onClick={() => setSelected('path')}>

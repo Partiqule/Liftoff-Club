@@ -161,7 +161,9 @@ a:hover { color: var(--core); }
 .menu-toggle {
   display: none;
   align-items: center;
+  justify-content: center;
   min-height: 44px;
+  min-width: 44px;
   margin: 0;
   padding: 0;
   border: 0;
@@ -186,6 +188,7 @@ a:hover { color: var(--core); }
   display: flex;
   align-items: center;
   gap: 0.65rem;
+  min-height: 44px;
   text-decoration: none;
   color: var(--ink);
 }
@@ -234,6 +237,7 @@ html[data-night="red"] .logo-mark { filter: sepia(0.5) hue-rotate(-32deg) satura
 .tabbar a[aria-current="page"] { color: var(--ink); }
 body { padding-bottom: calc(4.5rem + env(safe-area-inset-bottom)); }
 
+h1, h2, section[id] { scroll-margin-top: 6.75rem; }
 h1, h2, h3, .display, .wordmark {
   font-family: var(--font-display);
   font-weight: 400;
@@ -988,9 +992,11 @@ body:has(.pro-app) { padding-bottom: 0; }
 .radar-stage {
   position: relative;
   width: min(100%, 34rem);
-  margin: 0.2rem auto 0.35rem;
+  max-width: 100%;
+  margin: 0.35rem auto 0.45rem;
   aspect-ratio: 1;
   user-select: none;
+  overflow: visible;
 }
 .radar-still {
   position: absolute;
@@ -1001,7 +1007,8 @@ body:has(.pro-app) { padding-bottom: 0; }
   border-radius: 50%;
   background: #071018;
 }
-.radar-stage.is-live .radar-still { opacity: 0; }
+.radar-stage.is-live .radar-still,
+.orbit-block .radar-stage:has(canvas) .radar-still { opacity: 0; }
 .radar-live, .radar-gl, .radar-over {
   position: absolute;
   inset: 0;
@@ -1063,8 +1070,11 @@ body:has(.pro-app) { padding-bottom: 0; }
   border-radius: 1px;
 }
 .radar-path { color: var(--core); }
-.orbit-block { margin: 0.4rem auto 1rem; max-width: 34rem; }
-.orbit-block .radar-stage { width: min(100%, 28rem); }
+.orbit-block { margin: 0.4rem auto 1rem; max-width: 34rem; padding-inline: 0.15rem; }
+.orbit-block .radar-stage { width: min(100%, 28rem); max-width: 100%; }
+.mission-center .orbit-block,
+.mission-center .path-globe { width: 100%; max-width: 32rem; margin-inline: auto; }
+.mission-center .radar-stage { width: 100%; max-width: 100%; }
 .orbit-block .radar-name { font-size: clamp(1.5rem, 3vw, 2.1rem); }
 .orbit-taps {
   display: flex;
@@ -1075,8 +1085,6 @@ body:has(.pro-app) { padding-bottom: 0; }
   padding: 0;
 }
 .orbit-taps .btn { min-height: 44px; }
-.mission-center .orbit-block { max-width: none; }
-.mission-center .radar-stage { width: min(100%, 32rem); }
 .sky-tools { display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 0.4rem 0 0.2rem; }
 .sky-tools button {
   min-height: 44px;

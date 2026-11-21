@@ -51,8 +51,8 @@ const APOLLO_13_ORBIT: OrbitSpec = {
   anchor: { lat: 28.6, lon: -80.6 },
   label: 'Free return',
   explanation:
-    'A free return bends around the Moon and comes home even if an engine does not fire again. Apollo 13 had left that path, then got back on it. This drawing is a sketch. The Moon is much farther than it looks here.',
-  detail: 'Tap the launch, the swing around the Moon, or the splashdown.',
+    'A free return leaves Earth, loops behind the Moon, and comes home even if an engine does not fire again. Apollo 13 had left that path, then got back on it. This drawing is a sketch. The Moon is much farther than it looks here, and the path is not to scale.',
+  detail: 'The line leaves Earth, goes behind the Moon, and comes back. It is a sketch, not a measured track.',
   lunar: {
     launch: {
       lat: 28.6,
@@ -94,7 +94,7 @@ export const HISTORY: HistoryMission[] = [
       altitudeIsTypical: true,
       anchor: { lat: 28.6, lon: -80.6 },
       label: 'Lunar transfer',
-      explanation: 'A sketch of the trip from Earth to the Moon and back. Two people landed. The Moon is much farther than this drawing.',
+      explanation: 'A sketch of the trip from Earth, around the Moon, and back. Two people landed. The Moon is drawn close so the trip fits. It is not to scale.',
       detail: 'The line is a sketch of a lunar trip, not a measured track.',
       lunar: {
         launch: { lat: 28.6, lon: -80.6, label: 'Launch', detail: 'They left Florida for the Moon.' },
@@ -133,7 +133,7 @@ export const HISTORY: HistoryMission[] = [
       altitudeIsTypical: true,
       anchor: { lat: 28.6, lon: -80.6 },
       label: 'Around the Moon',
-      explanation: 'A sketch of a loop around the Moon and back. Nobody landed. The Moon is much farther than this drawing.',
+      explanation: 'A sketch of a loop out to the Moon and back. Nobody landed. The Moon is drawn close so the trip fits. It is not to scale.',
       detail: 'The line leaves Earth, bends around the far end, and comes back.',
       lunar: {
         launch: { lat: 28.6, lon: -80.6, label: 'Launch', detail: 'They left Florida.' },

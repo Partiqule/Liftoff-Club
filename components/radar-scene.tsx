@@ -353,6 +353,24 @@ export function RadarScene(props: Props) {
           if (!spot) continue
           const chosen = selected?.type === 'orbit' && selected.id === mark.id
           const radius = Math.max(4, size / 90) * (chosen ? 1.4 : 1)
+          if (mark.shape === 'moon') {
+            const earthR = globeRadiusPx(size, view.distance)
+            const body = Math.max(8, earthR * 0.2)
+            overlay.fillStyle = '#d9d3c7'
+            overlay.beginPath()
+            overlay.arc(spot.x, spot.y, body, 0, Math.PI * 2)
+            overlay.fill()
+            overlay.strokeStyle = '#f6f3ec'
+            overlay.lineWidth = Math.max(1.25, size / 500)
+            overlay.stroke()
+            overlay.font = `${Math.max(14, size / 26)}px Barlow, sans-serif`
+            overlay.fillStyle = '#f6f3ec'
+            overlay.textAlign = 'center'
+            overlay.textBaseline = 'bottom'
+            overlay.fillText('Moon', spot.x, Math.max(16, spot.y - body - size / 50))
+            hits.push({ target: { type: 'orbit', id: mark.id }, x: spot.x, y: spot.y, rank: 7 })
+            continue
+          }
           if (mark.shape === 'diamond') {
             diamond(overlay, spot.x, spot.y, radius, '#f3d7b0')
           } else {

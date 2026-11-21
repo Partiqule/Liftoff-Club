@@ -93,9 +93,7 @@ export function OrbitGlobe({
             {ORBIT_UI.close}
           </button>
         </div>
-      ) : (
-        <p className="meta">Tap the line or a mark.</p>
-      )}
+      ) : null}
       <ul className="orbit-taps">
         <li>
           <button className="btn btn-quiet" type="button" onClick={() => setSelected(pattern.chains[0]?.id ?? 'path')}>
@@ -142,7 +140,7 @@ function overlayFor(pattern: OrbitPattern, ascent: { lat: number; lon: number }[
   }
   return {
     chains,
-    marks: pattern.marks.map((mark) => ({ id: mark.id, lat: mark.lat, lon: mark.lon, radius: mark.radius })),
+    marks: pattern.marks.map((mark) => ({ id: mark.id, lat: mark.lat, lon: mark.lon, radius: mark.radius, shape: mark.shape })),
   }
 }
 

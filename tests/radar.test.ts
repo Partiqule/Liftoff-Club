@@ -11,8 +11,11 @@ import {
   capRadarObjects,
   dampVelocity,
   doubleTapDistance,
+  discNdc,
+  distanceForDisc,
   dragFollow,
   easeView,
+  FITTED_DISTANCE,
   elementsFromTleBundle,
   gestureIntent,
   focusForTimeZone,
@@ -173,6 +176,22 @@ describe('flight radar', () => {
     const held = projectRadar(40, -105, zoomed, size)
     expect(Math.hypot((held?.x ?? 0) - (start?.x ?? 0), (held?.y ?? 0) - (start?.y ?? 0))).toBeLessThan(8)
     expect(Math.abs(zoomed.pitch)).toBeLessThanOrEqual(PITCH_MAX + 1e-6)
+  })
+
+  it('keeps the whole disc inside the square at the default distance', () => {
+    expect(discNdc(FITTED_DISTANCE)).toBeLessThan(0.8)
+    expect(distanceForDisc()).toBeCloseTo(FITTED_DISTANCE, 5)
+    const view = { yaw: 0.4, pitch: 0.25, distance: FITTED_DISTANCE }
+    let max = 0
+    for (let lat = -90; lat <= 90; lat += 6) {
+      for (let lon = -180; lon < 180; lon += 6) {
+        const spot = projectRadar(lat, lon, view, 400)
+        if (!spot) continue
+        max = Math.max(max, Math.hypot(spot.x - 200, spot.y - 200))
+      }
+    }
+    expect(max).toBeGreaterThan(120)
+    expect(max).toBeLessThan(172)
   })
 
   it('tells a vertical swipe from a turn, eases, and settles a flick', () => {
