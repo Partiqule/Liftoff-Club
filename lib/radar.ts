@@ -11,9 +11,9 @@ export const RADAR_COPY = {
   kicker: 'In orbit now',
   legend: 'Stations, Hubble, bright satellites, and recent Starlink trains.',
   hint: 'Tap a dot for a name, altitude, speed, and the next orbit.',
-  gesture: 'Drag sideways to turn the Earth. A straight swipe up or down scrolls the page. Pinch to zoom.',
+  gesture: 'Drag sideways to turn the Earth. A straight swipe up or down scrolls the page. Pinch to zoom. Double tap to come closer.',
   stillAlt: 'Earth',
-  liveLabel: 'Earth. Drag sideways to turn. Pinch to zoom. Tap a satellite, the path, or your town.',
+  liveLabel: 'Earth. Drag sideways to turn. Pinch or double tap to zoom. Tap a satellite, the path, or your town.',
   drawing: 'Drawing the Earth.',
   legendStations: 'Stations',
   legendTrains: 'Starlink trains',
@@ -58,7 +58,18 @@ export type RadarLaunch = {
   statusName: string
 }
 
-export type RadarTarget = { type: 'sat'; id: string } | { type: 'you' } | { type: 'pad' } | { type: 'path' }
+export type RadarTarget =
+  | { type: 'sat'; id: string }
+  | { type: 'you' }
+  | { type: 'pad' }
+  | { type: 'path' }
+  | { type: 'orbit'; id: string }
+  | { type: 'earth' }
+
+export type RadarOverlay = {
+  chains: { id: string; color: string; points: { lat: number; lon: number; radius?: number }[] }[]
+  marks: { id: string; lat: number; lon: number; radius?: number; shape?: 'dot' | 'diamond' }[]
+}
 
 export type RadarView = { yaw: number; pitch: number; distance: number }
 
@@ -118,6 +129,8 @@ export function openingView(input: {
   place: { lat: number; lon: number } | null
   timeZone: string | null
   launch: { padLat: number; padLon: number } | null
+  focus?: { lat: number; lon: number } | null
+  distance?: number
 }): RadarView {
   const place = input.place && Number.isFinite(input.place.lat) && Number.isFinite(input.place.lon) ? input.place : null
   const zone = place ? null : focusForTimeZone(input.timeZone)
@@ -125,8 +138,10 @@ export function openingView(input: {
     !place && !zone && input.launch && Number.isFinite(input.launch.padLat) && Number.isFinite(input.launch.padLon)
       ? { lat: input.launch.padLat, lon: input.launch.padLon }
       : null
-  const focus = place ?? zone ?? pad ?? { lat: 40, lon: -98 }
-  const view = viewLookingAt(focus.lat, focus.lon, 2.85)
+  const pattern =
+    !place && !zone && !pad && input.focus && Number.isFinite(input.focus.lat) && Number.isFinite(input.focus.lon) ? input.focus : null
+  const focus = place ?? zone ?? pad ?? pattern ?? { lat: 40, lon: -98 }
+  const view = viewLookingAt(focus.lat, focus.lon, input.distance ?? 2.85)
   const tilt = Math.abs(focus.lat) < 20 ? 0.16 : 0
   return { ...view, pitch: clampPitch(view.pitch + tilt) }
 }
@@ -141,13 +156,13 @@ export function dragFollow(
 ): RadarView {
   let yaw = view.yaw
   let pitch = clampPitch(view.pitch)
-  for (let step = 0; step < 6; step += 1) {
+  for (let step = 0; step < 12; step += 1) {
     const trial = { yaw, pitch, distance: view.distance }
     const spot = projectRadar(grabbed.lat, grabbed.lon, trial, size)
     if (!spot) break
     const errX = fingerX - spot.x
     const errY = fingerY - spot.y
-    if (errX * errX + errY * errY < 0.36) break
+    if (errX * errX + errY * errY < 0.16) break
     const eps = 0.0015
     const sx = projectRadar(grabbed.lat, grabbed.lon, { ...trial, yaw: yaw + eps }, size)
     const sy = projectRadar(grabbed.lat, grabbed.lon, { ...trial, pitch: clampPitch(pitch + eps) }, size)
@@ -160,11 +175,76 @@ export function dragFollow(
     if (Math.abs(det) < 1e-4) break
     const dyaw = (errX * jyy - errY * jxy) / det
     const dpitch = (jxx * errY - jyx * errX) / det
-    const limit = 0.35
+    const limit = 0.9
     yaw += Math.min(limit, Math.max(-limit, dyaw))
-    pitch = clampPitch(pitch + Math.min(limit, Math.max(-limit, dpitch)))
+    const nextPitch = pitch + Math.min(limit, Math.max(-limit, dpitch))
+    pitch = clampPitch(nextPitch)
+    if (nextPitch !== pitch) break
   }
   return { yaw, pitch, distance: view.distance }
+}
+
+/** Keep a surface point under the finger while the camera distance changes. */
+export function lookUnderFinger(
+  view: RadarView,
+  grabbed: { lat: number; lon: number } | null,
+  fingerX: number,
+  fingerY: number,
+  size: number,
+  distance: number,
+): RadarView {
+  const next = { ...view, distance: clampDistance(distance) }
+  if (!grabbed) return next
+  return dragFollow(next, grabbed, fingerX, fingerY, size)
+}
+
+/** A quick vertical move scrolls the page. A sideways move turns the Earth. */
+export function gestureIntent(dx: number, dy: number, moved: number, slop = 12): 'undecided' | 'scroll' | 'turn' {
+  if (moved < slop) return 'undecided'
+  if (Math.abs(dx) > Math.abs(dy) * 1.35) return 'turn'
+  return 'scroll'
+}
+
+/** Radians per millisecond, eased so a flick settles instead of stopping dead. */
+export function dampVelocity(velocity: number, dtMs: number, tauMs = 320): number {
+  if (!Number.isFinite(velocity) || !Number.isFinite(dtMs) || dtMs <= 0) return velocity
+  return velocity * Math.exp(-dtMs / tauMs)
+}
+
+export function velocityFromSamples(samples: { t: number; yaw: number; pitch: number }[]): { yaw: number; pitch: number } {
+  if (samples.length < 2) return { yaw: 0, pitch: 0 }
+  const first = samples[0]
+  const last = samples[samples.length - 1]
+  const dt = Math.max(8, last.t - first.t)
+  let dyaw = last.yaw - first.yaw
+  if (dyaw > Math.PI) dyaw -= Math.PI * 2
+  if (dyaw < -Math.PI) dyaw += Math.PI * 2
+  const cap = 0.012
+  return {
+    yaw: Math.min(cap, Math.max(-cap, dyaw / dt)),
+    pitch: Math.min(cap, Math.max(-cap, (last.pitch - first.pitch) / dt)),
+  }
+}
+
+/** Smooth step from one camera to another. Yaw takes the short way around. */
+export function easeView(from: RadarView, to: RadarView, u: number): RadarView {
+  const clamped = Math.min(1, Math.max(0, u))
+  const t = clamped * clamped * (3 - 2 * clamped)
+  let dyaw = to.yaw - from.yaw
+  if (dyaw > Math.PI) dyaw -= Math.PI * 2
+  if (dyaw < -Math.PI) dyaw += Math.PI * 2
+  return {
+    yaw: from.yaw + dyaw * t,
+    pitch: clampPitch(from.pitch + (to.pitch - from.pitch) * t),
+    distance: clampDistance(from.distance + (to.distance - from.distance) * t),
+  }
+}
+
+/** Second tap zooms toward the finger. A second tap while already close returns to the opening distance. */
+export function doubleTapDistance(distance: number, homeDistance: number): { distance: number; recenter: boolean } {
+  const home = clampDistance(homeDistance)
+  if (distance < home * 0.92) return { distance: home, recenter: true }
+  return { distance: clampDistance(distance * 0.68), recenter: false }
 }
 
 export function wheelDistance(distance: number, deltaY: number, deltaMode = 0): number {
@@ -345,8 +425,10 @@ export function latLonAt(x: number, y: number, view: RadarView, size: number): {
 }
 
 /** Screen point for a canvas of `size` pixels. Null when the place faces away. */
-export function projectRadar(lat: number, lon: number, view: RadarView, size: number): { x: number; y: number } | null {
-  const p = viewPoint(lat, lon, view)
+export function projectRadar(lat: number, lon: number, view: RadarView, size: number, radius = 1): { x: number; y: number } | null {
+  const base = spherePoint(lat, lon)
+  const lifted = { x: base.x * radius, y: base.y * radius, z: base.z * radius }
+  const p = rotX(rotY(lifted, view.yaw), view.pitch)
   if (p.z <= 0.02) return null
   const w = view.distance - p.z
   if (w <= 0.08) return null

@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { FigureLine } from '@/components/pro/figure-line'
 import { LaunchDayScreen } from '@/components/launch-day'
 import { Logo } from '@/components/logo'
-import { MissionGlobe } from '@/components/mission-globe'
+import { PathGlobe } from '@/components/path-globe'
 import { Trail } from '@/components/trail'
 import {
   approximateInclination,
@@ -15,7 +15,6 @@ import {
   groundTrack,
   launchAzimuthDeg,
   missionEvents,
-  subsolar,
   trackProgress,
 } from '@/lib/mission'
 import { GLOSSARY } from '@/lib/glossary'
@@ -97,7 +96,15 @@ function MissionView({ launch, asOf, onFamily }: { launch: Launch; asOf: string 
           {launch.orbitName || launch.orbitAbbrev ? <Stat label="Orbit" value={launch.orbitName ?? launch.orbitAbbrev ?? ''} /> : null}
         </aside>
         <div className="mission-center">
-          <MissionGlobe track={track} progress={trackProgress(elapsed)} sun={subsolar(now)} />
+          <PathGlobe
+            track={track}
+            progress={trackProgress(elapsed)}
+            pad={
+              launch.padLat != null && launch.padLon != null
+                ? { lat: launch.padLat, lon: launch.padLon, name: launch.padName }
+                : null
+            }
+          />
         </div>
         <aside className="mission-cards">
           <article className="pro-card">
