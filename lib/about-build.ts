@@ -36,7 +36,7 @@ export const BUILD_STORY: BuildSection[] = [
     points: [
       'Launch Library 2, from The Space Devs, for launches, pads, timelines, and descriptions. The app caches the board for about an hour so it stays inside the free rate limit.',
       'CelesTrak for public orbital elements and for how many satellites are in orbit. The app does not download the full Starlink list. Pass times are a family estimate from those elements. They are not for flying anything.',
-      'Natural Earth land for the mission view globe. The path is an approximate ground track, labeled as approximate. There is no live altitude or speed.',
+      'Natural Earth land shapes are still in the project. The globe on screen reuses the home Earth, a NASA Blue Marble photograph. The mission view draws an approximate ground track from the pad and says so. Orbit patterns are sketches from type, tilt, and height. There is no live altitude or speed.',
       'Open-Meteo for the town search and cloud cover. The free API is not for commercial use. A paid plan is required before Pro ever charges. No key.',
       'Rocket photos only when the license is public domain, CC0, CC BY, or CC BY-SA. Each picture names the author, the license, and a source link. Anything else gets a drawn trail, not a copied plume.',
     ],

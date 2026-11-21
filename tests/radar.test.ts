@@ -9,8 +9,15 @@ import {
   viewLookingAt,
   ascentProgress,
   capRadarObjects,
+  dampVelocity,
+  doubleTapDistance,
+  discNdc,
+  distanceForDisc,
   dragFollow,
+  easeView,
+  FITTED_DISTANCE,
   elementsFromTleBundle,
+  gestureIntent,
   focusForTimeZone,
   formatAltitudeKm,
   formatSpeedKms,
@@ -162,6 +169,47 @@ describe('flight radar', () => {
     expect(wheelDistance(3, -80, 0)).toBeLessThan(3)
     expect(wheelDistance(3, 5000, 0)).toBe(DIST_MAX)
     expect(wheelDistance(2, -5000, 0)).toBe(DIST_MIN)
+    const finger = { x: (start?.x ?? 0) + 48, y: start?.y ?? 0 }
+    const stuck = projectRadar(40, -105, right, size)
+    expect(Math.hypot((stuck?.x ?? 0) - finger.x, (stuck?.y ?? 0) - finger.y)).toBeLessThan(8)
+    const zoomed = dragFollow({ ...view, distance: 2.15 }, { lat: 40, lon: -105 }, start?.x ?? 0, start?.y ?? 0, size)
+    const held = projectRadar(40, -105, zoomed, size)
+    expect(Math.hypot((held?.x ?? 0) - (start?.x ?? 0), (held?.y ?? 0) - (start?.y ?? 0))).toBeLessThan(8)
+    expect(Math.abs(zoomed.pitch)).toBeLessThanOrEqual(PITCH_MAX + 1e-6)
+  })
+
+  it('keeps the whole disc inside the square at the default distance', () => {
+    expect(discNdc(FITTED_DISTANCE)).toBeLessThan(0.8)
+    expect(distanceForDisc()).toBeCloseTo(FITTED_DISTANCE, 5)
+    const view = { yaw: 0.4, pitch: 0.25, distance: FITTED_DISTANCE }
+    let max = 0
+    for (let lat = -90; lat <= 90; lat += 6) {
+      for (let lon = -180; lon < 180; lon += 6) {
+        const spot = projectRadar(lat, lon, view, 400)
+        if (!spot) continue
+        max = Math.max(max, Math.hypot(spot.x - 200, spot.y - 200))
+      }
+    }
+    expect(max).toBeGreaterThan(120)
+    expect(max).toBeLessThan(172)
+  })
+
+  it('tells a vertical swipe from a turn, eases, and settles a flick', () => {
+    expect(gestureIntent(4, 3, 5)).toBe('undecided')
+    expect(gestureIntent(8, 30, 31)).toBe('scroll')
+    expect(gestureIntent(30, 8, 31)).toBe('turn')
+    const from = viewLookingAt(10, 20, 3)
+    const to = viewLookingAt(30, -40, 2.2)
+    expect(easeView(from, to, 0)).toMatchObject({ yaw: from.yaw, pitch: from.pitch, distance: from.distance })
+    const end = easeView(from, to, 1)
+    expect(end.pitch).toBeCloseTo(to.pitch, 5)
+    expect(end.distance).toBeCloseTo(to.distance, 5)
+    expect(Math.abs(end.yaw - to.yaw)).toBeLessThan(1e-6)
+    expect(Math.abs(dampVelocity(0.01, 320))).toBeLessThan(0.005)
+    expect(dampVelocity(0.01, 0)).toBe(0.01)
+    expect(doubleTapDistance(2.9, 2.85).recenter).toBe(false)
+    expect(doubleTapDistance(2.9, 2.85).distance).toBeLessThan(2.9)
+    expect(doubleTapDistance(2.1, 2.85).recenter).toBe(true)
   })
 
   it('drops a flown path and keeps the next launch on the home clock', () => {
