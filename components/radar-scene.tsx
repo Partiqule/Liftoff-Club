@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import { placeLabels, type LabelObstacle, type LabelSide } from '@/lib/globe-labels'
 import { subsolar } from '@/lib/mission'
 import {
   EARTH_TEXTURE,
@@ -323,6 +324,8 @@ export function RadarScene(props: Props) {
       }
       overlay.clearRect(0, 0, size, size)
       hits.length = 0
+      const labelJobs: { id: string; text: string; x: number; y: number; r: number; prefer?: LabelSide }[] = []
+      const obstacles: LabelObstacle[] = []
       const launch = propsRef.current.launch
       const phase = launch ? launchPhase(launch, Date.now()) : 'flown'
       const caption = launch && phase !== 'flown' ? pathCaption(launch, phase) : null
@@ -331,16 +334,13 @@ export function RadarScene(props: Props) {
         strokeChain(overlay, launch.track, view, size, '#f3d7b0', width)
         const pad = projectRadar(launch.padLat, launch.padLon, view, size)
         if (pad) {
-          diamond(overlay, pad.x, pad.y, Math.max(6, size / 80), '#f3d7b0')
+          const padR = Math.max(6, size / 80)
+          diamond(overlay, pad.x, pad.y, padR, '#f3d7b0')
           hits.push({ target: { type: 'pad' }, x: pad.x, y: pad.y, rank: 5 })
-          if (caption) {
-            overlay.font = `${Math.max(13, size / 34)}px Barlow, sans-serif`
-            overlay.fillStyle = '#f6f3ec'
-            overlay.textAlign = 'left'
-            overlay.textBaseline = 'bottom'
-            overlay.fillText(caption, pad.x + size / 28, pad.y - size / 11)
-          }
+          obstacles.push({ kind: 'disc', x: pad.x, y: pad.y, r: padR })
+          if (caption) labelJobs.push({ id: 'path-caption', text: caption, x: pad.x, y: pad.y, r: padR, prefer: 'up' })
         }
+        pushSegments(obstacles, launch.track, view, size)
       }
       if (track.length > 1) strokeChain(overlay, track, view, size, '#c5d2e2', Math.max(1.6, size / 360))
       const pattern = propsRef.current.overlay
@@ -348,12 +348,18 @@ export function RadarScene(props: Props) {
         const width = Math.max(2, size / 280)
         if (pattern.traceMs && traceOrigin < 0) traceOrigin = nowMs
         const trace = !propsRef.current.reduced && pattern.traceMs && pattern.traceMs > 0 ? Math.min(1, (nowMs - traceOrigin) / pattern.traceMs) : 1
+        const earthR = globeRadiusPx(size, view.distance)
+        obstacles.push({ kind: 'disc', x: size / 2, y: size / 2, r: earthR })
         const total = pattern.chains.reduce((sum, chain) => sum + Math.max(0, chain.points.length - 1), 0) || 1
         let budget = trace * total
         for (const chain of pattern.chains) {
           const span = Math.max(0, chain.points.length - 1)
           const take = trace >= 1 ? chain.points.length : Math.min(chain.points.length, Math.floor(budget) + 1)
-          if (take > 1) strokeChain(overlay, chain.points.slice(0, take), view, size, chain.color, width)
+          if (take > 1) {
+            const shown = chain.points.slice(0, take)
+            strokeChain(overlay, shown, view, size, chain.color, width)
+            pushSegments(obstacles, shown, view, size)
+          }
           budget -= span
         }
         for (const mark of pattern.marks) {
@@ -371,11 +377,8 @@ export function RadarScene(props: Props) {
             overlay.strokeStyle = '#f6f3ec'
             overlay.lineWidth = Math.max(1.25, size / 500)
             overlay.stroke()
-            overlay.font = `${Math.max(14, size / 26)}px Barlow, sans-serif`
-            overlay.fillStyle = '#f6f3ec'
-            overlay.textAlign = 'center'
-            overlay.textBaseline = 'bottom'
-            overlay.fillText('Moon', spot.x, Math.max(16, spot.y - body - size / 50))
+            obstacles.push({ kind: 'disc', x: spot.x, y: spot.y, r: body })
+            labelJobs.push({ id: mark.id, text: 'Moon', x: spot.x, y: spot.y, r: body, prefer: 'up' })
             hits.push({ target: { type: 'orbit', id: mark.id }, x: spot.x, y: spot.y, rank: 7 })
             continue
           }
@@ -393,9 +396,11 @@ export function RadarScene(props: Props) {
             overlay.fill()
           }
           hits.push({ target: { type: 'orbit', id: mark.id }, x: spot.x, y: spot.y, rank: 6 })
-          if (mark.canvas) labelOutward(overlay, spot.x, spot.y, radius + 4, size, mark.canvas, mark.side)
+          obstacles.push({ kind: 'disc', x: spot.x, y: spot.y, r: radius })
+          if (mark.canvas) labelJobs.push({ id: mark.id, text: mark.canvas, x: spot.x, y: spot.y, r: radius, prefer: mark.side })
         }
       }
+      if (labelJobs.length > 0) paintLabels(overlay, labelJobs, obstacles, size)
       const fixes = shownFixes()
       const ordered = fixes.slice().sort((a, b) => RANK[a.kind] - RANK[b.kind])
       for (const fix of ordered) {
@@ -828,26 +833,56 @@ function strokeChain(
   ctx.stroke()
 }
 
-function labelOutward(
+function paintLabels(
   ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  pad: number,
+  jobs: { id: string; text: string; x: number; y: number; r: number; prefer?: LabelSide }[],
+  obstacles: LabelObstacle[],
   size: number,
-  text: string,
-  side?: 'up' | 'down' | 'left' | 'right',
 ) {
-  const shift = side === 'left' ? [-1, 0] : side === 'right' ? [1, 0] : side === 'down' ? [0, 1] : side === 'up' ? [0, -1] : null
-  const dx = shift ? shift[0] : x - size / 2
-  const dy = shift ? shift[1] : y - size / 2
-  const len = Math.hypot(dx, dy) || 1
-  const lx = Math.min(size - 46, Math.max(46, x + (dx / len) * (pad + 18)))
-  const ly = Math.min(size - 16, Math.max(16, y + (dy / len) * (pad + 16)))
-  ctx.font = `${Math.max(12, size / 34)}px Barlow, sans-serif`
+  const font = Math.max(12, size / 34)
+  ctx.font = `${font}px Barlow, sans-serif`
+  const requests = jobs.map((job) => ({ id: job.id, anchor: { x: job.x, y: job.y }, w: ctx.measureText(job.text).width + 6, h: font + 2, prefer: job.prefer }))
+  requests.sort((a, b) => b.w - a.w)
+  const placed = placeLabels(requests, obstacles, { w: size, h: size }, 8, Math.max(14, font * 0.95))
+  const byId = new Map(placed.map((item) => [item.id, item]))
+  ctx.lineWidth = Math.max(1, size / 520)
+  ctx.strokeStyle = 'rgba(197, 210, 226, 0.75)'
   ctx.fillStyle = '#f6f3ec'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.fillText(text, lx, ly)
+  for (const job of jobs) {
+    const spot = byId.get(job.id)
+    if (!spot) continue
+    if (spot.leader) {
+      const dx = spot.x - job.x
+      const dy = spot.y - job.y
+      const len = Math.hypot(dx, dy) || 1
+      ctx.beginPath()
+      ctx.moveTo(job.x + (dx / len) * (job.r + 2), job.y + (dy / len) * (job.r + 2))
+      ctx.lineTo(spot.x - (dx / len) * (ctx.measureText(job.text).width / 2 + 2), spot.y)
+      ctx.stroke()
+    }
+    ctx.fillText(job.text, spot.x, spot.y)
+  }
+}
+
+function pushSegments(
+  obstacles: LabelObstacle[],
+  points: { lat: number; lon: number; radius?: number }[],
+  view: RadarView,
+  size: number,
+) {
+  let prev: { x: number; y: number } | null = null
+  const step = Math.max(1, Math.floor(points.length / 96))
+  for (let index = 0; index < points.length; index += step) {
+    const spot = projectRadar(points[index].lat, points[index].lon, view, size, points[index].radius ?? 1)
+    if (!spot || (prev && Math.hypot(spot.x - prev.x, spot.y - prev.y) > size * 0.34)) {
+      prev = spot
+      continue
+    }
+    if (prev) obstacles.push({ kind: 'seg', x1: prev.x, y1: prev.y, x2: spot.x, y2: spot.y })
+    prev = spot
+  }
 }
 
 function diamond(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, color: string) {

@@ -233,6 +233,11 @@ html[data-night="red"] .logo-mark { filter: sepia(0.5) hue-rotate(-32deg) satura
   font-size: 0.78rem;
   line-height: 1.15;
   padding: 0 0.15rem;
+  white-space: nowrap;
+}
+@media (max-width: 380px) {
+  .tabbar { padding-left: 0.2rem; padding-right: 0.2rem; }
+  .tabbar a { font-size: 0.68rem; letter-spacing: 0; padding: 0 0.04rem; }
 }
 .tabbar a[aria-current="page"] { color: var(--ink); }
 body { padding-bottom: calc(4.5rem + env(safe-area-inset-bottom)); }
@@ -266,12 +271,18 @@ h3 { font-size: 1.25rem; line-height: 1.2; }
 .section-head {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
   gap: 1rem;
   margin-top: 3rem;
 }
 .section-head h2 { margin: 0; }
-.section-head a { color: var(--cold); text-decoration: none; }
+.section-head a {
+  color: var(--cold);
+  text-decoration: none;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
 
 .tonight { padding: 1.75rem 0 0.5rem; min-height: 0; display: flex; flex-direction: column; justify-content: flex-end; }
 .tonight h1 .dir { display: block; color: var(--core); font-weight: 500; }
@@ -477,8 +488,14 @@ dialog.term-card .kicker { font-size: 0.95rem; margin: 0; }
 .featured .trail { width: 9rem; }
 .featured .strip-name { font-size: clamp(1.7rem, 4vw, 2.4rem); }
 
-.filters { display: flex; flex-wrap: wrap; gap: 1rem 1.4rem; margin: 1.2rem 0; }
-.filters a { color: var(--cold); text-decoration: none; }
+.filters { display: flex; flex-wrap: wrap; gap: 0.35rem 1.1rem; margin: 1.2rem 0; }
+.filters a {
+  color: var(--cold);
+  text-decoration: none;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
 .filters a[aria-current="page"] { color: var(--ink); }
 
 .banner, .error { color: var(--cold); max-width: var(--measure); }
@@ -495,9 +512,14 @@ dialog.term-card .kicker { font-size: 0.95rem; margin: 0; }
 .plate {
   display: grid;
   grid-template-columns: 9.5rem 1fr;
-  gap: 0.45rem 0.8rem;
+  gap: 0.2rem 0.8rem;
   margin: 0.8rem 0 0;
   color: var(--cold);
+}
+.plate a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
 }
 .install-steps { margin: 0.4rem 0 0; padding-left: 1.2rem; }
 .install-steps li { margin: 0.3rem 0; }
@@ -1039,7 +1061,7 @@ body:has(.pro-app) { padding-bottom: 0; }
   margin-right: 0.6rem;
 }
 .radar-card { margin-top: 0.4rem; }
-.radar-gesture { margin-top: 0; }
+.radar-gesture { margin-top: 0.35rem; }
 .radar-legend {
   display: flex;
   flex-wrap: wrap;
@@ -1081,9 +1103,9 @@ body:has(.pro-app) { padding-bottom: 0; }
 .orbit-taps {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.2rem 0.9rem;
+  gap: 0.15rem 1rem;
   list-style: none;
-  margin: 0.2rem 0 0.4rem;
+  margin: 0.35rem 0 0.5rem;
   padding: 0;
 }
 .orbit-taps .btn { min-height: 44px; }

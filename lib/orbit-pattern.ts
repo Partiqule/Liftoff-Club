@@ -444,9 +444,9 @@ function lunarGeometry(lunar: NonNullable<OrbitSpec['lunar']>) {
     marks.splice(2, 0, {
       id: 'tli',
       ...built.beats.tli,
-      label: lunar.tli?.label ?? 'Translunar injection',
+      label: lunar.tli?.label ?? 'Translunar burn',
       detail: lunar.tli?.detail ?? 'The burn that leaves Earth orbit for the Moon. On this drawing it is where the loops end.',
-      canvas: 'TLI',
+      canvas: 'Translunar burn',
       side: 'down',
     })
     marks.push({
@@ -454,8 +454,8 @@ function lunarGeometry(lunar: NonNullable<OrbitSpec['lunar']>) {
       ...built.beats.behind,
       label: 'Behind the Moon',
       detail: 'The far side of the loop stands in for the swing behind the Moon. The distance is not to scale.',
-      canvas: 'Behind',
-      side: 'right',
+      canvas: 'Behind the Moon',
+      side: 'down',
     })
     if (lunar.tank) {
       marks.push({

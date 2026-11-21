@@ -70,7 +70,7 @@ const APOLLO_13_ORBIT: OrbitSpec = {
         'The S-IVB shut down at 12 minutes 30 seconds. The mission report lists the parking orbit as 100.2 by 98.0 nautical miles. It does not print a revolution count. The next burn was 2 hours 23 minutes later, a little more than one and a half loops at that height. The loops here are a sketch.',
     },
     tli: {
-      label: 'Translunar injection',
+      label: 'Translunar burn',
       detail: 'The S-IVB lit again at 2 hours 35 minutes 46 seconds. That burn left Earth orbit for the Moon.',
     },
     tank: {
