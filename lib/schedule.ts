@@ -33,6 +33,50 @@ export function pickNext<T extends { net: string | null; windowEnd?: string | nu
   return pool[0] ?? null
 }
 
+/** How long the home hero keeps a rocket after liftoff before the next one takes the spot. */
+export const HOME_LIVE_MS = 10 * 60 * 1000
+
+export type HomePhase = 'upcoming' | 'lifting' | 'flown'
+
+type HomeLaunch = {
+  net: string | null
+  historical?: boolean
+  statusAbbrev?: string
+  statusName?: string
+}
+
+/** Home hero clock: before liftoff, the short ascent, then flown. */
+export function homePhase(launch: HomeLaunch, now = Date.now()): HomePhase {
+  if (launch.historical) return 'flown'
+  const status = `${launch.statusAbbrev ?? ''} ${launch.statusName ?? ''}`.toLowerCase()
+  if (status.includes('fail')) return 'flown'
+  const net = launch.net ? Date.parse(launch.net) : Number.NaN
+  if (!Number.isFinite(net)) return 'upcoming'
+  if (now < net) return 'upcoming'
+  if (now < net + HOME_LIVE_MS) return 'lifting'
+  return 'flown'
+}
+
+/** Soonest launch the home hero should still show. A flown rocket drops out. */
+export function pickHomeLaunch<T extends HomeLaunch>(launches: T[], now = Date.now(), prefer?: (item: T) => boolean): T | null {
+  const pool = launches.filter((item) => homePhase(item, now) !== 'flown')
+  const picked = prefer ? pool.filter(prefer) : pool
+  picked.sort((a, b) => Date.parse(a.net || '9999') - Date.parse(b.net || '9999'))
+  return picked[0] ?? null
+}
+
+/** Launches the home page sends to the browser so the clock can flip without a reload. */
+export function homeCandidates<T extends HomeLaunch>(launches: T[], now = Date.now()): T[] {
+  return launches.filter((launch) => {
+    if (launch.historical) return false
+    const status = `${launch.statusAbbrev ?? ''} ${launch.statusName ?? ''}`.toLowerCase()
+    if (status.includes('fail')) return false
+    const net = launch.net ? Date.parse(launch.net) : Number.NaN
+    if (!Number.isFinite(net)) return true
+    return net > now - 30 * 60 * 1000
+  }).sort((a, b) => Date.parse(a.net || '9999') - Date.parse(b.net || '9999'))
+}
+
 export function sortLaunches(launches: Launch[]): Launch[] {
   return launches.slice().sort((a, b) => {
     if (!a.net && !b.net) return a.name.localeCompare(b.name)

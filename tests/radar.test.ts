@@ -3,18 +3,29 @@ import { ISS_FALLBACK } from '@/lib/tle-select'
 import {
   RADAR_COPY,
   RADAR_HOME_VIEW,
+  DIST_MAX,
+  DIST_MIN,
+  PITCH_MAX,
   viewLookingAt,
   ascentProgress,
   capRadarObjects,
+  dragFollow,
   elementsFromTleBundle,
+  focusForTimeZone,
   formatAltitudeKm,
   formatSpeedKms,
+  latLonAt,
+  launchPhase,
   lerpFixes,
   lerpLon,
   observerDot,
+  openingView,
+  pathCaption,
   projectRadar,
   radarLaunchFrom,
+  wheelDistance,
 } from '@/lib/radar'
+import { HOME_LIVE_MS, homePhase, pickHomeLaunch } from '@/lib/schedule'
 import { fixesAt, orbitTrack, prepareBodies } from '@/lib/radar-propagate'
 import { LEGACY_REDIRECTS } from '@/lib/redirects'
 import { zoneStatusCopy } from '@/lib/pro/time'
@@ -102,6 +113,84 @@ describe('flight radar', () => {
     expect(ascentProgress(9000, true, 18000)).toBe(0)
     expect(formatAltitudeKm(420.4)).toBe('420 km')
     expect(formatSpeedKms(7.66)).toBe('7.66 km/s')
+  })
+
+  it('opens on a town, then a time zone, then the next pad', () => {
+    const town = openingView({
+      place: { lat: 39.7, lon: -104.9 },
+      timeZone: 'Europe/Paris',
+      launch: { padLat: 28.6, padLon: -80.6 },
+    })
+    const home = projectRadar(39.7, -104.9, town, 400)
+    expect(home).not.toBeNull()
+    expect(Math.hypot((home?.x ?? 0) - 200, (home?.y ?? 0) - 200)).toBeLessThan(70)
+    const africa = projectRadar(0, 20, town, 400)
+    if (africa) expect(Math.hypot(africa.x - 200, africa.y - 200)).toBeGreaterThan(140)
+    expect(focusForTimeZone('America/Denver')).toEqual({ lat: 39.7, lon: -104.9 })
+    expect(focusForTimeZone('UTC')).toBeNull()
+    const denver = openingView({ place: null, timeZone: 'America/Denver', launch: { padLat: 0, padLon: 0 } })
+    const west = projectRadar(39.7, -104.9, denver, 400)
+    expect(west).not.toBeNull()
+    expect(Math.hypot((west?.x ?? 0) - 200, (west?.y ?? 0) - 200)).toBeLessThan(40)
+    const pad = openingView({ place: null, timeZone: 'UTC', launch: { padLat: 28.6, padLon: -80.6 } })
+    const cape = projectRadar(28.6, -80.6, pad, 400)
+    expect(Math.hypot((cape?.x ?? 0) - 200, (cape?.y ?? 0) - 200)).toBeLessThan(50)
+    const back = latLonAt(200, 200, town, 400)
+    expect(back?.lat).toBeGreaterThan(30)
+    expect(back?.lon).toBeLessThan(-90)
+  })
+
+  it('drags the point under the finger and keeps the poles upright', () => {
+    const view = viewLookingAt(40, -105, 2.8)
+    const size = 400
+    const start = projectRadar(40, -105, view, size)
+    expect(start).not.toBeNull()
+    const right = dragFollow(view, { lat: 40, lon: -105 }, (start?.x ?? 0) + 48, start?.y ?? 0, size)
+    const movedRight = projectRadar(40, -105, right, size)
+    expect((movedRight?.x ?? 0) - (start?.x ?? 0)).toBeGreaterThan(24)
+    const down = dragFollow(view, { lat: 40, lon: -105 }, start?.x ?? 0, (start?.y ?? 0) + 40, size)
+    const movedDown = projectRadar(40, -105, down, size)
+    expect((movedDown?.y ?? 0) - (start?.y ?? 0)).toBeGreaterThan(18)
+    let tilted = viewLookingAt(64, 10, 2.8)
+    for (let step = 0; step < 24; step += 1) {
+      const spot = projectRadar(64, 10, tilted, size)
+      if (!spot) break
+      tilted = dragFollow(tilted, { lat: 64, lon: 10 }, spot.x, spot.y - 28, size)
+    }
+    expect(Math.abs(tilted.pitch)).toBeLessThanOrEqual(PITCH_MAX + 1e-6)
+    expect(wheelDistance(3, 80, 0)).toBeGreaterThan(3)
+    expect(wheelDistance(3, -80, 0)).toBeLessThan(3)
+    expect(wheelDistance(3, 5000, 0)).toBe(DIST_MAX)
+    expect(wheelDistance(2, -5000, 0)).toBe(DIST_MIN)
+  })
+
+  it('drops a flown path and keeps the next launch on the home clock', () => {
+    const net = '2026-11-21T12:00:00.000Z'
+    const flown = {
+      id: 'now',
+      name: 'Falcon 9',
+      net,
+      historical: false,
+      statusAbbrev: 'Go',
+      statusName: 'Go for Launch',
+      featured: true,
+    }
+    const later = { ...flown, id: 'next', name: 'Next flight', net: '2026-11-22T12:00:00.000Z', featured: false }
+    const tMinus = Date.parse(net) - 60 * 60 * 1000
+    const liftoff = Date.parse(net) + 30 * 1000
+    const after = Date.parse(net) + 15 * 60 * 1000
+    expect(HOME_LIVE_MS).toBeLessThan(15 * 60 * 1000)
+    expect(homePhase(flown, tMinus)).toBe('upcoming')
+    expect(homePhase(flown, liftoff)).toBe('lifting')
+    expect(homePhase(flown, after)).toBe('flown')
+    expect(launchPhase(flown, liftoff)).toBe('lifting')
+    expect(pickHomeLaunch([flown, later], tMinus)?.id).toBe('now')
+    expect(pickHomeLaunch([flown, later], liftoff)?.id).toBe('now')
+    expect(pickHomeLaunch([flown, later], after)?.id).toBe('next')
+    expect(pathCaption({ rocketName: 'Falcon 9', name: 'Falcon 9' }, 'upcoming')).toBe('Falcon 9 path, next launch')
+    expect(pathCaption({ rocketName: 'Falcon 9', name: 'Falcon 9' }, 'lifting')).toBe('Falcon 9 path, lifting off')
+    expect(pathCaption({ rocketName: 'Falcon 9', name: 'Falcon 9' }, 'flown')).toBeNull()
+    expect(pathCaption({ rocketName: 'Falcon 9', name: 'Falcon 9' }, 'upcoming')).not.toMatch(/[—–-]/)
   })
 
   it('keeps visitor copy free of dashes and the banned word', () => {

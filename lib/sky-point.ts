@@ -46,6 +46,16 @@ export const SKY_COPY = {
   noneAbove: 'Nothing in this list is above the horizon right now.',
   noneSoon: 'Nothing else in this list rises in the next 30 minutes.',
   domeNote: 'The center is straight up. The edge is the horizon. Words mark north, east, south, and west.',
+  compassNote: 'The center is straight up. The top is the way you face.',
+  mapMode: 'Map',
+  compassMode: 'Compass',
+  zoomIn: 'Zoom in',
+  zoomOut: 'Zoom out',
+  skyGesture: 'Pinch to zoom. When zoomed, drag to move. A swipe up or down scrolls the page.',
+  altitude: 'Altitude',
+  speed: 'Speed',
+  direction: 'Direction',
+  pathLabel: 'Path across the sky',
   compassButton: 'Turn on the compass',
   compassHelp: 'Tap once so this phone can share which way you face.',
   compassDenied: 'The compass stays off. The map still shows what is up.',
@@ -179,6 +189,31 @@ export function compassNeedsTap(requestPermission: unknown, userAgent: string, p
 export function riseMinutes(riseAt: number | null, now: number): number | null {
   if (riseAt == null) return null
   return Math.max(1, Math.round((riseAt - now) / 60_000))
+}
+
+export const SKY_ZOOM_MIN = 1
+export const SKY_ZOOM_MAX = 4
+
+export function clampSkyZoom(zoom: number): number {
+  if (!Number.isFinite(zoom)) return SKY_ZOOM_MIN
+  return Math.min(SKY_ZOOM_MAX, Math.max(SKY_ZOOM_MIN, zoom))
+}
+
+/** Wheel down moves away. Trackpad pixels and mouse notches both stay smooth. */
+export function skyWheelZoom(zoom: number, deltaY: number, deltaMode = 0): number {
+  const pixels = deltaMode === 1 ? deltaY * 16 : deltaMode === 2 ? deltaY * 400 : deltaY
+  return clampSkyZoom(zoom * Math.exp(-pixels * 0.0014))
+}
+
+/** Invisible tap radius in sky map units. It stays about a finger wide as you zoom. */
+export function skyHitRadius(zoom: number): number {
+  return Math.max(3.2, 8 / Math.max(zoom, SKY_ZOOM_MIN))
+}
+
+/** Compass mode puts the direction you face at the top. A flat map keeps north up. */
+export function skyAzimuth(azimuth: number, heading: number | null): number {
+  if (heading == null || !Number.isFinite(heading)) return wrap360(azimuth)
+  return wrap360(azimuth - heading)
 }
 
 function turnWord(heading: number | null, azimuth: number): string | null {

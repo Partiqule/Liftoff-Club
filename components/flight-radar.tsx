@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import { useClub } from '@/components/club-provider'
+import { useActiveZone } from '@/components/use-zone'
 import {
   EARTH_STILL,
   RADAR_COPY,
@@ -10,10 +11,13 @@ import {
   elementsFromTleBundle,
   formatAltitudeKm,
   formatSpeedKms,
+  launchPhase,
   observerDot,
+  pathCaption,
   radarKindLabel,
   type RadarFix,
   type RadarLaunch,
+  type RadarTarget,
 } from '@/lib/radar'
 import { watchingPlace } from '@/lib/places'
 import type { SkyElement } from '@/lib/sky-point'
@@ -28,14 +32,21 @@ function subscribeReduced(onChange: () => void) {
 
 export function FlightRadar({ launch }: { launch: RadarLaunch | null }) {
   const { settings } = useClub()
+  const zone = useActiveZone()
   const place = observerDot(watchingPlace(settings.location))
+  const [now, setNow] = useState(() => Date.now())
   const reduced = useSyncExternalStore(subscribeReduced, () => window.matchMedia('(prefers-reduced-motion: reduce)').matches, () => false)
   const [objects, setObjects] = useState<SkyElement[]>([])
   const [note, setNote] = useState<string>(RADAR_COPY.loading)
   const [live, setLive] = useState(false)
   const [failed, setFailed] = useState(false)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selected, setSelected] = useState<RadarTarget | null>(null)
   const [picked, setPicked] = useState<RadarFix | null>(null)
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 5000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -79,10 +90,14 @@ export function FlightRadar({ launch }: { launch: RadarLaunch | null }) {
     })
   }, [])
 
-  const choose = (id: string | null) => {
-    setSelectedId(id)
-    if (!id) setPicked(null)
+  const choose = (target: RadarTarget | null) => {
+    setSelected(target)
+    if (target?.type !== 'sat') setPicked(null)
   }
+
+  const phase = launch ? launchPhase(launch, now) : 'flown'
+  const caption = launch ? pathCaption(launch, phase) : null
+  const showLaunch = Boolean(launch && phase !== 'flown')
 
   return (
     <section className="radar-hero wrap" aria-label={RADAR_COPY.kicker}>
@@ -94,9 +109,10 @@ export function FlightRadar({ launch }: { launch: RadarLaunch | null }) {
           <RadarScene
             objects={objects}
             place={place}
-            launch={launch}
+            launch={showLaunch ? launch : null}
+            timeZone={zone}
             reduced={reduced}
-            selectedId={selectedId}
+            selected={selected}
             onSelect={choose}
             onFix={onFix}
             onLive={() => setLive(true)}
@@ -106,13 +122,52 @@ export function FlightRadar({ launch }: { launch: RadarLaunch | null }) {
       </div>
       <p className="meta radar-gesture">{RADAR_COPY.gesture}</p>
       {failed ? <p className="note">{RADAR_COPY.fallback}</p> : null}
-      {note ? <p className="note">{note}</p> : <p className="meta">{RADAR_COPY.legend}</p>}
-      {launch ? (
-        <p className="meta">
-          {RADAR_COPY.next}: {launch.name}. {RADAR_COPY.path} {launch.padName}.
+      {live || failed ? null : <p className="note">{RADAR_COPY.drawing}</p>}
+      {note ? <p className="note">{note}</p> : null}
+      <ul className="radar-legend">
+        <li>
+          <i style={{ background: '#f3d7b0' }} />
+          {RADAR_COPY.legendStations}
+        </li>
+        <li>
+          <i style={{ background: '#b7aec8' }} />
+          {RADAR_COPY.legendTrains}
+        </li>
+        <li>
+          <i style={{ background: '#c5d2e2' }} />
+          {RADAR_COPY.legendBright}
+        </li>
+        <li>
+          <i className="radar-you" />
+          {RADAR_COPY.legendYou}
+        </li>
+      </ul>
+      {caption && launch ? (
+        <p className="meta radar-path">
+          {caption}. {RADAR_COPY.path} {launch.padName}.
         </p>
       ) : null}
-      {picked ? (
+      {selected?.type === 'you' ? (
+        <div className="radar-card" aria-live="polite">
+          <p className="kicker">{RADAR_COPY.legendYou}</p>
+          <p className="radar-name">{settings.location?.label || RADAR_COPY.legendYou}</p>
+          <p className="meta">{RADAR_COPY.youNote}</p>
+          <button className="btn btn-quiet" type="button" onClick={() => choose(null)}>
+            {RADAR_COPY.close}
+          </button>
+        </div>
+      ) : selected?.type === 'pad' || selected?.type === 'path' ? (
+        <div className="radar-card" aria-live="polite">
+          <p className="kicker">{selected.type === 'pad' ? RADAR_COPY.padLabel : RADAR_COPY.next}</p>
+          <p className="radar-name">{launch?.name}</p>
+          <p className="meta">
+            {launch?.padName}. {caption}.
+          </p>
+          <button className="btn btn-quiet" type="button" onClick={() => choose(null)}>
+            {RADAR_COPY.close}
+          </button>
+        </div>
+      ) : picked ? (
         <div className="radar-card" aria-live="polite">
           <p className="kicker">{radarKindLabel(picked.kind)}</p>
           <p className="radar-name">{picked.name}</p>
@@ -135,7 +190,7 @@ export function FlightRadar({ launch }: { launch: RadarLaunch | null }) {
       <ul className="sr-only">
         {objects.map((object) => (
           <li key={object.noradId}>
-            <button type="button" onClick={() => choose(object.noradId)}>
+            <button type="button" onClick={() => choose({ type: 'sat', id: object.noradId })}>
               {object.name}
             </button>
           </li>

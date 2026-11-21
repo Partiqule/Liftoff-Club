@@ -11,12 +11,15 @@ export const SKY_RECENT_URL = 'https://celestrak.org/NORAD/elements/gp.php?GROUP
 const ISS_ID = '25544'
 const TIANGONG_ID = '48274'
 const HUBBLE_ID = '20580'
-const STARLINK_WINDOW_MS = 45 * 24 * 60 * 60 * 1000
+const STARLINK_WINDOW_MS = 60 * 24 * 60 * 60 * 1000
+const STARLINK_TRAIN_COUNT = 8
+const STARLINK_PER_TRAIN = 6
+export const STARLINK_TOTAL_CAP = 48
 
 const CAP: Record<SkyKind, number> = {
   station: 24,
   hubble: 4,
-  starlink: 40,
+  starlink: STARLINK_TOTAL_CAP,
   bright: 80,
 }
 
@@ -235,14 +238,34 @@ export function groupStarlinkTrains(sats: ParsedTle[], dates: Record<string, str
     return b.designator.localeCompare(a.designator)
   })
   const chosen: ParsedTle[] = []
-  for (const bucket of ordered.slice(0, 3)) {
+  for (const bucket of ordered.slice(0, STARLINK_TRAIN_COUNT)) {
     const name = starlinkTrainName(bucket.launchedAt)
-    for (const sat of bucket.sats.slice(0, 12)) {
-      if (chosen.length >= 36) return chosen
+    const visible = bucket.sats
+      .slice()
+      .sort((a, b) => altitudeKmFromMotion(meanMotion(a.line2)) - altitudeKmFromMotion(meanMotion(b.line2)))
+    for (const sat of visible.slice(0, STARLINK_PER_TRAIN)) {
+      if (chosen.length >= STARLINK_TOTAL_CAP) return chosen
       chosen.push({ ...sat, name })
     }
   }
   return chosen
+}
+
+/** Recent trains first, then the lowest remaining Starlinks, which read as the brightest. */
+export function mergeVisibleStarlinks(primary: SkyElement[], extra: SkyElement[], cap = STARLINK_TOTAL_CAP): SkyElement[] {
+  const seen = new Set<string>()
+  const out: SkyElement[] = []
+  const push = (item: SkyElement) => {
+    if (!item.noradId || seen.has(item.noradId) || out.length >= cap) return
+    seen.add(item.noradId)
+    out.push(item)
+  }
+  for (const item of primary) push(item)
+  const rest = extra
+    .slice()
+    .sort((a, b) => altitudeKmFromMotion(meanMotion(a.line2)) - altitudeKmFromMotion(meanMotion(b.line2)))
+  for (const item of rest) push(item)
+  return out
 }
 
 function objectIdFromTle(line1: string): string {
@@ -283,7 +306,7 @@ export function recentStarlinkDesignators(
     const when = Date.parse(row.net ?? '')
     if (!Number.isFinite(when) || when > now || now - when > STARLINK_WINDOW_MS) continue
     if (!found.includes(designator)) found.push(designator)
-    if (found.length >= 2) break
+    if (found.length >= STARLINK_TRAIN_COUNT) break
   }
   return found
 }

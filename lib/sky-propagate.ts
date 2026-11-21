@@ -4,7 +4,7 @@
 import { twoline2satrec } from '../node_modules/satellite.js/dist/io.js'
 import { gstime, propagate } from '../node_modules/satellite.js/dist/propagation.js'
 import type { SatRec } from '../node_modules/satellite.js/dist/propagation/SatRec.js'
-import { degreesToRadians, eciToEcf, ecfToLookAngles, radiansToDegrees } from '../node_modules/satellite.js/dist/transforms.js'
+import { degreesToRadians, eciToEcf, eciToGeodetic, ecfToLookAngles, radiansToDegrees } from '../node_modules/satellite.js/dist/transforms.js'
 import { satelliteInSunlight, sunEciUnit, sunPosition } from '@/lib/solar'
 import { eyeVisible, type SkyElement, type SkyFix } from '@/lib/sky-point'
 
@@ -95,6 +95,69 @@ function fixOne(object: SkyElement, observer: Observer, now: Date, endMs: number
   return null
 }
 
+export type SkyPass = {
+  altKm: number
+  speedKms: number
+  azimuth: number
+  elevation: number
+  setAt: number | null
+  setAzimuth: number | null
+  riseAt: number | null
+  riseAzimuth: number | null
+  path: { azimuth: number; elevation: number }[]
+}
+
+/** One object: altitude, speed, rise or set, and the arc while it is up. */
+export function skyPass(object: SkyElement, observer: Observer, now: Date): SkyPass | null {
+  const satrec = satrecFor(object.line1, object.line2)
+  if (!satrec) return null
+  const current = sampleRich(satrec, observer, now)
+  if (!current) return null
+  const start = now.getTime()
+  let riseAt: number | null = null
+  let riseAzimuth: number | null = null
+  let setAt: number | null = null
+  let setAzimuth: number | null = null
+  let began = current.elevation > 0 ? start : 0
+  const step = 20_000
+  const limit = start + 40 * 60_000
+  for (let time = start + step; time <= limit; time += step) {
+    const look = sampleRich(satrec, observer, new Date(time))
+    if (!look) continue
+    if (began === 0 && look.elevation > 0) {
+      began = time
+      riseAt = time
+      riseAzimuth = look.azimuth
+    }
+    if (began > 0 && look.elevation <= 0) {
+      setAt = time
+      setAzimuth = look.azimuth
+      break
+    }
+  }
+  const path: { azimuth: number; elevation: number }[] = []
+  if (began > 0) {
+    const end = setAt ?? Math.min(limit, began + 20 * 60_000)
+    const span = Math.max(step, end - began)
+    const hop = Math.max(step, Math.round(span / 24))
+    for (let time = began; time <= end; time += hop) {
+      const look = sampleRich(satrec, observer, new Date(time))
+      if (look && look.elevation > 0) path.push({ azimuth: look.azimuth, elevation: look.elevation })
+    }
+  }
+  return {
+    altKm: current.altKm,
+    speedKms: current.speedKms,
+    azimuth: current.azimuth,
+    elevation: current.elevation,
+    setAt,
+    setAzimuth,
+    riseAt: current.elevation > 0 ? null : riseAt,
+    riseAzimuth: current.elevation > 0 ? null : riseAzimuth,
+    path,
+  }
+}
+
 function satrecFor(line1: string, line2: string): SatRec | null {
   try {
     const satrec = twoline2satrec(line1, line2)
@@ -123,6 +186,16 @@ function sample(satrec: SatRec, observer: Observer, date: Date): Look | null {
     elevation: radiansToDegrees(look.elevation),
     illuminated: satelliteInSunlight(pv.position, sunEciUnit(date)),
   }
+}
+
+function sampleRich(satrec: SatRec, observer: Observer, date: Date): (Look & { altKm: number; speedKms: number }) | null {
+  const pv = propagate(satrec, date)
+  if (!pv || !isVec(pv.position)) return null
+  const look = sample(satrec, observer, date)
+  if (!look) return null
+  const geo = eciToGeodetic(pv.position, gstime(date))
+  const speed = isVec(pv.velocity) ? Math.hypot(pv.velocity.x, pv.velocity.y, pv.velocity.z) : Number.NaN
+  return { ...look, altKm: geo.height, speedKms: speed }
 }
 
 function isVec(value: unknown): value is { x: number; y: number; z: number } {

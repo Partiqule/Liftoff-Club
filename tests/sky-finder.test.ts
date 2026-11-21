@@ -14,6 +14,7 @@ import {
   launchIsRecent,
   limitStarlinkGroups,
   mergeSkyKinds,
+  mergeVisibleStarlinks,
   parseGpCsv,
   recentStarlinkDesignators,
   skyGroupUrls,
@@ -23,13 +24,17 @@ import {
   trainsFromGp,
   visitorCatalogNotice,
 } from '@/lib/sky-catalog-model'
-import { lookNow, surveySky } from '@/lib/sky-propagate'
+import { lookNow, skyPass, surveySky } from '@/lib/sky-propagate'
 import {
   SKY_COPY,
   cameraElevation,
   compassNeedsTap,
+  clampSkyZoom,
   domePoint,
   eyeVisible,
+  skyAzimuth,
+  skyHitRadius,
+  skyWheelZoom,
   guideAngle,
   guidePhrase,
   readOrientation,
@@ -180,6 +185,12 @@ describe('sky finder pointing', () => {
     expect(domePoint(90, 0).x).toBeCloseTo(1, 5)
     expect(domePoint(180, 0).y).toBeCloseTo(1, 5)
     expect(domePoint(270, 0).x).toBeCloseTo(0, 5)
+    expect(skyAzimuth(90, 90)).toBe(0)
+    expect(skyAzimuth(10, null)).toBe(10)
+    expect(clampSkyZoom(9)).toBe(4)
+    expect(skyWheelZoom(2, 120, 0)).toBeLessThan(2)
+    expect(skyWheelZoom(2, -120, 0)).toBeGreaterThan(2)
+    expect(skyHitRadius(1)).toBeGreaterThan(skyHitRadius(3))
   })
 
   it('calls a satellite likely visible only when it is sunlit and the sky is dark', () => {
@@ -231,6 +242,28 @@ describe('sky finder orbits', () => {
       ),
     ).toEqual(['2026-256', '2026-246'])
     expect(recentStarlinkDesignators([{ name: 'Starlink', net: '2026-09-01T00:00:00Z', statusName: 'Launch Successful', designator: '2026-190' }], now)).toEqual([])
+    expect(
+      recentStarlinkDesignators(
+        [
+          { name: 'Starlink', net: '2026-11-13T00:00:00Z', statusName: 'Launch Successful', designator: '2026-256' },
+          { name: 'Starlink', net: '2026-10-31T00:00:00Z', statusName: 'Launch Successful', designator: '2026-246' },
+          { name: 'Starlink', net: '2026-10-05T00:00:00Z', statusName: 'Launch Successful', designator: '2026-210' },
+          { name: 'Starlink', net: '2026-09-01T00:00:00Z', statusName: 'Launch Successful', designator: '2026-190' },
+        ],
+        now,
+      ),
+    ).toEqual(['2026-256', '2026-246', '2026-210'])
+    const nearer = line('61000', 'STARLINK-1', '15.50000000')
+    const farther = line('61001', 'STARLINK-2', '15.05000000')
+    const mergedStars = mergeVisibleStarlinks(
+      [{ noradId: '1', name: 'Starlink train (launched Nov 12)', kind: 'starlink', line1: nearer.line1, line2: nearer.line2 }],
+      [
+        { noradId: '61001', name: 'Starlink 2', kind: 'starlink', line1: farther.line1, line2: farther.line2 },
+        { noradId: '1', name: 'duplicate', kind: 'starlink', line1: nearer.line1, line2: nearer.line2 },
+      ],
+      2,
+    )
+    expect(mergedStars.map((item) => item.noradId)).toEqual(['1', '61001'])
     expect(starlinkTrainName('2026-11-12T22:47:36Z')).toBe('Starlink train (launched Nov 12)')
     expectPlain(starlinkTrainName('2026-11-12T22:47:36Z'))
     expect(starlinkTrainName(null)).toBe('Starlink train')
@@ -294,6 +327,10 @@ describe('sky finder orbits', () => {
     expect(fixes[0]?.elevation).toBeGreaterThan(60)
     const far = lookNow(element, { lat: -observer.lat, lon: observer.lon > 0 ? observer.lon - 180 : observer.lon + 180 }, when)
     expect(far?.elevation).toBeLessThan(0)
+    const pass = skyPass(element, observer, when)
+    expect(pass?.altKm).toBeGreaterThan(300)
+    expect(pass?.speedKms).toBeGreaterThan(7)
+    expect(pass && pass.path.length).toBeGreaterThan(1)
   })
 })
 

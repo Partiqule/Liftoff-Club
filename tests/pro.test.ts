@@ -162,10 +162,11 @@ describe('pro watchlist and alerts', () => {
     const target: WatchTarget = { kind: 'constellation', id: 'starlink', label: 'Starlink', addedAt: '2026-11-01T00:00:00Z' }
     const store = addTarget(emptyStore(), target)
     expect(sanitizeStore(store).targets).toHaveLength(1)
+    const clock = Date.parse('2026-11-01T00:00:00Z')
     const launch = makeLaunch({ statusName: 'Go for Launch', statusAbbrev: 'Go' })
-    const seen = snapshotTarget(target, [launch], refs)
+    const seen = snapshotTarget(target, [launch], refs, clock)
     const moved = makeLaunch({ net: '2026-11-19T03:14:00Z', statusName: 'Scrubbed', statusAbbrev: 'Scrub' })
-    const next = nextForTarget(target, [moved], refs, Date.parse('2026-11-01T00:00:00Z'))
+    const next = nextForTarget(target, [moved], refs, clock)
     const changes = changesSince(seen, next)
     expect(changes.map((item) => item.kind)).toEqual(expect.arrayContaining(['slip', 'scrub']))
     expect(isScrubOrSlip('Go for Launch', 'Go')).toBe(false)
