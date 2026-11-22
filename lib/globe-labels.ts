@@ -118,6 +118,18 @@ function obstaclePenalty(box: LabelBox, obstacles: LabelObstacle[], clearance: n
   return penalty
 }
 
+/** True when a tap lands on a label, including a finger sized box around short words. */
+export function pointInLabel(
+  x: number,
+  y: number,
+  label: { x: number; y: number; w: number; h: number },
+  min = 0,
+): boolean {
+  const halfW = Math.max(label.w, min) / 2
+  const halfH = Math.max(label.h, min) / 2
+  return Math.abs(x - label.x) <= halfW && Math.abs(y - label.y) <= halfH
+}
+
 function boxesOverlap(a: LabelBox, b: LabelBox, pad: number): boolean {
   return Math.abs(a.x - b.x) * 2 < a.w + b.w + pad && Math.abs(a.y - b.y) * 2 < a.h + b.h + pad
 }
