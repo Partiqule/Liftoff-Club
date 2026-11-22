@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { placeLabels, type LabelObstacle, type LabelSide } from '@/lib/globe-labels'
+import { bindGlobePointers, createFrameLoop, createGlobeGesture, GLOBE_DOUBLE_TAP_MS, type PinchAction } from '@/lib/globe-gesture'
+import { placeLabels, pointInLabel, type LabelObstacle, type LabelSide } from '@/lib/globe-labels'
 import { subsolar } from '@/lib/mission'
 import {
   EARTH_TEXTURE,
@@ -13,7 +14,6 @@ import {
   doubleTapDistance,
   dragFollow,
   easeView,
-  gestureIntent,
   globeRadiusPx,
   latLonAt,
   launchPhase,
@@ -36,6 +36,7 @@ import { fixesAt, orbitTrack, prepareBodies, type RadarBody } from '@/lib/radar-
 import type { SkyElement } from '@/lib/sky-point'
 
 type Hit = { target: RadarTarget; x: number; y: number; rank: number }
+type LabelHit = { target: RadarTarget; x: number; y: number; w: number; h: number }
 
 const DOT: Record<RadarFix['kind'], string> = {
   station: '#f3d7b0',
@@ -78,42 +79,19 @@ export function RadarScene(props: Props) {
     const glCanvas = glRef.current
     const over = overRef.current
     if (!wrap || !glCanvas || !over) return
-    const gl = glCanvas.getContext('webgl', {
-      alpha: true,
-      antialias: true,
-      depth: true,
-      stencil: false,
-      powerPreference: 'low-power',
-      premultipliedAlpha: true,
-    })
-    if (!gl) {
-      propsRef.current.onFallback()
-      return
-    }
-    const program = buildProgram(gl)
-    if (!program) {
-      propsRef.current.onFallback()
-      return
-    }
-    const mesh = buildSphere(gl, 48, 64)
-    const texture = gl.createTexture()
-    if (!texture) {
-      propsRef.current.onFallback()
-      return
-    }
-    gl.enable(gl.DEPTH_TEST)
-    gl.depthFunc(gl.LEQUAL)
-    gl.enable(gl.CULL_FACE)
-    gl.cullFace(gl.BACK)
-    gl.disable(gl.BLEND)
-
     let dead = false
     let textured = false
+    let contextLost = false
+    let gl: WebGLRenderingContext | null = null
+    let program: ReturnType<typeof buildProgram> = null
+    let mesh: ReturnType<typeof buildSphere> | null = null
+    let texture: WebGLTexture | null = null
     const image = new Image()
     image.crossOrigin = 'anonymous'
     image.decoding = 'async'
-    image.onload = () => {
-      if (dead) return
+
+    const uploadTexture = () => {
+      if (dead || contextLost || !gl || !texture || !image.complete || image.naturalWidth === 0) return
       const source = fitTexture(gl, image)
       gl.getError()
       gl.bindTexture(gl.TEXTURE_2D, texture)
@@ -135,6 +113,47 @@ export function RadarScene(props: Props) {
       textured = true
       propsRef.current.onLive()
     }
+
+    const mountGl = () => {
+      const next =
+        gl ??
+        glCanvas.getContext('webgl', {
+          alpha: true,
+          antialias: true,
+          depth: true,
+          stencil: false,
+          powerPreference: 'low-power',
+          premultipliedAlpha: true,
+        })
+      if (!next) return false
+      gl = next
+      if (program) gl.deleteProgram(program.program)
+      if (mesh) {
+        gl.deleteBuffer(mesh.positions)
+        gl.deleteBuffer(mesh.uvs)
+        gl.deleteBuffer(mesh.indices)
+      }
+      if (texture) gl.deleteTexture(texture)
+      program = buildProgram(gl)
+      mesh = buildSphere(gl, 48, 64)
+      texture = gl.createTexture()
+      if (!program || !texture) return false
+      gl.enable(gl.DEPTH_TEST)
+      gl.depthFunc(gl.LEQUAL)
+      gl.enable(gl.CULL_FACE)
+      gl.cullFace(gl.BACK)
+      gl.disable(gl.BLEND)
+      contextLost = false
+      textured = false
+      uploadTexture()
+      return true
+    }
+
+    if (!mountGl()) {
+      propsRef.current.onFallback()
+      return
+    }
+    image.onload = () => uploadTexture()
     image.onerror = () => {
       if (!dead) propsRef.current.onFallback()
     }
@@ -159,39 +178,56 @@ export function RadarScene(props: Props) {
     let track: { lat: number; lon: number }[] = []
     let trackId: string | null = null
     const hits: Hit[] = []
+    const labelHits: LabelHit[] = []
     let paused = false
-    let frame = 0
     let timer = 0
     let idle = 0
     let userMoved = false
-    let gesture: 'idle' | 'undecided' | 'scroll' | 'turn' | 'pinch' = 'idle'
-    let activePointer: number | null = null
     let grab: { lat: number; lon: number } | null = null
-    let pinch: { dist: number; distance: number; grab: { lat: number; lon: number } | null } | null = null
+    let pinchView: { dist: number; distance: number; grab: { lat: number; lon: number } | null } | null = null
     let vel = { yaw: 0, pitch: 0 }
     let ease: { from: RadarView; to: RadarView; start: number; dur: number } | null = null
-    let moved = 0
-    let downAt = { x: 0, y: 0 }
     let lastDraw = performance.now()
     let traceOrigin = -1
-    let lastTap: { t: number; x: number; y: number } | null = null
     let tapTimer = 0
-    let holdTimer = 0
     const samples: { t: number; yaw: number; pitch: number }[] = []
-    const pointers = new Map<number, { x: number; y: number }>()
+    const frames = createFrameLoop(
+      (cb) => window.requestAnimationFrame(cb),
+      (id) => window.cancelAnimationFrame(id),
+    )
+    const gesture = createGlobeGesture({
+      now: () => performance.now(),
+      capture: (id) => {
+        try {
+          over.setPointerCapture(id)
+        } catch {
+          // The pointer can end before capture.
+        }
+      },
+      release: (id) => {
+        try {
+          if (over.hasPointerCapture(id)) over.releasePointerCapture(id)
+        } catch {
+          // Capture was already released.
+        }
+      },
+    })
 
     const resize = () => {
       const rect = wrap.getBoundingClientRect()
       const css = Math.max(2, Math.min(rect.width, rect.height))
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
       const px = Math.max(2, Math.round(css * dpr))
-      if (glCanvas.width !== px) {
+      if (!contextLost && glCanvas.width !== px) {
         glCanvas.width = px
         glCanvas.height = px
         over.width = px
         over.height = px
+      } else if (over.width !== px) {
+        over.width = px
+        over.height = px
       }
-      gl.viewport(0, 0, glCanvas.width, glCanvas.height)
+      if (gl && !contextLost) gl.viewport(0, 0, glCanvas.width, glCanvas.height)
     }
 
     const canvasPoint = (clientX: number, clientY: number) => {
@@ -240,10 +276,11 @@ export function RadarScene(props: Props) {
         distance: propsRef.current.distance,
       })
 
-    const assignView = (next: RadarView) => {
-      view.yaw = next.yaw
-      view.pitch = next.pitch
-      view.distance = next.distance
+    const assignView = (nextView: RadarView) => {
+      if (!Number.isFinite(nextView.yaw) || !Number.isFinite(nextView.pitch) || !Number.isFinite(nextView.distance)) return
+      view.yaw = nextView.yaw
+      view.pitch = nextView.pitch
+      view.distance = nextView.distance
     }
 
     const startEase = (to: RadarView, dur = 440) => {
@@ -265,16 +302,18 @@ export function RadarScene(props: Props) {
       const nowMs = performance.now()
       const dt = Math.min(34, Math.max(0, nowMs - lastDraw))
       lastDraw = nowMs
-      if (ease && pointers.size === 0 && gesture !== 'turn' && gesture !== 'pinch') {
+      const hands = gesture.debug()
+      const turning = hands.phase === 'turn' || hands.phase === 'pinch' || hands.pointers > 0
+      if (ease && !turning) {
         const u = Math.min(1, (nowMs - ease.start) / ease.dur)
         assignView(easeView(ease.from, ease.to, u))
         if (u >= 1) ease = null
-      } else if (!userMoved && gesture !== 'turn' && gesture !== 'pinch') {
+      } else if (!userMoved && hands.phase !== 'turn' && hands.phase !== 'pinch') {
         const framed = framedOpening()
         const gap = Math.hypot(framed.yaw - view.yaw, framed.pitch - view.pitch) + Math.abs(framed.distance - view.distance)
         if (gap > 0.04) startEase(framed, 520)
         else assignView(framed)
-      } else if (pointers.size === 0 && gesture !== 'pinch' && gesture !== 'turn') {
+      } else if (!turning) {
         if (Math.hypot(vel.yaw, vel.pitch) > 1e-6) {
           view.yaw += vel.yaw * dt
           const nextPitch = view.pitch + vel.pitch * dt
@@ -295,9 +334,10 @@ export function RadarScene(props: Props) {
       }
       resize()
       const size = glCanvas.width
-      if (!paused && !ease && !propsRef.current.reduced && pointers.size === 0 && gesture !== 'pinch' && gesture !== 'turn' && Date.now() - idle > 1600) {
+      if (!paused && !ease && !propsRef.current.reduced && !turning && Date.now() - idle > 1600) {
         if (Math.hypot(vel.yaw, vel.pitch) < 2e-6) view.yaw += 0.0000375 * dt
       }
+      if (!contextLost && gl && program && mesh && texture) {
       gl.clearColor(0, 0, 0, 0)
       gl.clearDepth(1)
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
@@ -322,9 +362,11 @@ export function RadarScene(props: Props) {
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.indices)
         gl.drawElements(gl.TRIANGLES, mesh.count, gl.UNSIGNED_SHORT, 0)
       }
+      }
       overlay.clearRect(0, 0, size, size)
       hits.length = 0
-      const labelJobs: { id: string; text: string; x: number; y: number; r: number; prefer?: LabelSide }[] = []
+      labelHits.length = 0
+      const labelJobs: { id: string; target: RadarTarget; text: string; x: number; y: number; r: number; prefer?: LabelSide }[] = []
       const obstacles: LabelObstacle[] = []
       const launch = propsRef.current.launch
       const phase = launch ? launchPhase(launch, Date.now()) : 'flown'
@@ -338,7 +380,7 @@ export function RadarScene(props: Props) {
           diamond(overlay, pad.x, pad.y, padR, '#f3d7b0')
           hits.push({ target: { type: 'pad' }, x: pad.x, y: pad.y, rank: 5 })
           obstacles.push({ kind: 'disc', x: pad.x, y: pad.y, r: padR })
-          if (caption) labelJobs.push({ id: 'path-caption', text: caption, x: pad.x, y: pad.y, r: padR, prefer: 'up' })
+          if (caption) labelJobs.push({ id: 'path-caption', target: { type: 'path' }, text: caption, x: pad.x, y: pad.y, r: padR, prefer: 'up' })
         }
         pushSegments(obstacles, launch.track, view, size)
       }
@@ -378,7 +420,7 @@ export function RadarScene(props: Props) {
             overlay.lineWidth = Math.max(1.25, size / 500)
             overlay.stroke()
             obstacles.push({ kind: 'disc', x: spot.x, y: spot.y, r: body })
-            labelJobs.push({ id: mark.id, text: 'Moon', x: spot.x, y: spot.y, r: body, prefer: 'up' })
+            labelJobs.push({ id: mark.id, target: { type: 'orbit', id: mark.id }, text: 'Moon', x: spot.x, y: spot.y, r: body, prefer: 'up' })
             hits.push({ target: { type: 'orbit', id: mark.id }, x: spot.x, y: spot.y, rank: 7 })
             continue
           }
@@ -397,10 +439,10 @@ export function RadarScene(props: Props) {
           }
           hits.push({ target: { type: 'orbit', id: mark.id }, x: spot.x, y: spot.y, rank: 6 })
           obstacles.push({ kind: 'disc', x: spot.x, y: spot.y, r: radius })
-          if (mark.canvas) labelJobs.push({ id: mark.id, text: mark.canvas, x: spot.x, y: spot.y, r: radius, prefer: mark.side })
+          if (mark.canvas) labelJobs.push({ id: mark.id, target: { type: 'orbit', id: mark.id }, text: mark.canvas, x: spot.x, y: spot.y, r: radius, prefer: mark.side })
         }
       }
-      if (labelJobs.length > 0) paintLabels(overlay, labelJobs, obstacles, size)
+      if (labelJobs.length > 0) labelHits.push(...paintLabels(overlay, labelJobs, obstacles, size))
       const fixes = shownFixes()
       const ordered = fixes.slice().sort((a, b) => RANK[a.kind] - RANK[b.kind])
       for (const fix of ordered) {
@@ -433,21 +475,19 @@ export function RadarScene(props: Props) {
     }
 
     const loop = () => {
-      if (paused) return
+      if (paused || dead) return
       draw()
-      frame = window.requestAnimationFrame(loop)
     }
     const start = () => {
-      if (paused) return
+      if (paused || dead) return
       recompute()
       window.clearInterval(timer)
       timer = window.setInterval(recompute, 1000)
-      window.cancelAnimationFrame(frame)
-      frame = window.requestAnimationFrame(loop)
+      frames.start(loop)
     }
     const stop = () => {
       window.clearInterval(timer)
-      window.cancelAnimationFrame(frame)
+      frames.stop()
     }
     const syncPause = () => {
       const hidden = document.visibilityState === 'hidden'
@@ -463,7 +503,14 @@ export function RadarScene(props: Props) {
     }
 
     const pick = (pixelX: number, pixelY: number) => {
-      const reach = Math.max(44 * (over.width / Math.max(1, over.clientWidth)), over.width * 0.07)
+      const minLabel = 44 * (over.width / Math.max(1, over.clientWidth))
+      for (const label of labelHits) {
+        if (pointInLabel(pixelX, pixelY, label, minLabel)) {
+          propsRef.current.onSelect(label.target)
+          return
+        }
+      }
+      const reach = Math.max(minLabel, over.width * 0.07)
       let best: Hit | null = null
       let bestDist = reach
       for (const hit of hits) {
@@ -513,44 +560,44 @@ export function RadarScene(props: Props) {
       while (samples.length > 1 && samples[0].t < cutoff) samples.shift()
     }
 
-    const lockTurn = (point: { x: number; y: number }, pointerId: number) => {
-      gesture = 'turn'
+    const beginTurn = (clientX: number, clientY: number) => {
+      const point = canvasPoint(clientX, clientY)
       userMoved = true
       ease = null
+      pinchView = null
       stopMotion()
       grab = latLonAt(point.x, point.y, view, over.width) ?? propsRef.current.place
       rememberSample()
-      try {
-        over.setPointerCapture(pointerId)
-      } catch {
-        // The pointer can end before capture.
-      }
     }
 
-    const beginPinch = () => {
-      if (pointers.size < 2) return
-      const [a, b] = [...pointers.values()]
-      const mid = canvasPoint((a.x + b.x) / 2, (a.y + b.y) / 2)
-      gesture = 'pinch'
-      grab = null
-      ease = null
-      stopMotion()
-      userMoved = true
-      window.clearTimeout(holdTimer)
-      pinch = {
-        dist: Math.hypot(a.x - b.x, a.y - b.y) || 1,
-        distance: view.distance,
-        grab: latLonAt(mid.x, mid.y, view, over.width),
+    const applyPinch = (action: PinchAction) => {
+      const mid = canvasPoint((action.pointers[0].x + action.pointers[1].x) / 2, (action.pointers[0].y + action.pointers[1].y) / 2)
+      if (action.start || !pinchView) {
+        userMoved = true
+        ease = null
+        grab = null
+        stopMotion()
+        pinchView = {
+          dist: action.dist,
+          distance: view.distance,
+          grab: latLonAt(mid.x, mid.y, view, over.width),
+        }
       }
-    }
-
-    const applyPinch = () => {
-      if (!pinch || pointers.size < 2) return
-      const [a, b] = [...pointers.values()]
-      const mid = canvasPoint((a.x + b.x) / 2, (a.y + b.y) / 2)
-      const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1
-      assignView(lookUnderFinger(view, pinch.grab, mid.x, mid.y, over.width, pinch.distance * (pinch.dist / dist)))
+      assignView(lookUnderFinger(view, pinchView.grab, mid.x, mid.y, over.width, pinchView.distance * (pinchView.dist / (action.dist || 1))))
       idle = Date.now()
+    }
+
+    const dragTo = (clientX: number, clientY: number) => {
+      const point = canvasPoint(clientX, clientY)
+      if (!grab) {
+        beginTurn(clientX, clientY)
+        return
+      }
+      const followed = dragFollow(view, grab, point.x, point.y, over.width)
+      view.yaw = followed.yaw
+      view.pitch = followed.pitch
+      rememberSample()
+      idle = performance.now()
     }
 
     const zoomFromTap = (point: { x: number; y: number }) => {
@@ -563,114 +610,62 @@ export function RadarScene(props: Props) {
       startEase(target, 420)
     }
 
-    const onDown = (event: PointerEvent) => {
-      if (event.pointerType === 'mouse' && event.button !== 0) return
-      const point = canvasPoint(event.clientX, event.clientY)
-      pointers.set(event.pointerId, { x: event.clientX, y: event.clientY })
-      stopMotion()
-      if (pointers.size >= 2) {
-        beginPinch()
-        return
-      }
-      activePointer = event.pointerId
-      downAt = point
-      moved = 0
-      idle = Date.now()
-      const radius = globeRadiusPx(over.width, view.distance)
-      const center = over.width / 2
-      const inside = Math.hypot(point.x - center, point.y - center) <= radius
-      window.clearTimeout(holdTimer)
-      if (event.pointerType === 'mouse') {
-        gesture = inside ? 'turn' : 'scroll'
-        if (gesture === 'turn') lockTurn(point, event.pointerId)
-        return
-      }
-      gesture = inside ? 'undecided' : 'scroll'
-      if (gesture !== 'undecided') return
-      holdTimer = window.setTimeout(() => {
-        if (gesture === 'undecided' && activePointer === event.pointerId) lockTurn(downAt, event.pointerId)
-      }, 200)
-    }
-    const onMove = (event: PointerEvent) => {
-      if (!pointers.has(event.pointerId)) return
-      pointers.set(event.pointerId, { x: event.clientX, y: event.clientY })
-      if (pointers.size >= 2 || gesture === 'pinch') {
-        applyPinch()
-        return
-      }
-      if (event.pointerId !== activePointer || gesture === 'scroll') return
-      const point = canvasPoint(event.clientX, event.clientY)
-      const dx = point.x - downAt.x
-      const dy = point.y - downAt.y
-      moved = Math.max(moved, Math.hypot(dx, dy))
-      if (gesture === 'undecided') {
-        const intent = gestureIntent(dx, dy, moved)
-        if (intent === 'undecided') return
-        window.clearTimeout(holdTimer)
-        if (intent === 'scroll') {
-          gesture = 'scroll'
+    const unbind = bindGlobePointers(over, window, gesture, {
+      read: (event) => {
+        const point = canvasPoint(event.clientX, event.clientY)
+        const radius = globeRadiusPx(over.width, view.distance)
+        const center = over.width / 2
+        const type = event.pointerType === 'mouse' ? 'mouse' : event.pointerType === 'pen' ? 'pen' : 'touch'
+        return {
+          id: event.pointerId,
+          x: event.clientX,
+          y: event.clientY,
+          type,
+          button: event.button,
+          primary: event.isPrimary !== false,
+          inside: Math.hypot(point.x - center, point.y - center) <= radius,
+        }
+      },
+      onDown: (action) => {
+        window.clearTimeout(tapTimer)
+        if (action.type === 'ignore') return
+        stopMotion()
+        idle = Date.now()
+        if (action.type === 'pinch') applyPinch(action)
+        else if (action.type === 'mouse-turn') beginTurn(action.point.x, action.point.y)
+      },
+      onMove: (action) => {
+        if (action.type === 'pinch') applyPinch(action)
+        else if (action.type === 'start-turn') beginTurn(action.point.x, action.point.y)
+        else if (action.type === 'turn') dragTo(action.point.x, action.point.y)
+      },
+      onUp: (action) => {
+        if (action.type === 'ignore') return
+        window.clearTimeout(tapTimer)
+        if (action.type === 'double-tap') {
+          zoomFromTap(canvasPoint(action.point.x, action.point.y))
+          grab = null
+          pinchView = null
+          return
+        }
+        if (action.type === 'tap') {
+          const point = canvasPoint(action.point.x, action.point.y)
+          tapTimer = window.setTimeout(() => pick(point.x, point.y), GLOBE_DOUBLE_TAP_MS)
           grab = null
           return
         }
-        lockTurn(point, event.pointerId)
-        return
-      }
-      if (gesture !== 'turn' || !grab) return
-      const followed = dragFollow(view, grab, point.x, point.y, over.width)
-      view.yaw = followed.yaw
-      view.pitch = followed.pitch
-      rememberSample()
-      idle = performance.now()
-    }
-    const onUp = (event: PointerEvent) => {
-      const point = canvasPoint(event.clientX, event.clientY)
-      const wasTap = pointers.size <= 1 && gesture !== 'scroll' && gesture !== 'pinch' && moved < 12
-      const wasTurn = gesture === 'turn' && moved >= 12
-      pointers.delete(event.pointerId)
-      window.clearTimeout(holdTimer)
-      if (wasTap) {
-        const now = performance.now()
-        if (lastTap && now - lastTap.t < 300 && Math.hypot(point.x - lastTap.x, point.y - lastTap.y) < 36) {
-          window.clearTimeout(tapTimer)
-          lastTap = null
-          zoomFromTap(point)
-        } else {
-          lastTap = { t: now, x: point.x, y: point.y }
-          const tapPoint = { x: point.x, y: point.y }
-          window.clearTimeout(tapTimer)
-          tapTimer = window.setTimeout(() => {
-            pick(tapPoint.x, tapPoint.y)
-            lastTap = null
-          }, 280)
-        }
-      }
-      if (propsRef.current.reduced || !wasTurn) vel = { yaw: 0, pitch: 0 }
-      else vel = velocityFromSamples(samples)
-      samples.length = 0
-      if (pointers.size < 2) {
-        pinch = null
-        if (gesture === 'pinch') gesture = 'idle'
-      }
-      if (event.pointerId === activePointer) {
-        activePointer = null
+        if (action.type === 'turn-end' && !propsRef.current.reduced) vel = velocityFromSamples(samples)
+        else vel = { yaw: 0, pitch: 0 }
+        samples.length = 0
         grab = null
-        if (gesture !== 'pinch') gesture = 'idle'
-      }
-      idle = Date.now()
-    }
-    const onTouchStart = (event: TouchEvent) => {
-      if (event.touches.length < 2) return
-      event.preventDefault()
-      if (!pinch) beginPinch()
-    }
-    const onTouchMove = (event: TouchEvent) => {
-      if (event.touches.length >= 2) {
-        event.preventDefault()
-        applyPinch()
-        return
-      }
-      if (gesture === 'turn') event.preventDefault()
-    }
+        if (gesture.debug().phase !== 'pinch') pinchView = null
+        idle = Date.now()
+      },
+      onTouches: (action) => {
+        if (action) applyPinch(action)
+      },
+    })
+
     const onWheel = (event: WheelEvent) => {
       event.preventDefault()
       const point = canvasPoint(event.clientX, event.clientY)
@@ -696,9 +691,15 @@ export function RadarScene(props: Props) {
       else return
       event.preventDefault()
     }
-    const onLost = (event: Event) => {
+    const onContextLost = (event: Event) => {
+      if (dead) return
       event.preventDefault()
-      propsRef.current.onFallback()
+      contextLost = true
+      textured = false
+    }
+    const onContextRestored = () => {
+      if (dead) return
+      if (!mountGl()) propsRef.current.onFallback()
     }
 
     resize()
@@ -707,38 +708,36 @@ export function RadarScene(props: Props) {
     const observer = new IntersectionObserver(syncPause, { threshold: 0.05 })
     observer.observe(wrap)
     document.addEventListener('visibilitychange', syncPause)
-    over.addEventListener('pointerdown', onDown)
-    over.addEventListener('pointermove', onMove)
-    over.addEventListener('pointerup', onUp)
-    over.addEventListener('pointercancel', onUp)
-    over.addEventListener('touchstart', onTouchStart, { passive: false })
-    over.addEventListener('touchmove', onTouchMove, { passive: false })
     over.addEventListener('wheel', onWheel, { passive: false })
     over.addEventListener('keydown', onKey)
-    glCanvas.addEventListener('webglcontextlost', onLost)
+    glCanvas.addEventListener('webglcontextlost', onContextLost)
+    glCanvas.addEventListener('webglcontextrestored', onContextRestored)
 
     return () => {
       dead = true
       paused = true
       window.clearTimeout(tapTimer)
-      window.clearTimeout(holdTimer)
       stop()
+      unbind()
       observer.disconnect()
       document.removeEventListener('visibilitychange', syncPause)
-      over.removeEventListener('pointerdown', onDown)
-      over.removeEventListener('pointermove', onMove)
-      over.removeEventListener('pointerup', onUp)
-      over.removeEventListener('pointercancel', onUp)
-      over.removeEventListener('touchstart', onTouchStart)
-      over.removeEventListener('touchmove', onTouchMove)
       over.removeEventListener('wheel', onWheel)
       over.removeEventListener('keydown', onKey)
-      glCanvas.removeEventListener('webglcontextlost', onLost)
-      gl.deleteTexture(texture)
-      gl.deleteProgram(program.program)
-      gl.deleteBuffer(mesh.positions)
-      gl.deleteBuffer(mesh.uvs)
-      gl.deleteBuffer(mesh.indices)
+      glCanvas.removeEventListener('webglcontextlost', onContextLost)
+      glCanvas.removeEventListener('webglcontextrestored', onContextRestored)
+      const lose = gl?.getExtension('WEBGL_lose_context')
+      if (program && gl) gl.deleteProgram(program.program)
+      if (mesh && gl) {
+        gl.deleteBuffer(mesh.positions)
+        gl.deleteBuffer(mesh.uvs)
+        gl.deleteBuffer(mesh.indices)
+      }
+      if (texture && gl) gl.deleteTexture(texture)
+      try {
+        lose?.loseContext()
+      } catch {
+        // The context is already gone.
+      }
     }
   }, [])
 
@@ -835,24 +834,29 @@ function strokeChain(
 
 function paintLabels(
   ctx: CanvasRenderingContext2D,
-  jobs: { id: string; text: string; x: number; y: number; r: number; prefer?: LabelSide }[],
+  jobs: { id: string; target: RadarTarget; text: string; x: number; y: number; r: number; prefer?: LabelSide }[],
   obstacles: LabelObstacle[],
   size: number,
-) {
+): LabelHit[] {
   const font = Math.max(12, size / 34)
   ctx.font = `${font}px Barlow, sans-serif`
   const requests = jobs.map((job) => ({ id: job.id, anchor: { x: job.x, y: job.y }, w: ctx.measureText(job.text).width + 6, h: font + 2, prefer: job.prefer }))
   requests.sort((a, b) => b.w - a.w)
   const placed = placeLabels(requests, obstacles, { w: size, h: size }, 8, Math.max(14, font * 0.95))
   const byId = new Map(placed.map((item) => [item.id, item]))
+  const targets = new Map(jobs.map((job) => [job.id, job.target]))
+  const widths = new Map(requests.map((job) => [job.id, job.w]))
+  const heights = new Map(requests.map((job) => [job.id, job.h]))
   ctx.lineWidth = Math.max(1, size / 520)
   ctx.strokeStyle = 'rgba(197, 210, 226, 0.75)'
   ctx.fillStyle = '#f6f3ec'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
+  const hits: LabelHit[] = []
   for (const job of jobs) {
     const spot = byId.get(job.id)
-    if (!spot) continue
+    const target = targets.get(job.id)
+    if (!spot || !target) continue
     if (spot.leader) {
       const dx = spot.x - job.x
       const dy = spot.y - job.y
@@ -863,7 +867,9 @@ function paintLabels(
       ctx.stroke()
     }
     ctx.fillText(job.text, spot.x, spot.y)
+    hits.push({ target, x: spot.x, y: spot.y, w: widths.get(job.id) ?? font, h: heights.get(job.id) ?? font })
   }
+  return hits
 }
 
 function pushSegments(
