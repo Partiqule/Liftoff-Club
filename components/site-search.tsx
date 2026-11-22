@@ -24,18 +24,17 @@ export function SiteSearch() {
   }, [])
 
   useEffect(() => {
-    if (query.trim().length < 2) {
-      setHits([])
-      return
-    }
+    const trimmed = query.trim()
+    if (trimmed.length < 2) return
     const handle = window.setTimeout(() => {
-      void fetch(`/api/search?q=${encodeURIComponent(query)}`)
+      void fetch(`/api/search?q=${encodeURIComponent(trimmed)}`)
         .then((response) => response.json())
         .then((payload: { hits?: SearchHit[] }) => setHits(payload.hits ?? []))
         .catch(() => setHits([]))
     }, 180)
     return () => window.clearTimeout(handle)
   }, [query])
+  const shown = query.trim().length < 2 ? [] : hits
 
   return (
     <div className="site-search">
@@ -55,9 +54,9 @@ export function SiteSearch() {
         }}
         onFocus={() => setOpen(true)}
       />
-      {open && hits.length > 0 ? (
+      {open && shown.length > 0 ? (
         <ul className="search-hits">
-          {hits.map((hit) => (
+          {shown.map((hit) => (
             <li key={`${hit.kind}-${hit.href}-${hit.title}`}>
               <Link href={hit.href} onClick={() => setOpen(false)}>
                 <span className="kicker">{hit.kind}</span>
