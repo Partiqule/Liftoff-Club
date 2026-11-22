@@ -1,5 +1,3 @@
-import { gestureIntent } from '@/lib/radar'
-
 /** Client pixels. A finger is wider than a mouse click, and retina canvases must not shrink this. */
 export const GLOBE_TAP_SLOP = 12
 export const GLOBE_DOUBLE_TAP_MS = 400
@@ -27,7 +25,13 @@ export type PinchAction = {
   start: boolean
 }
 
-export type DownAction = { type: 'ignore' } | { type: 'pending' } | { type: 'scroll' } | { type: 'mouse-turn'; point: ClientPoint } | PinchAction
+export type DownAction =
+  | { type: 'ignore' }
+  | { type: 'pending' }
+  | { type: 'scroll' }
+  | { type: 'mouse-turn'; point: ClientPoint }
+  | { type: 'start-turn'; point: ClientPoint }
+  | PinchAction
 
 export type MoveAction =
   | { type: 'ignore' }
@@ -38,7 +42,7 @@ export type MoveAction =
   | PinchAction
 
 export type UpAction = {
-  type: 'ignore' | 'tap' | 'double-tap' | 'turn-end' | 'end'
+  type: 'ignore' | 'tap' | 'double-tap' | 'turn-end' | 'end' | 'engage'
   point: ClientPoint
 }
 
@@ -57,8 +61,13 @@ export type GlobeGesture = {
   up(sample: Pick<PointerSample, 'id' | 'x' | 'y'>, kind?: 'up' | 'cancel'): UpAction
   lostCapture(id: number): void
   noteTouches(touches: TouchPoint[]): PinchAction | null
-  blocksPageScroll(): boolean
-  debug(): { phase: GesturePhase; pointers: number; active: number | null }
+  /** True only while the reader has tapped the globe open. A browsing swipe must not call preventDefault. */
+  claimsTouch(): boolean
+  setEngaged(next: boolean): void
+  isEngaged(): boolean
+  /** Called every frame. Time passing does not leave the locked globe. */
+  tick(now: number): void
+  debug(): { phase: GesturePhase; pointers: number; active: number | null; engaged: boolean; seenAt: number }
 }
 
 const surfaces = new WeakSet<object>()
@@ -89,6 +98,8 @@ export function createGlobeGesture(hooks?: {
   let moved = 0
   let spun = false
   let allowTap = true
+  let engaged = false
+  let lastTick = 0
   let lastTap: { t: number; x: number; y: number } | null = null
 
   const releasePointer = (id: number) => {
@@ -120,48 +131,62 @@ export function createGlobeGesture(hooks?: {
     return { type: 'pinch', pointers: fingers.pointers, dist: fingers.dist, start }
   }
 
+  const flushBrowsing = () => {
+    for (const id of [...pointers.keys()]) releasePointer(id)
+    phase = 'idle'
+    active = null
+    moved = 0
+    spun = false
+    allowTap = true
+  }
+
   return {
     down(sample) {
       if (sample.type === 'mouse' && sample.button !== 0) return { type: 'ignore' }
       if (pointers.has(sample.id)) releasePointer(sample.id)
       if (sample.primary !== false) {
         for (const id of [...pointers.keys()]) releasePointer(id)
-        phase = 'idle'
+        if (!engaged) phase = 'idle'
       }
       pointers.set(sample.id, { x: sample.x, y: sample.y, type: sample.type })
       active = sample.id
       downAt = { x: sample.x, y: sample.y }
       moved = 0
       spun = false
+      if (!engaged) {
+        allowTap = sample.inside && pointers.size < 2
+        phase = allowTap ? 'undecided' : 'scroll'
+        return phase === 'scroll' ? { type: 'scroll' } : { type: 'pending' }
+      }
       if (pointers.size >= 2) {
         return beginPinch(true) ?? { type: 'ignore' }
       }
       allowTap = true
+      phase = 'turn'
       if (sample.type === 'mouse') {
-        if (!sample.inside) {
-          phase = 'scroll'
-          return { type: 'scroll' }
-        }
-        phase = 'turn'
         captured.add(sample.id)
         try {
           hooks?.capture?.(sample.id)
         } catch {
           captured.delete(sample.id)
         }
-        return { type: 'mouse-turn', point: { x: sample.x, y: sample.y } }
       }
-      if (!sample.inside) {
-        phase = 'scroll'
-        return { type: 'scroll' }
-      }
-      phase = 'undecided'
-      return { type: 'pending' }
+      return { type: 'start-turn', point: { x: sample.x, y: sample.y } }
     },
     move(sample) {
       const known = pointers.get(sample.id)
       if (!known) return { type: 'ignore' }
       pointers.set(sample.id, { ...known, x: sample.x, y: sample.y })
+      const point = { x: sample.x, y: sample.y }
+      if (!engaged) {
+        moved = Math.max(moved, Math.hypot(point.x - downAt.x, point.y - downAt.y))
+        if (moved >= slop) {
+          phase = 'scroll'
+          allowTap = false
+          return { type: 'scroll' }
+        }
+        return { type: 'pending' }
+      }
       if (pointers.size >= 2) {
         const start = phase !== 'pinch'
         return beginPinch(start) ?? { type: 'ignore' }
@@ -169,27 +194,13 @@ export function createGlobeGesture(hooks?: {
       if (phase === 'pinch') {
         phase = 'turn'
         active = sample.id
-        downAt = { x: sample.x, y: sample.y }
+        downAt = point
         moved = 0
         spun = false
-        return { type: 'start-turn', point: { x: sample.x, y: sample.y } }
-      }
-      if (sample.id !== active || phase === 'scroll' || phase === 'idle') return { type: 'ignore' }
-      const point = { x: sample.x, y: sample.y }
-      const dx = point.x - downAt.x
-      const dy = point.y - downAt.y
-      moved = Math.max(moved, Math.hypot(dx, dy))
-      if (phase === 'undecided') {
-        const intent = gestureIntent(dx, dy, moved, slop)
-        if (intent === 'undecided') return { type: 'pending' }
-        if (intent === 'scroll') {
-          phase = 'scroll'
-          return { type: 'scroll' }
-        }
-        phase = 'turn'
-        spun = true
         return { type: 'start-turn', point }
       }
+      if (sample.id !== active || phase === 'idle') return { type: 'ignore' }
+      moved = Math.max(moved, Math.hypot(point.x - downAt.x, point.y - downAt.y))
       if (phase === 'turn') {
         if (moved >= slop) spun = true
         return { type: 'turn', point }
@@ -205,7 +216,7 @@ export function createGlobeGesture(hooks?: {
       if (pointers.size === 0) {
         phase = 'idle'
         active = null
-      } else if (phase === 'pinch') {
+      } else if (engaged && phase === 'pinch') {
         phase = 'turn'
         active = [...pointers.keys()][0] ?? null
         moved = 0
@@ -214,7 +225,8 @@ export function createGlobeGesture(hooks?: {
         active = [...pointers.keys()][0] ?? null
       }
       if (!tracked) return { type: 'ignore', point }
-      if (wasTap) {
+      if (wasTap && !engaged) return { type: 'engage', point }
+      if (wasTap && engaged) {
         const at = now()
         if (lastTap && at - lastTap.t <= doubleTapMs && Math.hypot(point.x - lastTap.x, point.y - lastTap.y) <= doubleTapPx) {
           lastTap = null
@@ -241,9 +253,11 @@ export function createGlobeGesture(hooks?: {
           phase = 'idle'
           active = null
           moved = 0
+          spun = false
         }
         return null
       }
+      if (!engaged) return null
       if (pointers.size > touches.length) {
         for (const [id, stored] of [...pointers.entries()]) {
           if (stored.type !== 'mouse' && !live.has(id)) releasePointer(id)
@@ -266,11 +280,23 @@ export function createGlobeGesture(hooks?: {
       }
       return null
     },
-    blocksPageScroll() {
-      return phase === 'turn' || phase === 'pinch'
+    claimsTouch() {
+      return engaged
+    },
+    setEngaged(next) {
+      if (engaged === next) return
+      engaged = next
+      lastTap = null
+      if (!next) flushBrowsing()
+    },
+    isEngaged() {
+      return engaged
+    },
+    tick(at) {
+      lastTick = at
     },
     debug() {
-      return { phase, pointers: pointers.size, active }
+      return { phase, pointers: pointers.size, active, engaged, seenAt: lastTick }
     },
   }
 }
@@ -311,8 +337,7 @@ export function bindGlobePointers(surface: ListenerHost, host: ListenerHost, ges
   const onTouch = (event: Event) => {
     const touch = event as TouchEvent
     const action = gesture.noteTouches(touchPoints(touch))
-    if (touch.touches && touch.touches.length >= 2) touch.preventDefault()
-    else if (gesture.blocksPageScroll()) touch.preventDefault()
+    if (gesture.claimsTouch()) touch.preventDefault()
     io.onTouches(action)
   }
   const onTouchEnd = (event: Event) => {

@@ -1038,6 +1038,38 @@ body:has(.pro-app) { padding-bottom: 0; }
   height: 100%;
 }
 .radar-over, .sky-frame { touch-action: pan-y; }
+.radar-over.is-engaged { touch-action: none; }
+.globe-hint, .globe-done {
+  position: absolute;
+  z-index: 3;
+  margin: 0;
+  border: 1px solid var(--line);
+  background: var(--void);
+  color: var(--ink);
+  font-family: var(--font-data);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.globe-hint {
+  left: 50%;
+  bottom: 0.7rem;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 0.9rem;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.globe-done {
+  top: 0.45rem;
+  right: 0.45rem;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 0.9rem;
+  cursor: pointer;
+}
 .radar-over:focus-visible { outline: 2px solid var(--core); outline-offset: 4px; }
 .radar-name {
   font-family: var(--font-display);

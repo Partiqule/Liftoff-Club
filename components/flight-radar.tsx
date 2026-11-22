@@ -41,6 +41,7 @@ export function FlightRadar({ launch }: { launch: RadarLaunch | null }) {
   const [live, setLive] = useState(false)
   const [failed, setFailed] = useState(false)
   const [selected, setSelected] = useState<RadarTarget | null>(null)
+  const [engaged, setEngaged] = useState(false)
   const [picked, setPicked] = useState<RadarFix | null>(null)
 
   useEffect(() => {
@@ -117,10 +118,11 @@ export function FlightRadar({ launch }: { launch: RadarLaunch | null }) {
             onFix={onFix}
             onLive={() => setLive(true)}
             onFallback={() => setFailed(true)}
+            onEngagedChange={setEngaged}
           />
         )}
       </div>
-      <p className="meta radar-gesture">{RADAR_COPY.gesture}</p>
+      <p className="meta radar-gesture">{engaged ? RADAR_COPY.engaged : RADAR_COPY.gesture}</p>
       {failed ? <p className="note">{RADAR_COPY.fallback}</p> : null}
       {live || failed ? null : <p className="note">{RADAR_COPY.drawing}</p>}
       {note ? <p className="note">{note}</p> : null}
