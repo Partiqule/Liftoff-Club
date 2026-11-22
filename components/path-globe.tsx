@@ -41,6 +41,7 @@ export function PathGlobe({
   const [live, setLive] = useState(false)
   const [failed, setFailed] = useState(false)
   const [selected, setSelected] = useState<string | null>(null)
+  const [engaged, setEngaged] = useState(false)
   const reduced = useSyncExternalStore(subscribeReduced, () => window.matchMedia('(prefers-reduced-motion: reduce)').matches, () => false)
   const focus = pad ?? track[0] ?? { lat: 28.6, lon: -80.6 }
   const along = track.length > 1 ? pointAlong(track, progress) : null
@@ -68,7 +69,7 @@ export function PathGlobe({
       <div className={live && !failed ? 'radar-stage is-live' : 'radar-stage'}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img className="radar-still" src={EARTH_STILL} alt={RADAR_COPY.stillAlt} decoding="async" />
-        {near && !failed ? (
+        {(near || engaged) && !failed ? (
           <RadarScene
             objects={[]}
             place={null}
@@ -84,6 +85,7 @@ export function PathGlobe({
             onFix={() => undefined}
             onLive={() => setLive(true)}
             onFallback={() => setFailed(true)}
+            onEngagedChange={setEngaged}
           />
         ) : null}
       </div>
@@ -106,7 +108,7 @@ export function PathGlobe({
           </li>
         ) : null}
       </ul>
-      <p className="meta radar-gesture">{ORBIT_UI.gesture}</p>
+      <p className="meta radar-gesture">{engaged ? ORBIT_UI.engaged : ORBIT_UI.gesture}</p>
       {failed ? <p className="note">{RADAR_COPY.fallback}</p> : null}
       {card ? (
         <div className="radar-card" aria-live="polite">

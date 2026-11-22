@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { bindGlobePointers, createFrameLoop, createGlobeGesture, GLOBE_DOUBLE_TAP_MS, type PinchAction } from '@/lib/globe-gesture'
+import { claimGlobe, sharedScrollLock, vacateGlobe } from '@/lib/globe-lock'
 import { placeLabels, pointInLabel, type LabelObstacle, type LabelSide } from '@/lib/globe-labels'
 import { subsolar } from '@/lib/mission'
 import {
@@ -62,6 +63,7 @@ type Props = {
   focus?: { lat: number; lon: number } | null
   distance?: number
   ariaLabel?: string
+  onEngagedChange?: (engaged: boolean) => void
 }
 
 export function RadarScene(props: Props) {
@@ -69,6 +71,8 @@ export function RadarScene(props: Props) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const glRef = useRef<HTMLCanvasElement>(null)
   const overRef = useRef<HTMLCanvasElement>(null)
+  const exitRef = useRef<() => void>(() => undefined)
+  const [engagedUi, setEngagedUi] = useState(false)
 
   useEffect(() => {
     propsRef.current = props
@@ -212,6 +216,31 @@ export function RadarScene(props: Props) {
         }
       },
     })
+    let claimId = 0
+    let releaseLock: (() => void) | null = null
+    const engagedRef = { current: false }
+    const exit = () => {
+      if (!engagedRef.current && !releaseLock) return
+      engagedRef.current = false
+      gesture.setEngaged(false)
+      releaseLock?.()
+      releaseLock = null
+      const id = claimId
+      claimId = 0
+      if (id) vacateGlobe(id)
+      setEngagedUi(false)
+      propsRef.current.onEngagedChange?.(false)
+    }
+    const enter = () => {
+      if (engagedRef.current) return
+      releaseLock = sharedScrollLock().hold(document, window)
+      claimId = claimGlobe(exit)
+      engagedRef.current = true
+      gesture.setEngaged(true)
+      setEngagedUi(true)
+      propsRef.current.onEngagedChange?.(true)
+    }
+    exitRef.current = exit
 
     const resize = () => {
       const rect = wrap.getBoundingClientRect()
@@ -300,6 +329,7 @@ export function RadarScene(props: Props) {
     const draw = () => {
       syncBodies()
       const nowMs = performance.now()
+      gesture.tick(nowMs)
       const dt = Math.min(34, Math.max(0, nowMs - lastDraw))
       lastDraw = nowMs
       const hands = gesture.debug()
@@ -492,7 +522,7 @@ export function RadarScene(props: Props) {
     const syncPause = () => {
       const hidden = document.visibilityState === 'hidden'
       const box = wrap.getBoundingClientRect()
-      const off = box.bottom < 0 || box.top > window.innerHeight
+      const off = !gesture.isEngaged() && (box.bottom < 0 || box.top > window.innerHeight)
       const should = hidden || off
       if (should === paused) return
       paused = should
@@ -628,11 +658,11 @@ export function RadarScene(props: Props) {
       },
       onDown: (action) => {
         window.clearTimeout(tapTimer)
-        if (action.type === 'ignore') return
+        if (action.type === 'ignore' || action.type === 'scroll' || action.type === 'pending') return
         stopMotion()
         idle = Date.now()
         if (action.type === 'pinch') applyPinch(action)
-        else if (action.type === 'mouse-turn') beginTurn(action.point.x, action.point.y)
+        else if (action.type === 'mouse-turn' || action.type === 'start-turn') beginTurn(action.point.x, action.point.y)
       },
       onMove: (action) => {
         if (action.type === 'pinch') applyPinch(action)
@@ -641,6 +671,17 @@ export function RadarScene(props: Props) {
       },
       onUp: (action) => {
         if (action.type === 'ignore') return
+        if (action.type === 'engage') {
+          enter()
+          return
+        }
+        if (action.type === 'end') {
+          vel = { yaw: 0, pitch: 0 }
+          samples.length = 0
+          grab = null
+          pinchView = null
+          return
+        }
         window.clearTimeout(tapTimer)
         if (action.type === 'double-tap') {
           zoomFromTap(canvasPoint(action.point.x, action.point.y))
@@ -667,6 +708,7 @@ export function RadarScene(props: Props) {
     })
 
     const onWheel = (event: WheelEvent) => {
+      if (!gesture.isEngaged()) return
       event.preventDefault()
       const point = canvasPoint(event.clientX, event.clientY)
       const grabbed = latLonAt(point.x, point.y, view, over.width)
@@ -677,6 +719,13 @@ export function RadarScene(props: Props) {
       assignView(lookUnderFinger(view, grabbed, point.x, point.y, over.width, wheelDistance(view.distance, event.deltaY, event.deltaMode)))
     }
     const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        if (gesture.isEngaged()) exit()
+        else propsRef.current.onSelect(null)
+        event.preventDefault()
+        return
+      }
+      if (!gesture.isEngaged()) return
       userMoved = true
       idle = Date.now()
       ease = null
@@ -687,7 +736,6 @@ export function RadarScene(props: Props) {
       else if (event.key === 'ArrowDown') view.pitch = clampPitch(view.pitch - 0.06)
       else if (event.key === '+' || event.key === '=') view.distance = clampDistance(view.distance * 0.94)
       else if (event.key === '-' || event.key === '_') view.distance = clampDistance(view.distance * 1.06)
-      else if (event.key === 'Escape') propsRef.current.onSelect(null)
       else return
       event.preventDefault()
     }
@@ -702,12 +750,25 @@ export function RadarScene(props: Props) {
       if (!mountGl()) propsRef.current.onFallback()
     }
 
+    const onOutside = (event: PointerEvent) => {
+      if (!gesture.isEngaged()) return
+      const target = event.target
+      if (target instanceof Node && wrap.contains(target)) return
+      exit()
+    }
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || !gesture.isEngaged()) return
+      exit()
+    }
+
     resize()
     start()
     syncPause()
     const observer = new IntersectionObserver(syncPause, { threshold: 0.05 })
     observer.observe(wrap)
     document.addEventListener('visibilitychange', syncPause)
+    document.addEventListener('pointerdown', onOutside, true)
+    window.addEventListener('keydown', onEscape)
     over.addEventListener('wheel', onWheel, { passive: false })
     over.addEventListener('keydown', onKey)
     glCanvas.addEventListener('webglcontextlost', onContextLost)
@@ -716,11 +777,14 @@ export function RadarScene(props: Props) {
     return () => {
       dead = true
       paused = true
+      exit()
       window.clearTimeout(tapTimer)
       stop()
       unbind()
       observer.disconnect()
       document.removeEventListener('visibilitychange', syncPause)
+      document.removeEventListener('pointerdown', onOutside, true)
+      window.removeEventListener('keydown', onEscape)
       over.removeEventListener('wheel', onWheel)
       over.removeEventListener('keydown', onKey)
       glCanvas.removeEventListener('webglcontextlost', onContextLost)
@@ -744,7 +808,19 @@ export function RadarScene(props: Props) {
   return (
     <div className="radar-live" ref={wrapRef}>
       <canvas ref={glRef} className="radar-gl" aria-hidden="true" />
-      <canvas ref={overRef} className="radar-over" tabIndex={0} aria-label={props.ariaLabel ?? RADAR_COPY.liveLabel} />
+      <canvas
+        ref={overRef}
+        className={engagedUi ? 'radar-over is-engaged' : 'radar-over'}
+        tabIndex={0}
+        aria-label={engagedUi ? RADAR_COPY.engaged : props.ariaLabel ?? RADAR_COPY.liveLabel}
+      />
+      {engagedUi ? (
+        <button type="button" className="globe-done" onClick={() => exitRef.current()}>
+          {RADAR_COPY.done}
+        </button>
+      ) : (
+        <p className="globe-hint">{RADAR_COPY.gesture}</p>
+      )}
     </div>
   )
 }

@@ -76,7 +76,8 @@ export type OrbitPattern = {
 const PATH = '#f3d7b0'
 
 export const ORBIT_UI = {
-  gesture: 'Drag sideways to turn the Earth. A straight swipe up or down scrolls the page. Pinch to zoom. Double tap to come closer. Tap the line, a mark, or the Earth.',
+  gesture: 'Tap to explore',
+  engaged: 'Drag to turn. Pinch to zoom.',
   earthTitle: 'Earth',
   earthDetail: 'NASA Blue Marble photograph, public domain. The line is a sketch of the path, not a live satellite.',
   close: 'Close',
