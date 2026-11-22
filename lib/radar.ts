@@ -86,7 +86,8 @@ export type RadarOverlay = {
 export type RadarView = { yaw: number; pitch: number; distance: number }
 
 export const RADAR_K = 2.7
-export const PITCH_MAX = 1.02
+/** About 85 degrees. Close enough to see a pole, short of the flip at 90. */
+export const PITCH_MAX = (85 * Math.PI) / 180
 export const DIST_MIN = 1.7
 export const DIST_MAX = 8
 /** Limb sits inside the square so the disc stays round, with room at the edges. */
@@ -169,6 +170,13 @@ export function openingView(input: {
   return { ...view, pitch: clampPitch(view.pitch + tilt) }
 }
 
+/** A pitch sample that still moves when the view is already against a pole. */
+function pitchProbe(pitch: number, eps: number): number {
+  if (clampPitch(pitch + eps) !== pitch) return eps
+  if (clampPitch(pitch - eps) !== pitch) return -eps
+  return eps
+}
+
 /** Move the grabbed town so it stays under the finger. Pitch stays short of upside down. */
 export function dragFollow(
   view: RadarView,
@@ -177,34 +185,86 @@ export function dragFollow(
   fingerY: number,
   size: number,
 ): RadarView {
-  let yaw = view.yaw
+  if (!Number.isFinite(fingerX) || !Number.isFinite(fingerY) || !(size > 0)) {
+    return { yaw: view.yaw, pitch: clampPitch(view.pitch), distance: view.distance }
+  }
+  let yaw = Number.isFinite(view.yaw) ? view.yaw : 0
   let pitch = clampPitch(view.pitch)
+  const eps = 0.0015
   for (let step = 0; step < 12; step += 1) {
     const trial = { yaw, pitch, distance: view.distance }
-    const spot = projectRadar(grabbed.lat, grabbed.lon, trial, size)
-    if (!spot) break
+    let spot = projectRadar(grabbed.lat, grabbed.lon, trial, size)
+    if (!spot) {
+      const nudged = bringForward(grabbed, trial)
+      yaw = nudged.yaw
+      pitch = nudged.pitch
+      spot = projectRadar(grabbed.lat, grabbed.lon, { ...trial, yaw, pitch }, size)
+      if (!spot) break
+    }
     const errX = fingerX - spot.x
     const errY = fingerY - spot.y
     if (errX * errX + errY * errY < 0.16) break
-    const eps = 0.0015
     const sx = projectRadar(grabbed.lat, grabbed.lon, { ...trial, yaw: yaw + eps }, size)
-    const sy = projectRadar(grabbed.lat, grabbed.lon, { ...trial, pitch: clampPitch(pitch + eps) }, size)
+    const pitchEps = pitchProbe(pitch, eps)
+    const sy = projectRadar(grabbed.lat, grabbed.lon, { ...trial, pitch: clampPitch(pitch + pitchEps) }, size)
     if (!sx || !sy) break
     const jxx = (sx.x - spot.x) / eps
     const jyx = (sx.y - spot.y) / eps
-    const jxy = (sy.x - spot.x) / eps
-    const jyy = (sy.y - spot.y) / eps
+    const jxy = (sy.x - spot.x) / pitchEps
+    const jyy = (sy.y - spot.y) / pitchEps
     const det = jxx * jyy - jxy * jyx
-    if (Math.abs(det) < 1e-4) break
+    if (!Number.isFinite(det) || Math.abs(det) < 1e-4) break
     const dyaw = (errX * jyy - errY * jxy) / det
     const dpitch = (jxx * errY - jyx * errX) / det
+    if (!Number.isFinite(dyaw) || !Number.isFinite(dpitch)) break
     const limit = 0.9
     yaw += Math.min(limit, Math.max(-limit, dyaw))
-    const nextPitch = pitch + Math.min(limit, Math.max(-limit, dpitch))
-    pitch = clampPitch(nextPitch)
-    if (nextPitch !== pitch) break
+    const unclamped = pitch + Math.min(limit, Math.max(-limit, dpitch))
+    const nextPitch = clampPitch(unclamped)
+    pitch = nextPitch
+    if (nextPitch !== unclamped) break
+  }
+  if (!Number.isFinite(yaw) || !Number.isFinite(pitch)) {
+    return { yaw: view.yaw, pitch: clampPitch(view.pitch), distance: view.distance }
   }
   return { yaw, pitch, distance: view.distance }
+}
+
+/** Nudge a hidden point back onto the front of the globe instead of freezing the drag. */
+function bringForward(grabbed: { lat: number; lon: number }, view: RadarView): { yaw: number; pitch: number } {
+  const eps = 0.02
+  const here = viewPoint(grabbed.lat, grabbed.lon, view).z
+  const yawZ = viewPoint(grabbed.lat, grabbed.lon, { ...view, yaw: view.yaw + eps }).z - here
+  const pitchTry = clampPitch(view.pitch + eps)
+  const pitchZ = viewPoint(grabbed.lat, grabbed.lon, { ...view, pitch: pitchTry }).z - here
+  const yaw = view.yaw + Math.min(0.08, Math.max(-0.08, yawZ * 2))
+  const pitch = clampPitch(view.pitch + Math.min(0.08, Math.max(-0.08, pitchZ * 2)))
+  return { yaw, pitch }
+}
+
+/** A flick into a pole stops there. The stored pitch never walks past the clamp. */
+export function coastView(
+  view: RadarView,
+  velocity: { yaw: number; pitch: number },
+  dtMs: number,
+): { view: RadarView; velocity: { yaw: number; pitch: number } } {
+  const pitchNow = clampPitch(view.pitch)
+  const yawNow = Number.isFinite(view.yaw) ? view.yaw : 0
+  if (!Number.isFinite(dtMs) || dtMs <= 0) {
+    return { view: { yaw: yawNow, pitch: pitchNow, distance: view.distance }, velocity: { yaw: 0, pitch: 0 } }
+  }
+  const nextPitch = pitchNow + velocity.pitch * dtMs
+  const pitch = clampPitch(nextPitch)
+  let next = {
+    yaw: dampVelocity(velocity.yaw, dtMs),
+    pitch: nextPitch !== pitch ? 0 : dampVelocity(velocity.pitch, dtMs),
+  }
+  if (Math.hypot(next.yaw, next.pitch) < 2e-6) next = { yaw: 0, pitch: 0 }
+  const yaw = yawNow + (Number.isFinite(velocity.yaw) ? velocity.yaw : 0) * dtMs
+  return {
+    view: { yaw: Number.isFinite(yaw) ? yaw : yawNow, pitch, distance: view.distance },
+    velocity: next,
+  }
 }
 
 /** Keep a surface point under the finger while the camera distance changes. */

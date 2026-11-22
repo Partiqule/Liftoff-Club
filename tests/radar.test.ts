@@ -13,6 +13,7 @@ import {
   doubleTapDistance,
   discNdc,
   distanceForDisc,
+  coastView,
   dragFollow,
   easeView,
   FITTED_DISTANCE,
@@ -176,6 +177,55 @@ describe('flight radar', () => {
     const held = projectRadar(40, -105, zoomed, size)
     expect(Math.hypot((held?.x ?? 0) - (start?.x ?? 0), (held?.y ?? 0) - (start?.y ?? 0))).toBeLessThan(8)
     expect(Math.abs(zoomed.pitch)).toBeLessThanOrEqual(PITCH_MAX + 1e-6)
+  })
+
+  it('leaves a pole on the first reverse drag and lets a fling settle', () => {
+    const size = 400
+    const distance = FITTED_DISTANCE
+    for (const sign of [1, -1] as const) {
+      const view = { yaw: 0.3, pitch: sign * PITCH_MAX, distance }
+      const lat = sign * 72
+      const spot = projectRadar(lat, 20, view, size)
+      expect(spot).not.toBeNull()
+      const dy = sign > 0 ? -32 : 32
+      const back = dragFollow(view, { lat, lon: 20 }, spot?.x ?? 0, (spot?.y ?? 0) + dy, size)
+      expect(sign * (view.pitch - back.pitch)).toBeGreaterThan(0.01)
+      expect(Math.abs(back.pitch)).toBeLessThanOrEqual(PITCH_MAX + 1e-9)
+      expect(Number.isFinite(back.yaw)).toBe(true)
+      expect(Number.isFinite(back.pitch)).toBe(true)
+    }
+    let pushed = viewLookingAt(15, 0, distance)
+    const grab = { lat: 15, lon: 0 }
+    for (let step = 0; step < 30; step += 1) {
+      const spot = projectRadar(grab.lat, grab.lon, pushed, size)
+      if (!spot) break
+      pushed = dragFollow(pushed, grab, spot.x, spot.y + 36, size)
+    }
+    expect(pushed.pitch).toBeGreaterThan(1)
+    expect(pushed.pitch).toBeLessThanOrEqual(PITCH_MAX + 1e-6)
+    const atPole = projectRadar(grab.lat, grab.lon, pushed, size)
+    expect(atPole).not.toBeNull()
+    const reversed = dragFollow(pushed, grab, atPole?.x ?? 0, (atPole?.y ?? 0) - 28, size)
+    expect(reversed.pitch).toBeLessThan(pushed.pitch)
+    expect(Number.isFinite(reversed.yaw)).toBe(true)
+    expect(Number.isFinite(reversed.pitch)).toBe(true)
+
+    let view = { yaw: 0.2, pitch: PITCH_MAX - 0.15, distance }
+    let velocity = { yaw: 0.001, pitch: 0.01 }
+    for (let step = 0; step < 40; step += 1) {
+      const coast = coastView(view, velocity, 16)
+      view = coast.view
+      velocity = coast.velocity
+    }
+    expect(view.pitch).toBeCloseTo(PITCH_MAX, 5)
+    expect(velocity.pitch).toBe(0)
+    expect(Number.isFinite(view.yaw)).toBe(true)
+    expect(Number.isFinite(view.pitch)).toBe(true)
+    const settled = projectRadar(70, 0, view, size)
+    expect(settled).not.toBeNull()
+    const away = dragFollow(view, { lat: 70, lon: 0 }, settled?.x ?? 0, (settled?.y ?? 0) - 24, size)
+    expect(away.pitch).toBeLessThan(view.pitch)
+    expect(Number.isFinite(away.pitch)).toBe(true)
   })
 
   it('keeps the whole disc inside the square at the default distance', () => {
