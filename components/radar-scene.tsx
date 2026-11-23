@@ -11,7 +11,7 @@ import {
   RADAR_K,
   clampDistance,
   clampPitch,
-  dampVelocity,
+  coastView,
   doubleTapDistance,
   dragFollow,
   easeView,
@@ -345,12 +345,10 @@ export function RadarScene(props: Props) {
         else assignView(framed)
       } else if (!turning) {
         if (Math.hypot(vel.yaw, vel.pitch) > 1e-6) {
-          view.yaw += vel.yaw * dt
-          const nextPitch = view.pitch + vel.pitch * dt
-          view.pitch = clampPitch(nextPitch)
-          if (view.pitch !== nextPitch) vel.pitch = 0
-          vel = { yaw: dampVelocity(vel.yaw, dt), pitch: dampVelocity(vel.pitch, dt) }
-          if (Math.hypot(vel.yaw, vel.pitch) < 2e-6) vel = { yaw: 0, pitch: 0 }
+          const coast = coastView(view, vel, dt)
+          view.yaw = coast.view.yaw
+          view.pitch = coast.view.pitch
+          vel = coast.velocity
           idle = Date.now()
         }
       }
