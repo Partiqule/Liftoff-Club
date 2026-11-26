@@ -1108,6 +1108,31 @@ body:has(.pro-app) { padding-bottom: 0; }
   color: var(--cold);
 }
 .radar-legend li { display: inline-flex; align-items: center; min-height: 1.6rem; }
+.radar-legend button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 0.15rem 0.2rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+.radar-legend button[aria-pressed="true"] { color: var(--ink); }
+.radar-legend button[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0.15rem;
+  height: 1.5px;
+  background: linear-gradient(90deg, transparent, var(--core) 30%, var(--cold));
+}
 .radar-legend i {
   display: inline-block;
   flex: none;

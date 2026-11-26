@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import { useClub } from '@/components/club-provider'
 import { useActiveZone } from '@/components/use-zone'
+import { homeLegendShowsSatellite, legendKeepsTarget, type HomeLegend } from '@/lib/globe-share'
 import {
   EARTH_STILL,
   RADAR_COPY,
@@ -43,6 +44,7 @@ export function FlightRadar({ launch }: { launch: RadarLaunch | null }) {
   const [selected, setSelected] = useState<RadarTarget | null>(null)
   const [engaged, setEngaged] = useState(false)
   const [picked, setPicked] = useState<RadarFix | null>(null)
+  const [legend, setLegend] = useState<HomeLegend | null>(null)
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 5000)
@@ -96,6 +98,19 @@ export function FlightRadar({ launch }: { launch: RadarLaunch | null }) {
     if (target?.type !== 'sat') setPicked(null)
   }
 
+  const pickLegend = (next: HomeLegend) => {
+    const value = legend === next ? null : next
+    setLegend(value)
+    setSelected((current) => {
+      if (legendKeepsTarget(value, current, (id) => objects.find((item) => item.noradId === id)?.kind ?? null)) return current
+      return null
+    })
+    setPicked((current) => {
+      if (!value || value === 'you') return value ? null : current
+      return current && current.kind === value ? current : null
+    })
+  }
+
   const phase = launch ? launchPhase(launch, now) : 'flown'
   const caption = launch ? pathCaption(launch, phase) : null
   const showLaunch = Boolean(launch && phase !== 'flown')
@@ -119,6 +134,7 @@ export function FlightRadar({ launch }: { launch: RadarLaunch | null }) {
             onLive={() => setLive(true)}
             onFallback={() => setFailed(true)}
             onEngagedChange={setEngaged}
+            legend={legend}
           />
         )}
       </div>
@@ -126,24 +142,38 @@ export function FlightRadar({ launch }: { launch: RadarLaunch | null }) {
       {failed ? <p className="note">{RADAR_COPY.fallback}</p> : null}
       {live || failed ? null : <p className="note">{RADAR_COPY.drawing}</p>}
       {note ? <p className="note">{note}</p> : null}
-      <ul className="radar-legend">
+      <ul className="radar-legend" aria-label="Colors on the globe">
         <li>
-          <i style={{ background: '#f3d7b0' }} />
-          {RADAR_COPY.legendStations}
+          <button type="button" aria-pressed={legend === 'station'} onClick={() => pickLegend('station')}>
+            <i style={{ background: '#f3d7b0' }} />
+            {RADAR_COPY.legendStations}
+          </button>
         </li>
         <li>
-          <i style={{ background: '#b7aec8' }} />
-          {RADAR_COPY.legendTrains}
+          <button type="button" aria-pressed={legend === 'starlink'} onClick={() => pickLegend('starlink')}>
+            <i style={{ background: '#b7aec8' }} />
+            {RADAR_COPY.legendTrains}
+          </button>
         </li>
         <li>
-          <i style={{ background: '#c5d2e2' }} />
-          {RADAR_COPY.legendBright}
+          <button type="button" aria-pressed={legend === 'bright'} onClick={() => pickLegend('bright')}>
+            <i style={{ background: '#c5d2e2' }} />
+            {RADAR_COPY.legendBright}
+          </button>
         </li>
         <li>
-          <i className="radar-you" />
-          {RADAR_COPY.legendYou}
+          <button type="button" aria-pressed={legend === 'you'} onClick={() => pickLegend('you')}>
+            <i className="radar-you" />
+            {RADAR_COPY.legendYou}
+          </button>
         </li>
       </ul>
+      {legend ? (
+        <button className="btn btn-quiet" type="button" onClick={() => pickLegend(legend)}>
+          {RADAR_COPY.showAll}
+        </button>
+      ) : null}
+      {legend ? <p className="sr-only" aria-live="polite">{legendStatus(legend)}</p> : null}
       {caption && launch ? (
         <p className="meta radar-path">
           {caption}. {RADAR_COPY.path} {launch.padName}.
@@ -190,7 +220,7 @@ export function FlightRadar({ launch }: { launch: RadarLaunch | null }) {
         <p className="meta">{RADAR_COPY.hint}</p>
       )}
       <ul className="sr-only">
-        {objects.map((object) => (
+        {objects.filter((object) => homeLegendShowsSatellite(legend, object.kind)).map((object) => (
           <li key={object.noradId}>
             <button type="button" onClick={() => choose({ type: 'sat', id: object.noradId })}>
               {object.name}
@@ -203,4 +233,11 @@ export function FlightRadar({ launch }: { launch: RadarLaunch | null }) {
       </p>
     </section>
   )
+}
+
+function legendStatus(legend: HomeLegend): string {
+  if (legend === 'station') return RADAR_COPY.legendShowingStations
+  if (legend === 'starlink') return RADAR_COPY.legendShowingTrains
+  if (legend === 'bright') return RADAR_COPY.legendShowingBright
+  return RADAR_COPY.legendShowingYou
 }
