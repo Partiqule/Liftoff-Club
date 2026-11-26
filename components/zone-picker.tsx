@@ -11,6 +11,18 @@ function subscribe() {
 
 const FALLBACK_ZONES = ['UTC', 'America/Denver', 'America/New_York', 'America/Los_Angeles', 'Europe/London', 'Asia/Tokyo']
 
+/** Same length as the preview list, so the server paint does not grow when the browser catalog arrives. */
+const SERVER_ZONES = [
+  'UTC',
+  'America/Denver',
+  'America/New_York',
+  'America/Los_Angeles',
+  'Europe/London',
+  'Asia/Tokyo',
+  'Australia/Sydney',
+  'Pacific/Honolulu',
+]
+
 export function timeZoneChoices(): string[] {
   try {
     const intl = Intl as typeof Intl & { supportedValuesOf?: (key: string) => string[] }
@@ -22,15 +34,23 @@ export function timeZoneChoices(): string[] {
   }
 }
 
-function zones(): string[] {
-  return timeZoneChoices()
+// A new array on every read makes useSyncExternalStore render forever. The parents page then hits the error boundary and the footer jumps up.
+let catalog: string[] | null = null
+
+export function zoneCatalog(): string[] {
+  if (!catalog) catalog = timeZoneChoices()
+  return catalog
+}
+
+export function serverZoneCatalog(): string[] {
+  return SERVER_ZONES
 }
 
 export function ZonePicker() {
   const { settings, updateSettings } = useClub()
   const active = useActiveZone()
   const [query, setQuery] = useState('')
-  const all = useSyncExternalStore(subscribe, zones, () => ['America/Denver'])
+  const all = useSyncExternalStore(subscribe, zoneCatalog, serverZoneCatalog)
   const matches = useMemo(() => {
     const text = query.trim().toLowerCase()
     const list = text ? all.filter((zone) => zone.toLowerCase().includes(text)) : all.slice(0, 8)

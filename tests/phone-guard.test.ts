@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { timeZoneChoices } from '@/components/zone-picker'
+import { serverZoneCatalog, timeZoneChoices, zoneCatalog } from '@/components/zone-picker'
 import { homeScreenNeeded, readStorageItem } from '@/lib/push/browser'
 
 describe('phone web view guards', () => {
@@ -18,6 +18,13 @@ describe('phone web view guards', () => {
     expect(homeScreenNeeded(iphone, true, null)).toBe(false)
     expect(homeScreenNeeded(iphone, false, true)).toBe(false)
     expect(homeScreenNeeded('Mozilla/5.0 (Macintosh; Intel Mac OS X)', false, null)).toBe(false)
+  })
+
+  it('keeps one zone catalog so the parents page does not render forever', () => {
+    expect(zoneCatalog()).toBe(zoneCatalog())
+    expect(serverZoneCatalog()).toBe(serverZoneCatalog())
+    expect(serverZoneCatalog()).toHaveLength(8)
+    expect(serverZoneCatalog()).toContain('America/Denver')
   })
 
   it('keeps a zone list when the catalog throws', () => {
