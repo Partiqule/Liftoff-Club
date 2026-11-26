@@ -1,6 +1,7 @@
 'use client'
 
 import { useSyncExternalStore } from 'react'
+import { LocalTime } from '@/components/local-time'
 import { SCHEDULE_KEY, readStoredSchedule, type IosLaunch } from '@/lib/ios/schedule'
 
 function subscribe(): () => void {
@@ -20,7 +21,7 @@ export function CachedBoard() {
         <li key={launch.id}>
           <a href={launch.url}>{launch.name}</a>
           <p className="meta">
-            {launch.whenLabel}
+            {launch.net ? <LocalTime iso={launch.net} /> : launch.whenLabel}
             {launch.rocket ? ` · ${launch.rocket}` : ''}
           </p>
         </li>

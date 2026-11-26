@@ -1,28 +1,17 @@
 'use client'
 
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { FlightRadar } from '@/components/flight-radar'
-import { FlightStrip } from '@/components/flight-strip'
+import { NextLaunchCard } from '@/components/next-launch'
 import { radarLaunchFrom } from '@/lib/radar'
-import { homePhase, pickHomeLaunch } from '@/lib/schedule'
+import { HOME_COPY } from '@/lib/home-copy'
+import { pickHomeLaunch } from '@/lib/schedule'
 import type { Launch } from '@/lib/types'
 
-export function HomeLive({
-  launches,
-  middle,
-  note,
-  footer,
-}: {
-  launches: Launch[]
-  middle: ReactNode
-  note: ReactNode
-  footer: ReactNode
-}) {
+export function HomeLive({ launches }: { launches: Launch[] }) {
   const now = useHomeNow()
   const next = pickHomeLaunch(launches, now)
-  const featured = pickHomeLaunch(launches, now, (launch) => launch.featured)
-  const rest = launches.filter((launch) => homePhase(launch, now) !== 'flown' && launch.id !== featured?.id).slice(0, 6)
   const radar = radarLaunchFrom(
     next
       ? {
@@ -41,39 +30,12 @@ export function HomeLive({
   )
   return (
     <>
+      <NextLaunchCard launch={next} />
       <FlightRadar launch={radar} />
-      {middle}
-      <div className="wrap page" style={{ paddingTop: 0 }}>
-        {note}
-        <section>
-          <div className="section-head">
-            <h2>Next SpaceX</h2>
-            <Link href="/launches?who=spacex">SpaceX only</Link>
-          </div>
-          {featured ? (
-            <FlightStrip launch={featured} featured />
-          ) : (
-            <p className="note">
-              Next launch not posted yet. <Link href="/launches">See the full schedule</Link>
-            </p>
-          )}
-        </section>
-        <section>
-          <div className="section-head">
-            <h2>Also on the board</h2>
-            <Link href="/launches">The whole board</Link>
-          </div>
-          {rest.length === 0 ? <p className="note">The board is empty right now. The feed may be resting.</p> : null}
-          <ul className="board">
-            {rest.map((launch) => (
-              <li key={launch.id}>
-                <FlightStrip launch={launch} />
-              </li>
-            ))}
-          </ul>
-        </section>
-        {footer}
-      </div>
+      <nav className="home-links wrap" aria-label="More on Liftoff Club">
+        <Link href="/launches">{HOME_COPY.all}</Link>
+        <Link href="/sky">{HOME_COPY.sky}</Link>
+      </nav>
     </>
   )
 }

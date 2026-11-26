@@ -7,7 +7,7 @@ import { webcalFeedUrl } from '@/lib/calendar'
 import { boardSlice } from '@/lib/board-window'
 import { getLaunches } from '@/lib/launches'
 import { getPads } from '@/lib/pads'
-import { filterLaunches, isStillAhead } from '@/lib/schedule'
+import { filterLaunches, isStillAhead, pickHomeLaunch } from '@/lib/schedule'
 
 export const metadata: Metadata = {
   title: 'The board',
@@ -40,6 +40,7 @@ export default async function LaunchesPage({
   const ahead = filtered.filter((launch) => isStillAhead(launch))
   const recent = filtered.filter((launch) => !isStillAhead(launch))
   const shown = boardSlice(ahead, offset)
+  const featured = !who && !when && !site ? pickHomeLaunch(board.launches, undefined, (launch) => launch.featured) : null
   const filter = { who, when, site }
   const base = siteUrl()
   const local = isLocalSite(base)
@@ -84,6 +85,19 @@ export default async function LaunchesPage({
             ))}
           </ul>
           <p className="meta">Pad list last refresh {pads?.fetchedAt ? `${pads.fetchedAt.slice(0, 16).replace('T', ' ')} UTC` : 'not recorded'}.</p>
+        </section>
+      ) : null}
+      {!who && !when && !site ? (
+        <section>
+          <div className="section-head">
+            <h2>Next SpaceX</h2>
+            <Link href="/launches?who=spacex">SpaceX only</Link>
+          </div>
+          {featured ? (
+            <FlightStrip launch={featured} featured />
+          ) : (
+            <p className="note">No SpaceX flight is posted yet.</p>
+          )}
         </section>
       ) : null}
       {ahead.length === 0 ? <p className="note">Nothing in this filter is still ahead.</p> : null}
