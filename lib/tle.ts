@@ -89,7 +89,7 @@ async function recentStarlinkDesignators(): Promise<string[]> {
     const response = await fetch('https://ll.thespacedevs.com/2.3.0/launches/previous/?search=Starlink&limit=8&mode=list', {
       headers: { Accept: 'application/json', 'User-Agent': 'LiftoffClub/1.0 (family sky; cache 24h; +https://liftoffclub.app)' },
       signal: AbortSignal.timeout(12_000),
-      cache: 'no-store',
+      next: { revalidate: 6 * 60 * 60 },
     })
     if (!response.ok) return []
     const body = (await response.json()) as { results?: Array<{ name?: string; net?: string; status?: { name?: string }; launch_designator?: string }> }

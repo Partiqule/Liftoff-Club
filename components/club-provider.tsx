@@ -1,9 +1,9 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { dueAlerts } from '@/lib/alerts'
 import { track } from '@/lib/track'
-import { labelForCoords } from '@/lib/places'
 import { defaultSettings, loadFired, loadSettings, saveFired, saveSettings } from '@/lib/settings'
 import type { LaunchBrief, Place, Settings, SkyPass } from '@/lib/types'
 import type { WeatherBundle } from '@/lib/weather'
@@ -67,6 +67,8 @@ type ClubValue = {
   enableNotifications: () => Promise<void>
 }
 
+const SkyCalc = dynamic(() => import('@/components/sky-calc').then((mod) => mod.SkyCalc), { ssr: false })
+
 const ClubContext = createContext<ClubValue | null>(null)
 
 export function ClubProvider({ briefs, children }: { briefs: LaunchBrief[]; children: ReactNode }) {
@@ -104,61 +106,7 @@ export function ClubProvider({ briefs, children }: { briefs: LaunchBrief[]; chil
   const lon = settings.location?.lon
   const timezone = settings.location?.timezone
 
-  useEffect(() => {
-    if (lat == null || lon == null || !timezone) return
-    let cancel = false
-    const place = { lat, lon, timezone }
-    const timer = window.setTimeout(() => {
-      if (!cancel) setSkyState('loading')
-    }, 0)
-    ;(async () => {
-      try {
-        const [tleResponse, predictMod, weatherMod] = await Promise.all([
-          fetch('/api/sky/tles', { signal: AbortSignal.timeout(12_000) }).then((response) => {
-            if (!response.ok) throw new Error('orbits')
-            return response.json() as Promise<{
-              iss?: { name: string; line1: string; line2: string }
-              starlink?: Array<{ name: string; line1: string; line2: string }>
-              notice?: string | null
-            }>
-          }),
-          import('@/lib/predict'),
-          import('@/lib/weather'),
-        ])
-        if (cancel) return
-        const now = new Date()
-        const issEnd = new Date(now.getTime() + 36 * 60 * 60 * 1000)
-        const starEnd = new Date(now.getTime() + 20 * 60 * 60 * 1000)
-        const jobs: Array<Promise<SkyPass[]>> = []
-        if (tleResponse.iss?.line1 && tleResponse.iss.line2) {
-          jobs.push(
-            predictMod.predictPassesYielding([{ ...tleResponse.iss, kind: 'iss' }], place, now, issEnd),
-          )
-        }
-        const starlink = (tleResponse.starlink ?? [])
-          .filter((sat) => sat.line1 && sat.line2)
-          .map((sat) => ({ ...sat, kind: 'starlink' as const }))
-        if (starlink.length > 0) {
-          jobs.push(predictMod.predictPassesYielding(starlink, place, now, starEnd))
-        }
-        const [found, sky] = await Promise.all([
-          Promise.all(jobs).then((groups) => groups.flat()),
-          weatherMod.fetchWeather(place).catch(() => null),
-        ])
-        if (cancel) return
-        setPasses(found)
-        setWeather(sky)
-        setSkyNotice(tleResponse.notice ?? null)
-        setSkyState('ready')
-      } catch {
-        if (!cancel) setSkyState('error')
-      }
-    })()
-    return () => {
-      cancel = true
-      window.clearTimeout(timer)
-    }
-  }, [lat, lon, timezone])
+  const skyReady = lat != null && lon != null && Boolean(timezone)
 
   useEffect(() => {
     if (!hydrated || !settings.notifications.enabled) return
@@ -233,7 +181,14 @@ export function ClubProvider({ briefs, children }: { briefs: LaunchBrief[]; chil
     [settings, hydrated, briefs, passes, skyState, skyNotice, weather, updateSettings, setLocation, notifyPermission, enableNotifications],
   )
 
-  return <ClubContext.Provider value={value}>{children}</ClubContext.Provider>
+  return (
+    <ClubContext.Provider value={value}>
+      {skyReady && lat != null && lon != null && timezone ? (
+        <SkyCalc lat={lat} lon={lon} timezone={timezone} onPasses={setPasses} onWeather={setWeather} onNotice={setSkyNotice} onState={setSkyState} />
+      ) : null}
+      {children}
+    </ClubContext.Provider>
+  )
 }
 
 export function useClub(): ClubValue {
@@ -255,5 +210,22 @@ export async function placeFromBrowser(): Promise<Place> {
     })
   })
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
-  return labelForCoords(position.coords.latitude, position.coords.longitude, timezone)
+  const lat = position.coords.latitude
+  const lon = position.coords.longitude
+  try {
+    const response = await fetch(
+      `/api/places/reverse?lat=${encodeURIComponent(lat.toFixed(3))}&lon=${encodeURIComponent(lon.toFixed(3))}&tz=${encodeURIComponent(timezone)}`,
+      { signal: AbortSignal.timeout(10_000) },
+    )
+    if (response.ok) return (await response.json()) as Place
+  } catch {
+    // Coordinates still work without a town name.
+  }
+  return {
+    label: `${lat.toFixed(2)}°, ${lon.toFixed(2)}°`,
+    lat,
+    lon,
+    timezone,
+    source: 'browser',
+  }
 }

@@ -89,7 +89,7 @@ export async function fetchWeather(place: { lat: number; lon: number; timezone: 
   url.searchParams.set('hourly', 'cloud_cover,precipitation_probability,weather_code')
   url.searchParams.set('forecast_days', '7')
   url.searchParams.set('timezone', place.timezone || 'auto')
-  const response = await fetch(url, { signal: AbortSignal.timeout(12_000) })
+  const response = await fetch(url, { signal: AbortSignal.timeout(12_000), next: { revalidate: 1800 } })
   if (!response.ok) return null
   const body = (await response.json()) as {
     timezone?: string

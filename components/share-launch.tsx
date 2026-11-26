@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { shareLaunchText } from '@/lib/ios/apns'
+import { shareLaunchText } from '@/lib/share-text'
 
 export function ShareLaunch({ name, when, url }: { name: string; when: string; url: string }) {
   const [note, setNote] = useState<string | null>(null)

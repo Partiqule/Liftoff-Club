@@ -3,7 +3,6 @@
 import { useState, type FormEvent } from 'react'
 import { placeFromBrowser, useClub } from '@/components/club-provider'
 import { ZonePicker } from '@/components/zone-picker'
-import { searchPlaces } from '@/lib/places'
 import type { Place } from '@/lib/types'
 
 export function LocationEditor({ heading = true }: { heading?: boolean }) {
@@ -20,7 +19,10 @@ export function LocationEditor({ heading = true }: { heading?: boolean }) {
     setBusy(true)
     setError(null)
     try {
-      const found = await searchPlaces(query)
+      const response = await fetch(`/api/places?q=${encodeURIComponent(query)}`, { signal: AbortSignal.timeout(12_000) })
+      if (!response.ok) throw new Error('places')
+      const body = (await response.json()) as { places?: Place[] }
+      const found = Array.isArray(body.places) ? body.places : []
       setResults(found)
       if (found.length === 0) setError('No town matched. Try a city name.')
     } catch {

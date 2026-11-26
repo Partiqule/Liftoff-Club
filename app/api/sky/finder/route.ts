@@ -1,7 +1,7 @@
 import { after } from 'next/server'
 import { getSkyCatalog, refreshSkyCatalog } from '@/lib/sky-catalog'
 
-export const dynamic = 'force-dynamic'
+export const revalidate = 600
 export const maxDuration = 60
 
 let filling = false
@@ -13,5 +13,7 @@ export async function GET() {
     filling = true
     after(() => refreshSkyCatalog())
   }
-  return Response.json(catalog)
+  return Response.json(catalog, {
+    headers: { 'Cache-Control': 'public, max-age=600, stale-while-revalidate=86400' },
+  })
 }

@@ -1,12 +1,18 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { useEffect, useState, type ReactNode } from 'react'
 import Link from 'next/link'
-import { FlightRadar } from '@/components/flight-radar'
 import { FlightStrip } from '@/components/flight-strip'
-import { radarLaunchFrom } from '@/lib/radar'
+import { HomeGlobeFallback } from '@/components/home-globe-fallback'
+import { useAfterLoad } from '@/components/use-after-load'
+import type { HomeCard } from '@/lib/home-card'
 import { homePhase, pickHomeLaunch } from '@/lib/schedule'
-import type { Launch } from '@/lib/types'
+
+const HomeGlobe = dynamic(() => import('@/components/home-globe').then((mod) => mod.HomeGlobe), {
+  ssr: false,
+  loading: () => <HomeGlobeFallback />,
+})
 
 export function HomeLive({
   launches,
@@ -14,34 +20,18 @@ export function HomeLive({
   note,
   footer,
 }: {
-  launches: Launch[]
+  launches: HomeCard[]
   middle: ReactNode
   note: ReactNode
   footer: ReactNode
 }) {
   const now = useHomeNow()
-  const next = pickHomeLaunch(launches, now)
+  const globeReady = useAfterLoad()
   const featured = pickHomeLaunch(launches, now, (launch) => launch.featured)
   const rest = launches.filter((launch) => homePhase(launch, now) !== 'flown' && launch.id !== featured?.id).slice(0, 6)
-  const radar = radarLaunchFrom(
-    next
-      ? {
-          name: next.name,
-          rocketName: next.rocketName,
-          padName: next.padName,
-          padLat: next.padLat,
-          padLon: next.padLon,
-          orbitName: next.orbitName,
-          orbitAbbrev: next.orbitAbbrev,
-          net: next.net,
-          statusAbbrev: next.statusAbbrev,
-          statusName: next.statusName,
-        }
-      : null,
-  )
   return (
     <>
-      <FlightRadar launch={radar} />
+      {globeReady ? <HomeGlobe launches={launches} now={now} /> : <HomeGlobeFallback />}
       {middle}
       <div className="wrap page" style={{ paddingTop: 0 }}>
         {note}
