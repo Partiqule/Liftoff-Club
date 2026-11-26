@@ -3,15 +3,17 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Countdown } from '@/components/countdown'
-import { LocalTime } from '@/components/local-time'
 import { LocationPrompt } from '@/components/location-prompt'
 import { useClub } from '@/components/club-provider'
+import { useZonedText } from '@/components/use-zone'
 import { VisibilityCard } from '@/components/visibility-card'
 import { HOME_COPY, missionTitle, placeLine, rocketTitle } from '@/lib/home-copy'
-import type { Launch } from '@/lib/types'
+import type { HomeCard } from '@/lib/home-card'
+import { formatLaunchWhen } from '@/lib/pro/time'
 
-export function NextLaunchCard({ launch }: { launch: Launch | null }) {
+export function NextLaunchCard({ launch }: { launch: HomeCard | null }) {
   const { settings } = useClub()
+  const zoned = useZonedText()
   const [open, setOpen] = useState(false)
 
   if (!launch) {
@@ -34,7 +36,11 @@ export function NextLaunchCard({ launch }: { launch: Launch | null }) {
       </Link>
       <p className="meta next-place">{placeLine(launch)}</p>
       <p className="meta next-when">
-        <LocalTime iso={launch.net} />
+        {launch.net ? (
+          <time dateTime={launch.net}>{zoned(launch.net, (iso, zone) => formatLaunchWhen(iso, launch.precision, null, zone))}</time>
+        ) : (
+          'Time not set'
+        )}
       </p>
       <Countdown net={launch.net} size="lg" />
       <p className="next-see">
@@ -50,7 +56,7 @@ export function NextLaunchCard({ launch }: { launch: Launch | null }) {
       </p>
       {open ? (
         <div id="from-here">
-          {settings.location ? <VisibilityCard launch={launch} /> : <LocationPrompt />}
+          {settings.location ? <VisibilityCard launch={{ ...launch, windowEnd: null }} /> : <LocationPrompt />}
           <p className="note">{HOME_COPY.guess}</p>
         </div>
       ) : null}

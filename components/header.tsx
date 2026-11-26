@@ -9,12 +9,12 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 
-const LINKS = [
+const LINKS: { href: string; label: string; prefetch?: false }[] = [
   { href: '/', label: 'Home' },
   { href: '/launches', label: 'Launches' },
   { href: '/sky', label: 'Sky' },
-  { href: '/brief', label: 'Brief' },
-  { href: '/settings', label: 'For parents' },
+  { href: '/brief', label: 'Brief', prefetch: false },
+  { href: '/settings', label: 'For parents', prefetch: false },
 ]
 
 export function Header() {
@@ -65,7 +65,7 @@ function HeaderBar({ pathname }: { pathname: string }) {
           </Link>
           <nav className="top-nav" aria-label="Primary">
             {LINKS.map((link) => (
-              <Link key={link.href} href={link.href} aria-current={current(pathname, link.href) ? 'page' : undefined}>
+              <Link key={link.href} href={link.href} prefetch={link.prefetch} aria-current={current(pathname, link.href) ? 'page' : undefined}>
                 {link.label}
               </Link>
             ))}
@@ -80,7 +80,7 @@ function HeaderBar({ pathname }: { pathname: string }) {
           </button>
           <div className={menuOpen ? 'top-tools is-open' : 'top-tools'}>
             <SiteSearch />
-            <Link className="pro-entry" href="/pro">
+            <Link className="pro-entry" href="/pro" prefetch={false}>
               Pro
             </Link>
             <Link className="place-chip" href="/settings#place">
@@ -110,7 +110,7 @@ function HeaderBar({ pathname }: { pathname: string }) {
       </header>
       <nav className="tabbar" aria-label="Primary mobile">
         {LINKS.map((link) => (
-          <Link key={link.href} href={link.href} aria-current={current(pathname, link.href) ? 'page' : undefined}>
+          <Link key={link.href} href={link.href} prefetch={link.prefetch} aria-current={current(pathname, link.href) ? 'page' : undefined}>
             {link.label}
           </Link>
         ))}

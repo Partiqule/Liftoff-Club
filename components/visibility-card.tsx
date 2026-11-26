@@ -6,11 +6,10 @@ import { planForLaunch } from '@/lib/planner'
 import { zoneAbbrev } from '@/lib/pro/time'
 import { formatClock } from '@/lib/time'
 import { useZonedText } from '@/components/use-zone'
-import type { Launch } from '@/lib/types'
-import { seeLaunch } from '@/lib/visibility'
+import { seeLaunch, type SeeLaunch } from '@/lib/visibility'
 import { skyAt } from '@/lib/weather'
 
-export function VisibilityCard({ launch }: { launch: Launch }) {
+export function VisibilityCard({ launch }: { launch: SeeLaunch }) {
   const { settings, weather } = useClub()
   const zoned = useZonedText()
   const verdict = seeLaunch(launch, settings.location)

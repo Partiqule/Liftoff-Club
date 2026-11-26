@@ -2,13 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { bindGlobePointers, createFrameLoop, createGlobeGesture, GLOBE_DOUBLE_TAP_MS, type PinchAction } from '@/lib/globe-gesture'
+import { globeShare, homeLegendShowsSatellite, homeLegendShowsYou, type HomeLegend } from '@/lib/globe-share'
 import { claimGlobe, sharedScrollLock, vacateGlobe } from '@/lib/globe-lock'
 import { placeLabels, pointInLabel, type LabelObstacle, type LabelSide } from '@/lib/globe-labels'
-import { subsolar } from '@/lib/mission'
 import {
-  EARTH_TEXTURE,
   RADAR_COPY,
-  RADAR_K,
   clampDistance,
   clampPitch,
   coastView,
@@ -23,7 +21,6 @@ import {
   openingView,
   pathCaption,
   projectRadar,
-  spherePoint,
   velocityFromSamples,
   viewLookingAt,
   wheelDistance,
@@ -64,6 +61,8 @@ type Props = {
   distance?: number
   ariaLabel?: string
   onEngagedChange?: (engaged: boolean) => void
+  /** Home legend filter. Null shows every dot. */
+  legend?: HomeLegend | null
 }
 
 export function RadarScene(props: Props) {
@@ -84,88 +83,18 @@ export function RadarScene(props: Props) {
     const over = overRef.current
     if (!wrap || !glCanvas || !over) return
     let dead = false
-    let textured = false
-    let contextLost = false
-    let gl: WebGLRenderingContext | null = null
-    let program: ReturnType<typeof buildProgram> = null
-    let mesh: ReturnType<typeof buildSphere> | null = null
-    let texture: WebGLTexture | null = null
-    const image = new Image()
-    image.crossOrigin = 'anonymous'
-    image.decoding = 'async'
-
-    const uploadTexture = () => {
-      if (dead || contextLost || !gl || !texture || !image.complete || image.naturalWidth === 0) return
-      const source = fitTexture(gl, image)
-      gl.getError()
-      gl.bindTexture(gl.TEXTURE_2D, texture)
-      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source)
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-      const pot = isPowerOfTwo(source.width) && isPowerOfTwo(source.height)
-      if (pot) {
-        gl.generateMipmap(gl.TEXTURE_2D)
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
-      }
-      if (gl.getError() !== gl.NO_ERROR) {
-        propsRef.current.onFallback()
-        return
-      }
-      textured = true
-      propsRef.current.onLive()
-    }
-
-    const mountGl = () => {
-      const next =
-        gl ??
-        glCanvas.getContext('webgl', {
-          alpha: true,
-          antialias: true,
-          depth: true,
-          stencil: false,
-          powerPreference: 'low-power',
-          premultipliedAlpha: true,
-        })
-      if (!next) return false
-      gl = next
-      if (program) gl.deleteProgram(program.program)
-      if (mesh) {
-        gl.deleteBuffer(mesh.positions)
-        gl.deleteBuffer(mesh.uvs)
-        gl.deleteBuffer(mesh.indices)
-      }
-      if (texture) gl.deleteTexture(texture)
-      program = buildProgram(gl)
-      mesh = buildSphere(gl, 48, 64)
-      texture = gl.createTexture()
-      if (!program || !texture) return false
-      gl.enable(gl.DEPTH_TEST)
-      gl.depthFunc(gl.LEQUAL)
-      gl.enable(gl.CULL_FACE)
-      gl.cullFace(gl.BACK)
-      gl.disable(gl.BLEND)
-      contextLost = false
-      textured = false
-      uploadTexture()
-      return true
-    }
-
-    if (!mountGl()) {
-      propsRef.current.onFallback()
-      return
-    }
-    image.onload = () => uploadTexture()
-    image.onerror = () => {
-      if (!dead) propsRef.current.onFallback()
-    }
-    image.src = EARTH_TEXTURE
-
+    const seat = globeShare().join()
+    const unsubscribe = seat.subscribe((event) => {
+      if (dead) return
+      if (event === 'live') propsRef.current.onLive()
+      if (event === 'fallback') propsRef.current.onFallback()
+    })
+    const display = glCanvas.getContext('2d', { alpha: true })
     const overlay = over.getContext('2d')
-    if (!overlay) {
+    if (!seat.hasContext() || !display || !overlay) {
       propsRef.current.onFallback()
+      unsubscribe()
+      seat.leave()
       return
     }
 
@@ -223,6 +152,7 @@ export function RadarScene(props: Props) {
       if (!engagedRef.current && !releaseLock) return
       engagedRef.current = false
       gesture.setEngaged(false)
+      seat.setEngaged(false)
       releaseLock?.()
       releaseLock = null
       const id = claimId
@@ -237,6 +167,8 @@ export function RadarScene(props: Props) {
       claimId = claimGlobe(exit)
       engagedRef.current = true
       gesture.setEngaged(true)
+      seat.setEngaged(true)
+      seat.setVisible(true)
       setEngagedUi(true)
       propsRef.current.onEngagedChange?.(true)
     }
@@ -247,16 +179,14 @@ export function RadarScene(props: Props) {
       const css = Math.max(2, Math.min(rect.width, rect.height))
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
       const px = Math.max(2, Math.round(css * dpr))
-      if (!contextLost && glCanvas.width !== px) {
+      if (glCanvas.width !== px || glCanvas.height !== px) {
         glCanvas.width = px
         glCanvas.height = px
-        over.width = px
-        over.height = px
-      } else if (over.width !== px) {
+      }
+      if (over.width !== px || over.height !== px) {
         over.width = px
         over.height = px
       }
-      if (gl && !contextLost) gl.viewport(0, 0, glCanvas.width, glCanvas.height)
     }
 
     const canvasPoint = (clientX: number, clientY: number) => {
@@ -365,32 +295,7 @@ export function RadarScene(props: Props) {
       if (!paused && !ease && !propsRef.current.reduced && !turning && Date.now() - idle > 1600) {
         if (Math.hypot(vel.yaw, vel.pitch) < 2e-6) view.yaw += 0.0000375 * dt
       }
-      if (!contextLost && gl && program && mesh && texture) {
-      gl.clearColor(0, 0, 0, 0)
-      gl.clearDepth(1)
-      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-      if (textured) {
-        const sun = subsolar(Date.now())
-        const aim = spherePoint(sun.lat, sun.lon)
-        gl.useProgram(program.program)
-        gl.bindBuffer(gl.ARRAY_BUFFER, mesh.positions)
-        gl.enableVertexAttribArray(program.pos)
-        gl.vertexAttribPointer(program.pos, 3, gl.FLOAT, false, 0, 0)
-        gl.bindBuffer(gl.ARRAY_BUFFER, mesh.uvs)
-        gl.enableVertexAttribArray(program.uv)
-        gl.vertexAttribPointer(program.uv, 2, gl.FLOAT, false, 0, 0)
-        gl.uniform1f(program.yaw, view.yaw)
-        gl.uniform1f(program.pitch, view.pitch)
-        gl.uniform1f(program.dist, view.distance)
-        gl.uniform1f(program.k, RADAR_K)
-        gl.uniform3f(program.sun, aim.x, aim.y, aim.z)
-        gl.activeTexture(gl.TEXTURE0)
-        gl.bindTexture(gl.TEXTURE_2D, texture)
-        gl.uniform1i(program.tex, 0)
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.indices)
-        gl.drawElements(gl.TRIANGLES, mesh.count, gl.UNSIGNED_SHORT, 0)
-      }
-      }
+      seat.paint(size, { yaw: view.yaw, pitch: view.pitch, distance: view.distance }, display)
       overlay.clearRect(0, 0, size, size)
       hits.length = 0
       labelHits.length = 0
@@ -472,30 +377,42 @@ export function RadarScene(props: Props) {
       }
       if (labelJobs.length > 0) labelHits.push(...paintLabels(overlay, labelJobs, obstacles, size))
       const fixes = shownFixes()
+      const legend = propsRef.current.legend ?? null
       const ordered = fixes.slice().sort((a, b) => RANK[a.kind] - RANK[b.kind])
       for (const fix of ordered) {
+        if (!homeLegendShowsSatellite(legend, fix.kind)) continue
         const spot = projectRadar(fix.lat, fix.lon, view, size)
         if (!spot) continue
         const chosen = selected?.type === 'sat' && fix.noradId === selected.id
-        const radius = (fix.kind === 'station' ? 7 : fix.kind === 'hubble' ? 5.5 : 4) * (size / 700) * (chosen ? 1.45 : 1)
+        const highlighted = legend === fix.kind
+        const radius = (fix.kind === 'station' ? 7 : fix.kind === 'hubble' ? 5.5 : 4) * (size / 700) * (chosen ? 1.45 : highlighted ? 1.35 : 1)
+        const dot = Math.max(2.4, radius)
         overlay.fillStyle = DOT[fix.kind]
         overlay.beginPath()
-        overlay.arc(spot.x, spot.y, Math.max(2.4, radius), 0, Math.PI * 2)
+        overlay.arc(spot.x, spot.y, dot, 0, Math.PI * 2)
         overlay.fill()
+        if (highlighted) {
+          overlay.strokeStyle = '#f6f3ec'
+          overlay.lineWidth = Math.max(1.5, size / 420)
+          overlay.beginPath()
+          overlay.arc(spot.x, spot.y, dot + Math.max(3, size / 160), 0, Math.PI * 2)
+          overlay.stroke()
+        }
         hits.push({ target: { type: 'sat', id: fix.noradId }, x: spot.x, y: spot.y, rank: 2 + RANK[fix.kind] })
       }
       const you = propsRef.current.place
-      if (you) {
+      if (you && homeLegendShowsYou(legend)) {
         const spot = projectRadar(you.lat, you.lon, view, size)
         if (spot) {
+          const scale = legend === 'you' ? 1.35 : 1
           overlay.strokeStyle = '#f6f3ec'
           overlay.lineWidth = Math.max(1.5, size / 400)
           overlay.beginPath()
-          overlay.arc(spot.x, spot.y, Math.max(6, size / 70), 0, Math.PI * 2)
+          overlay.arc(spot.x, spot.y, Math.max(6, size / 70) * scale, 0, Math.PI * 2)
           overlay.stroke()
           overlay.fillStyle = '#f6f3ec'
           overlay.beginPath()
-          overlay.arc(spot.x, spot.y, Math.max(2.2, size / 170), 0, Math.PI * 2)
+          overlay.arc(spot.x, spot.y, Math.max(2.2, size / 170) * scale, 0, Math.PI * 2)
           overlay.fill()
           hits.push({ target: { type: 'you' }, x: spot.x, y: spot.y, rank: 4 })
         }
@@ -522,6 +439,8 @@ export function RadarScene(props: Props) {
       const box = wrap.getBoundingClientRect()
       const off = !gesture.isEngaged() && (box.bottom < 0 || box.top > window.innerHeight)
       const should = hidden || off
+      seat.setVisible(!should)
+      seat.setEngaged(gesture.isEngaged())
       if (should === paused) return
       paused = should
       if (paused) {
@@ -737,17 +656,6 @@ export function RadarScene(props: Props) {
       else return
       event.preventDefault()
     }
-    const onContextLost = (event: Event) => {
-      if (dead) return
-      event.preventDefault()
-      contextLost = true
-      textured = false
-    }
-    const onContextRestored = () => {
-      if (dead) return
-      if (!mountGl()) propsRef.current.onFallback()
-    }
-
     const onOutside = (event: PointerEvent) => {
       if (!gesture.isEngaged()) return
       const target = event.target
@@ -769,8 +677,6 @@ export function RadarScene(props: Props) {
     window.addEventListener('keydown', onEscape)
     over.addEventListener('wheel', onWheel, { passive: false })
     over.addEventListener('keydown', onKey)
-    glCanvas.addEventListener('webglcontextlost', onContextLost)
-    glCanvas.addEventListener('webglcontextrestored', onContextRestored)
 
     return () => {
       dead = true
@@ -785,21 +691,8 @@ export function RadarScene(props: Props) {
       window.removeEventListener('keydown', onEscape)
       over.removeEventListener('wheel', onWheel)
       over.removeEventListener('keydown', onKey)
-      glCanvas.removeEventListener('webglcontextlost', onContextLost)
-      glCanvas.removeEventListener('webglcontextrestored', onContextRestored)
-      const lose = gl?.getExtension('WEBGL_lose_context')
-      if (program && gl) gl.deleteProgram(program.program)
-      if (mesh && gl) {
-        gl.deleteBuffer(mesh.positions)
-        gl.deleteBuffer(mesh.uvs)
-        gl.deleteBuffer(mesh.indices)
-      }
-      if (texture && gl) gl.deleteTexture(texture)
-      try {
-        lose?.loseContext()
-      } catch {
-        // The context is already gone.
-      }
+      unsubscribe()
+      seat.leave()
     }
   }, [])
 
@@ -821,30 +714,6 @@ export function RadarScene(props: Props) {
       )}
     </div>
   )
-}
-
-function fitTexture(gl: WebGLRenderingContext, image: HTMLImageElement): HTMLImageElement | HTMLCanvasElement {
-  const max = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 2048
-  const width = image.naturalWidth || image.width
-  const height = image.naturalHeight || image.height
-  if (width > 0 && height > 0 && width <= max && height <= max && isPowerOfTwo(width) && isPowerOfTwo(height)) return image
-  const canvas = document.createElement('canvas')
-  const limit = Math.min(max, 2048)
-  const scale = Math.min(1, limit / Math.max(width, height, 1))
-  canvas.width = potFloor(Math.max(2, Math.round(width * scale)))
-  canvas.height = potFloor(Math.max(2, Math.round(height * scale)))
-  canvas.getContext('2d')?.drawImage(image, 0, 0, canvas.width, canvas.height)
-  return canvas
-}
-
-function potFloor(value: number): number {
-  let pot = 1
-  while (pot * 2 <= value) pot *= 2
-  return pot
-}
-
-function isPowerOfTwo(value: number): boolean {
-  return value > 0 && (value & (value - 1)) === 0
 }
 
 function chainDistance(
@@ -975,121 +844,3 @@ function diamond(ctx: CanvasRenderingContext2D, x: number, y: number, radius: nu
   ctx.closePath()
   ctx.fill()
 }
-
-function buildProgram(gl: WebGLRenderingContext) {
-  const vertex = compile(gl, gl.VERTEX_SHADER, VERTEX)
-  const fragment = compile(gl, gl.FRAGMENT_SHADER, FRAGMENT)
-  if (!vertex || !fragment) return null
-  const program = gl.createProgram()
-  if (!program) return null
-  gl.attachShader(program, vertex)
-  gl.attachShader(program, fragment)
-  gl.bindAttribLocation(program, 0, 'aPos')
-  gl.bindAttribLocation(program, 1, 'aUv')
-  gl.linkProgram(program)
-  gl.deleteShader(vertex)
-  gl.deleteShader(fragment)
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-    gl.deleteProgram(program)
-    return null
-  }
-  return {
-    program,
-    pos: 0,
-    uv: 1,
-    yaw: gl.getUniformLocation(program, 'uYaw'),
-    pitch: gl.getUniformLocation(program, 'uPitch'),
-    dist: gl.getUniformLocation(program, 'uDist'),
-    k: gl.getUniformLocation(program, 'uK'),
-    sun: gl.getUniformLocation(program, 'uSun'),
-    tex: gl.getUniformLocation(program, 'uTex'),
-  }
-}
-
-function compile(gl: WebGLRenderingContext, type: number, source: string) {
-  const shader = gl.createShader(type)
-  if (!shader) return null
-  gl.shaderSource(shader, source)
-  gl.compileShader(shader)
-  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    gl.deleteShader(shader)
-    return null
-  }
-  return shader
-}
-
-function buildSphere(gl: WebGLRenderingContext, stacks: number, slices: number) {
-  const positions: number[] = []
-  const uvs: number[] = []
-  const indices: number[] = []
-  for (let y = 0; y <= stacks; y += 1) {
-    const lat = 90 - (y / stacks) * 180
-    const v = 1 - y / stacks
-    for (let x = 0; x <= slices; x += 1) {
-      const lon = -180 + (x / slices) * 360
-      const point = spherePoint(lat, lon)
-      positions.push(point.x, point.y, point.z)
-      uvs.push(x / slices, v)
-    }
-  }
-  const row = slices + 1
-  for (let y = 0; y < stacks; y += 1) {
-    for (let x = 0; x < slices; x += 1) {
-      const a = y * row + x
-      indices.push(a, a + row, a + 1, a + 1, a + row, a + row + 1)
-    }
-  }
-  const positionBuffer = gl.createBuffer()
-  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer)
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW)
-  const uvBuffer = gl.createBuffer()
-  gl.bindBuffer(gl.ARRAY_BUFFER, uvBuffer)
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(uvs), gl.STATIC_DRAW)
-  const indexBuffer = gl.createBuffer()
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer)
-  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW)
-  return { positions: positionBuffer, uvs: uvBuffer, indices: indexBuffer, count: indices.length }
-}
-
-const VERTEX = `
-attribute vec3 aPos;
-attribute vec2 aUv;
-uniform float uYaw;
-uniform float uPitch;
-uniform float uDist;
-uniform float uK;
-varying vec2 vUv;
-varying vec3 vObj;
-vec3 rotY(vec3 p, float a) {
-  float c = cos(a);
-  float s = sin(a);
-  return vec3(c * p.x + s * p.z, p.y, -s * p.x + c * p.z);
-}
-vec3 rotX(vec3 p, float a) {
-  float c = cos(a);
-  float s = sin(a);
-  return vec3(p.x, c * p.y - s * p.z, s * p.y + c * p.z);
-}
-void main() {
-  vUv = aUv;
-  vObj = aPos;
-  vec3 p = rotX(rotY(aPos, uYaw), uPitch);
-  float dist = max(uDist - p.z, 0.05);
-  float ndc = clamp((dist - 0.25) / 7.5, 0.0, 1.0);
-  gl_Position = vec4(p.x * uK, p.y * uK, ndc * dist, dist);
-}
-`
-
-const FRAGMENT = `
-precision mediump float;
-uniform sampler2D uTex;
-uniform vec3 uSun;
-varying vec2 vUv;
-varying vec3 vObj;
-void main() {
-  float light = dot(normalize(vObj), normalize(uSun));
-  float shade = 0.55 + 0.45 * clamp(light, 0.0, 1.0);
-  vec3 color = texture2D(uTex, vUv).rgb * shade;
-  gl_FragColor = vec4(color, 1.0);
-}
-`

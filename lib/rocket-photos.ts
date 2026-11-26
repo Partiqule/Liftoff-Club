@@ -3,6 +3,8 @@ export type RocketPhoto = {
   /** Lowercase phrases. The rocket name must include one of them. */
   matches: string[]
   file: string
+  width: number
+  height: number
   alt: string
   author: string
   license: string
@@ -27,6 +29,8 @@ export const ROCKET_PHOTOS: RocketPhoto[] = [
     id: 'starship',
     matches: ['starship'],
     file: '/rockets/starship.jpg',
+    width: 1280,
+    height: 1467,
     alt: 'Starship lifts off on integrated flight test 5.',
     author: 'Steve Jurvetson',
     license: 'CC BY 2.0',
@@ -36,6 +40,8 @@ export const ROCKET_PHOTOS: RocketPhoto[] = [
     id: 'falcon-9',
     matches: ['falcon 9'],
     file: '/rockets/falcon-9.jpg',
+    width: 1400,
+    height: 1124,
     alt: 'A Falcon 9 lifts off from Vandenberg with the GRACE Follow-On spacecraft.',
     author: 'Bill Ingalls, NASA',
     license: 'Public domain',
@@ -45,6 +51,8 @@ export const ROCKET_PHOTOS: RocketPhoto[] = [
     id: 'electron',
     matches: ['electron'],
     file: '/rockets/electron.jpg',
+    width: 1066,
+    height: 1600,
     alt: 'A Rocket Lab Electron climbs from Mahia, New Zealand.',
     author: 'NASA Kennedy Space Center',
     license: 'Public domain',
@@ -54,6 +62,8 @@ export const ROCKET_PHOTOS: RocketPhoto[] = [
     id: 'vulcan',
     matches: ['vulcan'],
     file: '/rockets/vulcan.jpg',
+    width: 1400,
+    height: 932,
     alt: 'A Vulcan Centaur lifts off from Cape Canaveral.',
     author: 'U.S. Space Force, Airman 1st Class Collin Wesson',
     license: 'Public domain',
@@ -63,6 +73,8 @@ export const ROCKET_PHOTOS: RocketPhoto[] = [
     id: 'soyuz',
     matches: ['soyuz'],
     file: '/rockets/soyuz.jpg',
+    width: 930,
+    height: 1400,
     alt: 'A Soyuz rocket lifts off from Baikonur.',
     author: 'Bill Ingalls, NASA',
     license: 'Public domain',
@@ -72,6 +84,8 @@ export const ROCKET_PHOTOS: RocketPhoto[] = [
     id: 'pslv',
     matches: ['pslv'],
     file: '/rockets/pslv.jpg',
+    width: 1050,
+    height: 1400,
     alt: 'A PSLV standing on display.',
     author: 'Ank Kumar',
     license: 'CC BY-SA 4.0',
@@ -81,6 +95,8 @@ export const ROCKET_PHOTOS: RocketPhoto[] = [
     id: 'ariane-6',
     matches: ['ariane'],
     file: '/rockets/ariane-6.jpg',
+    width: 1050,
+    height: 1400,
     alt: 'An Ariane 6 upper stage after it was unpacked at a test site.',
     author: 'DLR',
     license: 'CC BY 3.0 de',

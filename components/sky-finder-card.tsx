@@ -8,7 +8,7 @@ export function SkyFinderCard() {
       <h2>{SKY_COPY.cardTitle}</h2>
       <p className="lede">{SKY_COPY.cardLede}</p>
       <p className="hero-actions">
-        <Link className="btn" href="/sky/finder">
+        <Link className="btn" href="/sky/finder" prefetch={false}>
           {SKY_COPY.cardAction}
         </Link>
       </p>

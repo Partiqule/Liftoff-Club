@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useZonedText } from '@/components/use-zone'
-import { shareLaunchText } from '@/lib/ios/apns'
+import { shareLaunchText } from '@/lib/share-text'
 
 export function ShareLaunch({ name, net, url }: { name: string; net: string | null; url: string }) {
   const [note, setNote] = useState<string | null>(null)

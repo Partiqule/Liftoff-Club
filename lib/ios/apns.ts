@@ -1,6 +1,8 @@
 import { createHash, createPrivateKey, createSign, createVerify, type KeyObject } from 'node:crypto'
 import type { PushNotice } from '@/lib/push/plan'
 
+export { shareLaunchText } from '@/lib/share-text'
+
 export const APNS_BUNDLE_ID = 'app.liftoffclub'
 export const APNS_TEAM_ID = '39AMCG49RK'
 
@@ -102,10 +104,6 @@ export function apnsPayload(notice: Pick<PushNotice, 'title' | 'body' | 'url'>):
     },
     url: notice.url,
   })
-}
-
-export function shareLaunchText(name: string, when: string): string {
-  return `${name}. ${when}.`
 }
 
 function clock(value: unknown, fallback: string): string {

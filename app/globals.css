@@ -7,15 +7,31 @@
   --core: #f3d7b0;
   --ink-quiet: #b7aec8;
   --line: rgba(197, 210, 226, 0.22);
-  --font-display: "Gloock", "Iowan Old Style", Palatino, serif;
-  --font-text: "Inclusive Sans", "Avenir Next", "Segoe UI", sans-serif;
-  --font-data: "Barlow", "Avenir Next", "Segoe UI", sans-serif;
+  --font-display: var(--font-gloock), "Iowan Old Style", Palatino, serif;
+  --font-text: var(--font-inclusive), "Avenir Next", "Segoe UI", sans-serif;
+  --font-data: var(--font-barlow), "Avenir Next", "Segoe UI", sans-serif;
   --measure: 40rem;
   --gutter: 1.25rem;
   --space-section: 2.75rem;
   --space-label: 0.9rem;
   --space-copy: 0.95rem;
   color-scheme: dark;
+}
+
+/* The globe canvas asks for Barlow by name. Same files, a second family, so labels stay Barlow. */
+@font-face {
+  font-family: "Barlow";
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url("../node_modules/@fontsource/barlow/files/barlow-latin-300-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Barlow";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../node_modules/@fontsource/barlow/files/barlow-latin-400-normal.woff2") format("woff2");
 }
 
 * { box-sizing: border-box; }
@@ -1138,6 +1154,31 @@ body:has(.pro-app) { padding-bottom: 0; }
   color: var(--cold);
 }
 .radar-legend li { display: inline-flex; align-items: center; min-height: 1.6rem; }
+.radar-legend button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 0.15rem 0.2rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+.radar-legend button[aria-pressed="true"] { color: var(--ink); }
+.radar-legend button[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0.15rem;
+  height: 1.5px;
+  background: linear-gradient(90deg, transparent, var(--core) 30%, var(--cold));
+}
 .radar-legend i {
   display: inline-block;
   flex: none;

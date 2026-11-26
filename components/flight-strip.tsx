@@ -4,14 +4,29 @@ import { LocalTime } from '@/components/local-time'
 import { StatusStamp } from '@/components/status-stamp'
 import { Trail } from '@/components/trail'
 import { flightKind } from '@/lib/flight-kind'
-import type { Launch } from '@/lib/types'
+
+type StripLaunch = {
+  id: string
+  name: string
+  provider: { name: string }
+  rocketName: string
+  missionName: string | null
+  missionType: string | null
+  orbitName: string | null
+  orbitAbbrev: string | null
+  padName: string
+  padLocation: string | null
+  net: string | null
+  statusAbbrev: string
+  statusName: string
+}
 
 export function FlightStrip({
   launch,
   featured = false,
   trail = true,
 }: {
-  launch: Launch
+  launch: StripLaunch
   featured?: boolean
   /** Drawn mark. Off when this row sits under a real rocket photo. */
   trail?: boolean

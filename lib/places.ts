@@ -36,7 +36,7 @@ export async function searchPlaces(query: string): Promise<Place[]> {
   url.searchParams.set('count', '5')
   url.searchParams.set('language', 'en')
   url.searchParams.set('format', 'json')
-  const response = await fetch(url, { signal: AbortSignal.timeout(12_000) })
+  const response = await fetch(url, { signal: AbortSignal.timeout(12_000), next: { revalidate: 86_400 } })
   if (!response.ok) return []
   const body = (await response.json()) as { results?: GeoResult[] }
   return (body.results ?? [])
@@ -51,7 +51,7 @@ export async function labelForCoords(lat: number, lon: number, timezone: string)
     url.searchParams.set('longitude', lon.toFixed(3))
     url.searchParams.set('language', 'en')
     url.searchParams.set('format', 'json')
-    const response = await fetch(url, { signal: AbortSignal.timeout(10_000) })
+    const response = await fetch(url, { signal: AbortSignal.timeout(10_000), next: { revalidate: 86_400 } })
     if (response.ok) {
       const body = (await response.json()) as { results?: GeoResult[] } | GeoResult
       const result = Array.isArray((body as { results?: GeoResult[] }).results)

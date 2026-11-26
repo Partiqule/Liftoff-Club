@@ -33,7 +33,7 @@ export function dueAlerts(input: {
           {
             name: launch.name,
             rocketName: launch.rocketName,
-            provider: { name: launch.providerName, abbrev: null, description: null, country: null, siteUrl: null, type: null, companyId: null },
+            provider: { name: launch.providerName },
             padLat: launch.padLat,
             padLon: launch.padLon,
             padName: launch.padName,
