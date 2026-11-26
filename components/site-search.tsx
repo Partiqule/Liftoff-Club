@@ -8,6 +8,7 @@ export function SiteSearch() {
   const [query, setQuery] = useState('')
   const [hits, setHits] = useState<SearchHit[]>([])
   const [open, setOpen] = useState(false)
+  const [settled, setSettled] = useState('')
   const box = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -29,12 +30,20 @@ export function SiteSearch() {
     const handle = window.setTimeout(() => {
       void fetch(`/api/search?q=${encodeURIComponent(trimmed)}`)
         .then((response) => response.json())
-        .then((payload: { hits?: SearchHit[] }) => setHits(payload.hits ?? []))
-        .catch(() => setHits([]))
+        .then((payload: { hits?: SearchHit[] }) => {
+          setHits(payload.hits ?? [])
+          setSettled(trimmed)
+        })
+        .catch(() => {
+          setHits([])
+          setSettled(trimmed)
+        })
     }, 180)
     return () => window.clearTimeout(handle)
   }, [query])
-  const shown = query.trim().length < 2 ? [] : hits
+  const trimmed = query.trim()
+  const shown = trimmed.length < 2 ? [] : hits
+  const empty = open && trimmed.length >= 2 && settled === trimmed && shown.length === 0
 
   return (
     <div className="site-search">
@@ -66,6 +75,10 @@ export function SiteSearch() {
             </li>
           ))}
         </ul>
+      ) : empty ? (
+        <p className="search-empty" role="status">
+          Nothing matched.
+        </p>
       ) : null}
     </div>
   )
