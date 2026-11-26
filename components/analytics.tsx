@@ -1,25 +1,16 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { useEffect } from 'react'
-import { Analytics, type BeforeSendEvent } from '@vercel/analytics/next'
-import { SpeedInsights } from '@vercel/speed-insights/next'
 import { track } from '@/lib/track'
 
 /**
  * Aggregate page counts and a few named events. Query strings are stripped.
  * Events carry no name, email, town, or other personal field.
+ * The vendor scripts load after the page, so they stay off the first paint.
  */
 
-function stripQuery(event: BeforeSendEvent): BeforeSendEvent {
-  try {
-    const url = new URL(event.url)
-    url.search = ''
-    url.hash = ''
-    return { ...event, url: url.toString() }
-  } catch {
-    return event
-  }
-}
+const VendorAnalytics = dynamic(() => import('@/components/analytics-vendor').then((mod) => mod.VendorAnalytics), { ssr: false })
 
 export function ClubAnalytics() {
   useEffect(() => {
@@ -27,12 +18,7 @@ export function ClubAnalytics() {
     window.addEventListener('appinstalled', onInstalled)
     return () => window.removeEventListener('appinstalled', onInstalled)
   }, [])
-  return (
-    <>
-      <Analytics beforeSend={stripQuery} />
-      <SpeedInsights />
-    </>
-  )
+  return <VendorAnalytics />
 }
 
 export function LaunchViewed() {

@@ -9,7 +9,7 @@ export function SkyFinderCard() {
       <p className="lede">{SKY_COPY.cardLede}</p>
       <p className="meta">{SKY_COPY.thanksgiving}</p>
       <p className="hero-actions">
-        <Link className="btn" href="/sky/finder">
+        <Link className="btn" href="/sky/finder" prefetch={false}>
           {SKY_COPY.cardAction}
         </Link>
       </p>

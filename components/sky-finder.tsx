@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { LocationPrompt } from '@/components/location-prompt'
 import { SkyDome, type SkyDot } from '@/components/sky-dome'
-import { formatAltitudeKm, formatSpeedKms, radarKindLabel } from '@/lib/radar'
 import { useClub } from '@/components/club-provider'
 import { compass8, heightPhrase } from '@/lib/geo'
 import { watchingPlace } from '@/lib/places'
@@ -35,11 +34,11 @@ function compassSupport(): CompassSupport {
   return compassNeedsTap(ask, nav.userAgent || '', nav.platform || '', nav.maxTouchPoints || 0) ? 'tap' : 'listen'
 }
 
-export function SkyFinder() {
+export function SkyFinder({ initialCatalog = null }: { initialCatalog?: { objects: SkyElement[]; notice: string | null } | null }) {
   const { settings, hydrated } = useClub()
   const place = watchingPlace(settings.location)
-  const [catalog, setCatalog] = useState<{ objects: SkyElement[]; notice: string | null } | null>(null)
-  const [catalogState, setCatalogState] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [catalog, setCatalog] = useState<{ objects: SkyElement[]; notice: string | null } | null>(initialCatalog)
+  const [catalogState, setCatalogState] = useState<'loading' | 'ready' | 'error'>(initialCatalog ? 'ready' : 'loading')
   const [fixes, setFixes] = useState<SkyFix[]>([])
   const [nowMs, setNowMs] = useState(() => Date.now())
   const [selected, setSelected] = useState<string | null>(null)
@@ -62,6 +61,7 @@ export function SkyFinder() {
           : 'checking'
 
   useEffect(() => {
+    if (initialCatalog && initialCatalog.objects.length > 0) return
     let cancel = false
     ;(async () => {
       try {
@@ -75,13 +75,13 @@ export function SkyFinder() {
         })
         setCatalogState('ready')
       } catch {
-        if (!cancel) setCatalogState('error')
+        if (!cancel && !initialCatalog) setCatalogState('error')
       }
     })()
     return () => {
       cancel = true
     }
-  }, [])
+  }, [initialCatalog])
 
   useEffect(() => {
     if (!place || !catalog) return
@@ -348,15 +348,15 @@ function SkyDetail({ row, detail, nowMs }: { row: Row; detail: SkyPass | null; n
     : `Rises ${rise == null ? 'soon' : rise <= 1 ? 'within a minute' : `in ${rise} min`} toward the ${riseDir}.`
   return (
     <div className="radar-card" aria-live="polite">
-      <p className="kicker">{radarKindLabel(row.kind)}</p>
+      <p className="kicker">{kindLabel(row.kind)}</p>
       <p className="radar-name">{row.name}</p>
       <p className="radar-figure">
         <span>{SKY_COPY.altitude}</span>
-        {detail ? formatAltitudeKm(detail.altKm) : 'checking'}
+        {detail ? altitudeKm(detail.altKm) : 'checking'}
       </p>
       <p className="radar-figure">
         <span>{SKY_COPY.speed}</span>
-        {detail ? formatSpeedKms(detail.speedKms) : 'checking'}
+        {detail ? speedKms(detail.speedKms) : 'checking'}
       </p>
       <p className="meta">
         {SKY_COPY.direction}: {heightPhrase(row.elevation)}, toward the {compass8(row.azimuth)}.
@@ -435,4 +435,21 @@ function startListening(
     window.clearInterval(flush)
     window.clearTimeout(giveUp)
   }
+}
+
+function kindLabel(kind: SkyKind): string {
+  if (kind === 'station') return 'Station'
+  if (kind === 'hubble') return 'Hubble'
+  if (kind === 'starlink') return 'Starlink'
+  return 'Bright satellite'
+}
+
+function altitudeKm(km: number): string {
+  if (!Number.isFinite(km)) return 'unknown'
+  return `${Math.round(km)} km`
+}
+
+function speedKms(kmPerSec: number): string {
+  if (!Number.isFinite(kmPerSec)) return 'unknown'
+  return `${kmPerSec.toFixed(2)} km/s`
 }

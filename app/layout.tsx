@@ -1,11 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import type { ReactNode } from 'react'
-import '@fontsource/gloock/latin-400.css'
-import '@fontsource/inclusive-sans/latin-400.css'
-import '@fontsource/inclusive-sans/latin-500.css'
-import '@fontsource/barlow/latin-300.css'
-import '@fontsource/barlow/latin-400.css'
 import Script from 'next/script'
+import { barlow, gloock, inclusive } from './fonts'
 import { ClubAnalytics } from '@/components/analytics'
 import { ClubProvider } from '@/components/club-provider'
 import { Footer } from '@/components/footer'
@@ -54,7 +50,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const briefs = briefsForShell(board.launches).map(toBrief)
   const schedule = iosSchedule(board.launches, siteUrl())
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={`${gloock.variable} ${inclusive.variable} ${barlow.variable}`} suppressHydrationWarning>
       <body>
         <div className="galaxy" aria-hidden="true">
           <div className="field-nebula" />

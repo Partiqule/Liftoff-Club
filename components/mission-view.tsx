@@ -1,12 +1,26 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { FigureLine } from '@/components/pro/figure-line'
 import { LaunchDayScreen } from '@/components/launch-day'
 import { Logo } from '@/components/logo'
-import { PathGlobe } from '@/components/path-globe'
 import { Trail } from '@/components/trail'
+
+const PathGlobe = dynamic(() => import('@/components/path-globe').then((mod) => mod.PathGlobe), {
+  ssr: false,
+  loading: () => (
+    <figure className="orbit-block path-globe">
+      <p className="kicker">Approximate path</p>
+      <div className="radar-stage">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="radar-still" src="/earth/blue-marble-still.jpg" alt="" decoding="async" />
+      </div>
+    </figure>
+  ),
+})
 import {
   approximateInclination,
   currentPhase,
@@ -110,8 +124,14 @@ function MissionView({ launch, asOf, onFamily }: { launch: Launch; asOf: string 
           <article className="pro-card">
             <p className="kicker">Rocket</p>
             {photo ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img className="mission-photo" src={photo.file} alt={photo.alt} />
+              <Image
+                className="mission-photo"
+                src={photo.file}
+                alt={photo.alt}
+                width={photo.width}
+                height={photo.height}
+                sizes="(max-width: 800px) 92vw, 28rem"
+              />
             ) : (
               <span className="rocket-fallback">
                 <Trail span="load" />
