@@ -22,7 +22,7 @@ export default function NotFound() {
       <p className="lede">The address may be old, or the launch has already left the board.</p>
       <div className="hero-actions">
         <Link className="btn" href="/">
-          Back to tonight
+          Back home
         </Link>
         <Link className="btn btn-quiet" href="/launches">
           See the launches

@@ -10,6 +10,8 @@ export function SettingsPanel({ providers }: { providers: string[] }) {
   const notes = settings.notifications
   return (
     <div className="house">
+      <LocationEditor />
+
       <section>
         <p className="kicker">Reading voice</p>
         <h2>Kids mode is the default</h2>
@@ -33,15 +35,14 @@ export function SettingsPanel({ providers }: { providers: string[] }) {
         <button
           className="switch"
           type="button"
-          aria-pressed={settings.nightRed}
+          role="switch"
+          aria-checked={settings.nightRed}
           onClick={() => updateSettings({ ...settings, nightRed: !settings.nightRed })}
         >
           <span className="switch-ui" data-on={settings.nightRed ? 'true' : 'false'} />
           <span className="switch-label">{settings.nightRed ? 'Night red on' : 'Night red off'}</span>
         </button>
       </section>
-
-      <LocationEditor />
 
       <section>
         <p className="kicker">Bedtime</p>

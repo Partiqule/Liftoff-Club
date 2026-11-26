@@ -28,7 +28,7 @@ export function LocationPrompt() {
         <button className="btn" type="button" onClick={() => void onDevice()} disabled={busy}>
           {busy ? 'Finding you…' : "Use this phone's location"}
         </button>
-        <Link className="btn" href="/settings#place">
+        <Link className="btn btn-quiet" href="/settings#place">
           Search for a town
         </Link>
       </div>

@@ -10,7 +10,7 @@ import { getPads } from '@/lib/pads'
 import { filterLaunches, isStillAhead, pickHomeLaunch } from '@/lib/schedule'
 
 export const metadata: Metadata = {
-  title: 'The board',
+  title: 'Launches',
   description: 'Upcoming launches worldwide, with a calendar you can subscribe to when a rocket slips.',
 }
 
@@ -48,10 +48,10 @@ export default async function LaunchesPage({
   const httpsFeed = `${base}/calendar/feed.ics`
   return (
     <main id="content" className="wrap page">
-      <p className="kicker">Every provider · SpaceX called out</p>
-      <h1>The board</h1>
+      <p className="kicker">Upcoming</p>
+      <h1>Launches</h1>
       <p className="lede">
-        Every upcoming launch on the public list, including suborbital flights and test flights. A test flight keeps that label when the listing says so. Times refresh every few minutes. <Link href="/events">Tests and events</Link> are separate from launches.
+        Every upcoming launch on the public list. Times refresh every few minutes. <Link href="/events">Tests and events</Link> sit on their own page.
       </p>
       <SourceNote board={board} />
       <nav className="filters" aria-label="Filter launches">

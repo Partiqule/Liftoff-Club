@@ -204,6 +204,36 @@ export function skyWheelZoom(zoom: number, deltaY: number, deltaMode = 0): numbe
   return clampSkyZoom(zoom * Math.exp(-pixels * 0.0014))
 }
 
+/** What the sky page should say under the title. A town prompt already covers the empty case. */
+export function skyHeroNote(input: { hasPlace: boolean; hasLead: boolean; skyState: 'idle' | 'loading' | 'ready' | 'error' }): 'settling' | 'error' | null {
+  if (!input.hasPlace || input.hasLead) return null
+  if (input.skyState === 'error') return 'error'
+  if (input.skyState === 'ready') return null
+  return 'settling'
+}
+
+/** Finder chrome before the chart. One message at a time, and a town comes before an orbit error. */
+export function finderChrome(input: {
+  hydrated: boolean
+  hasPlace: boolean
+  catalogState: 'loading' | 'ready' | 'error'
+}): { checking: boolean; showNotice: boolean; askTown: boolean } {
+  if (!input.hydrated) return { checking: true, showNotice: false, askTown: false }
+  if (!input.hasPlace) return { checking: false, showNotice: false, askTown: true }
+  return {
+    checking: input.catalogState === 'loading',
+    showNotice: input.catalogState !== 'loading',
+    askTown: false,
+  }
+}
+
+/** Vertical finger travel scrolls. A sideways drag pans only after the chart is zoomed. */
+export function skyDragMode(input: { moved: number; dx: number; dy: number; zoom: number }): 'undecided' | 'scroll' | 'move' {
+  if (input.moved < 10) return 'undecided'
+  if (Math.abs(input.dy) > Math.abs(input.dx) * 1.15 || input.zoom <= 1.05) return 'scroll'
+  return 'move'
+}
+
 /** Invisible tap radius in sky map units. It stays about a finger wide as you zoom. */
 export function skyHitRadius(zoom: number): number {
   return Math.max(3.2, 8 / Math.max(zoom, SKY_ZOOM_MIN))

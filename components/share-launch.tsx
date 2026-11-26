@@ -35,7 +35,7 @@ export function ShareLaunch({ name, net, url }: { name: string; net: string | nu
 
   return (
     <p className="day-link">
-      <button className="btn" type="button" onClick={() => void onShare()}>
+      <button className="btn btn-quiet" type="button" onClick={() => void onShare()}>
         Share this launch
       </button>
       {note ? <span className="meta"> {note}</span> : null}

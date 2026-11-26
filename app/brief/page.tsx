@@ -31,7 +31,7 @@ export default function BriefPage() {
   })
   return (
     <main id="content" className="wrap page">
-      <p className="kicker">On this screen</p>
+      <p className="kicker">A short note</p>
       <h1>{period === 'day' ? 'Today' : 'This week'}</h1>
       <p className="lede">{message.sky}</p>
       <div className="choice" role="group" aria-label="Brief length">
@@ -53,7 +53,6 @@ export default function BriefPage() {
         ))}
       </ul>
       {message.launches.length === 0 ? <p className="note">No launch is listed in this window.</p> : null}
-      <p className="note">This note stays on the screen. The same text is ready for a later email or text, which is not connected.</p>
     </main>
   )
 }

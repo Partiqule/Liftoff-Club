@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { serverZoneCatalog, timeZoneChoices, zoneCatalog } from '@/components/zone-picker'
+import { serverZoneCatalog, timeZoneChoices, zoneCatalog, zoneMatches } from '@/components/zone-picker'
 import { homeScreenNeeded, readStorageItem } from '@/lib/push/browser'
 
 describe('phone web view guards', () => {
@@ -25,6 +25,9 @@ describe('phone web view guards', () => {
     expect(serverZoneCatalog()).toBe(serverZoneCatalog())
     expect(serverZoneCatalog()).toHaveLength(8)
     expect(serverZoneCatalog()).toContain('America/Denver')
+    expect(zoneMatches('', zoneCatalog())).toBe(serverZoneCatalog())
+    expect(zoneMatches('tokyo', zoneCatalog())).toContain('Asia/Tokyo')
+    expect(zoneMatches('tokyo', zoneCatalog()).length).toBeLessThanOrEqual(8)
   })
 
   it('keeps a zone list when the catalog throws', () => {

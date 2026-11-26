@@ -10,13 +10,13 @@ export function LocationEditor({ heading = true }: { heading?: boolean }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Place[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
+  const [busy, setBusy] = useState<'search' | 'device' | null>(null)
   const [latText, setLatText] = useState('')
   const [lonText, setLonText] = useState('')
 
   async function onSearch(event: FormEvent) {
     event.preventDefault()
-    setBusy(true)
+    setBusy('search')
     setError(null)
     try {
       const response = await fetch(`/api/places?q=${encodeURIComponent(query)}`, { signal: AbortSignal.timeout(12_000) })
@@ -28,12 +28,12 @@ export function LocationEditor({ heading = true }: { heading?: boolean }) {
     } catch {
       setError('The place search did not answer. Try again in a moment.')
     } finally {
-      setBusy(false)
+      setBusy(null)
     }
   }
 
   async function onDevice() {
-    setBusy(true)
+    setBusy('device')
     setError(null)
     try {
       const place = await placeFromBrowser()
@@ -42,13 +42,18 @@ export function LocationEditor({ heading = true }: { heading?: boolean }) {
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Location was not available.')
     } finally {
-      setBusy(false)
+      setBusy(null)
     }
   }
 
   return (
     <div id="place">
-      {heading ? <h2>Where you watch from</h2> : null}
+      {heading ? (
+        <>
+          <p className="kicker">Your town</p>
+          <h2>Where you watch from</h2>
+        </>
+      ) : null}
       {settings.location ? (
         <p className="lede">
           Watching from <strong>{settings.location.label}</strong>. This stays in this browser. Nothing is sent to a Liftoff Club account, because there is not one.
@@ -69,35 +74,36 @@ export function LocationEditor({ heading = true }: { heading?: boolean }) {
           onChange={(event) => setQuery(event.target.value)}
         />
         <div className="form-row">
-          <button className="btn" type="submit" disabled={busy}>
-            {busy ? 'Looking…' : 'Find this place'}
+          <button className="btn" type="button" onClick={() => void onDevice()} disabled={busy !== null}>
+            {busy === 'device' ? 'Finding you…' : "Use this phone's location"}
           </button>
-          <button className="btn btn-quiet" type="button" onClick={() => void onDevice()} disabled={busy}>
-            {busy ? 'Finding you…' : 'Use this phone\'s location'}
+          <button className="btn btn-quiet" type="submit" disabled={busy !== null || query.trim().length === 0}>
+            {busy === 'search' ? 'Looking…' : 'Find this place'}
           </button>
         </div>
       </form>
       {error ? <p className="error">{error}</p> : null}
-      <form
-        onSubmit={(event) => {
-          event.preventDefault()
-          const lat = Number(latText)
-          const lon = Number(lonText)
-          if (!Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lon) || lon < -180 || lon > 180) {
-            setError('Latitude must be between -90 and 90, and longitude between -180 and 180.')
-            return
-          }
-          setLocation({
-            label: `${lat.toFixed(2)}, ${lon.toFixed(2)}`,
-            lat,
-            lon,
-            timezone: settings.location?.timezone || 'UTC',
-            source: 'search',
-          })
-          setError(null)
-        }}
-      >
-        <p className="kicker">Or enter coordinates</p>
+      <details className="quiet-more">
+        <summary>Or enter coordinates</summary>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault()
+            const lat = Number(latText)
+            const lon = Number(lonText)
+            if (!Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lon) || lon < -180 || lon > 180) {
+              setError('Latitude must be between -90 and 90, and longitude between -180 and 180.')
+              return
+            }
+            setLocation({
+              label: `${lat.toFixed(2)}, ${lon.toFixed(2)}`,
+              lat,
+              lon,
+              timezone: settings.location?.timezone || 'UTC',
+              source: 'search',
+            })
+            setError(null)
+          }}
+        >
         <div className="form-row">
           <label>
             Latitude
@@ -111,7 +117,8 @@ export function LocationEditor({ heading = true }: { heading?: boolean }) {
             Use these coordinates
           </button>
         </div>
-      </form>
+        </form>
+      </details>
       <ZonePicker />
       {results.length > 0 ? (
         <ul className="results">

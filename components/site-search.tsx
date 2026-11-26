@@ -55,7 +55,7 @@ export function SiteSearch() {
         ref={box}
         className="field"
         value={query}
-        placeholder="Search  /"
+        placeholder="Search"
         autoComplete="off"
         onChange={(event) => {
           setQuery(event.target.value)

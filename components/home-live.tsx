@@ -2,11 +2,9 @@
 
 import dynamic from 'next/dynamic'
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
 import { HomeGlobeFallback } from '@/components/home-globe-fallback'
 import { NextLaunchCard } from '@/components/next-launch'
 import { useAfterLoad } from '@/components/use-after-load'
-import { HOME_COPY } from '@/lib/home-copy'
 import type { HomeCard } from '@/lib/home-card'
 import { pickHomeLaunch } from '@/lib/schedule'
 
@@ -23,10 +21,6 @@ export function HomeLive({ launches }: { launches: HomeCard[] }) {
     <>
       <NextLaunchCard launch={next} />
       {globeReady ? <HomeGlobe launches={launches} now={now} /> : <HomeGlobeFallback />}
-      <nav className="home-links wrap" aria-label="More on Liftoff Club">
-        <Link href="/launches">{HOME_COPY.all}</Link>
-        <Link href="/sky">{HOME_COPY.sky}</Link>
-      </nav>
     </>
   )
 }

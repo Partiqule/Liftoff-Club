@@ -12,8 +12,8 @@ import { Trail } from '@/components/trail'
 import { zoneAbbrev } from '@/lib/pro/time'
 import { formatClock } from '@/lib/time'
 import { useZonedText } from '@/components/use-zone'
-import { SkyFinderCard } from '@/components/sky-finder-card'
 import { LocationPrompt } from '@/components/location-prompt'
+import { skyHeroNote } from '@/lib/sky-point'
 
 export function Tonight() {
   const { settings, passes, skyState, skyNotice, weather } = useClub()
@@ -28,12 +28,12 @@ export function Tonight() {
   const clock = lead ? zoned(lead.start, (iso, zone) => `${formatClock(iso, zone)} ${zoneAbbrev(zone)}`) : null
   const who = lead ? (lead.kind === 'iss' ? 'The station rises' : 'A dim Starlink crosses') : null
 
+  const heroNote = skyHeroNote({ hasPlace: Boolean(place), hasLead: Boolean(who && direction && clock), skyState })
   return (
     <section className={`tonight wrap light-${tone}`} aria-busy={skyState === 'loading' || skyState === 'idle'}>
-      <p className="kicker">{place ? `Tonight over ${town}` : 'Set your location'}</p>
+      <p className="kicker">{place ? town : 'Your sky'}</p>
       <Trail tone={tone} span="hero" />
-      <p className="flourish">Ad astra</p>
-      <h1>{place ? `Tonight over ${town}` : 'Tonight'}</h1>
+      <h1>Tonight</h1>
       {place ? <p className="meta">Watching from {place.label}</p> : <LocationPrompt />}
       {who && direction && clock ? (
         <p className="lede">
@@ -52,11 +52,11 @@ export function Tonight() {
             {lead?.gradeReason} Max elevation about {Math.round(lead?.maxElevation ?? 0)}°. {judgement?.reason}
           </p>
         </>
-      ) : skyState === 'error' ? (
-        <p className="lede">The orbit feed stumbled. Refresh in a minute. Launch times on the board do not depend on this chart.</p>
-      ) : (
+      ) : heroNote === 'error' ? (
+        <p className="lede">The orbit feed stumbled. Refresh in a minute. Launch times stay on the launches page.</p>
+      ) : heroNote === 'settling' ? (
         <p className="lede">The sky chart is settling.</p>
-      )}
+      ) : null}
       {passes.some(isVisibleTrain) ? (
         <p className="note">
           A recent Starlink train may be visible. Times are approximate.{' '}
@@ -64,12 +64,13 @@ export function Tonight() {
         </p>
       ) : null}
       {skyNotice ? <p className="note">{skyNotice}</p> : null}
-      <div className="hero-actions">
-        <Link className="btn" href="/sky/finder">
-          Plan the viewing
-        </Link>
-      </div>
-      <SkyFinderCard />
+      {place ? (
+        <div className="hero-actions">
+          <Link className="btn" href="/sky/finder">
+            Plan the viewing
+          </Link>
+        </div>
+      ) : null}
     </section>
   )
 }

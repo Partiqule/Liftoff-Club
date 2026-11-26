@@ -15,7 +15,7 @@ export function SkyBoard() {
   const { settings, passes, skyState, skyNotice, weather } = useClub()
   const place = watchingPlace(settings.location)
 
-  if (skyState === 'error') return null
+  if (!place || skyState === 'error') return null
 
   const waiting = skyState === 'loading' || skyState === 'idle'
   const iss = bestPasses(passes, 'iss', 8)
@@ -23,7 +23,7 @@ export function SkyBoard() {
   const trains = passes.filter(isVisibleTrain).slice(0, 4)
   return (
     <section className="wrap page">
-      <h2>What crosses the sky.</h2>
+      <h2>What crosses the sky</h2>
       <p className="lede when-kid">
         The space station is the bright one. Starlink satellites are usually dim dots. Give your eyes a minute in the dark.
       </p>

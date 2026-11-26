@@ -46,19 +46,21 @@ export function serverZoneCatalog(): string[] {
   return SERVER_ZONES
 }
 
+export function zoneMatches(query: string, all: string[]): string[] {
+  const text = query.trim().toLowerCase()
+  if (!text) return serverZoneCatalog()
+  return all.filter((zone) => zone.toLowerCase().includes(text)).slice(0, 8)
+}
+
 export function ZonePicker() {
   const { settings, updateSettings } = useClub()
   const active = useActiveZone()
   const [query, setQuery] = useState('')
   const all = useSyncExternalStore(subscribe, zoneCatalog, serverZoneCatalog)
-  const matches = useMemo(() => {
-    const text = query.trim().toLowerCase()
-    const list = text ? all.filter((zone) => zone.toLowerCase().includes(text)) : all.slice(0, 8)
-    return list.slice(0, 8)
-  }, [all, query])
+  const matches = useMemo(() => zoneMatches(query, all), [all, query])
 
   return (
-    <div>
+    <div className="zone-picker">
       <p className="kicker">Time zone</p>
       <p className="lede">{zoneStatusCopy(active, settings.zoneMode, Boolean(settings.location))}</p>
       <button
@@ -68,7 +70,7 @@ export function ZonePicker() {
       >
         {"Use this device's zone"}
       </button>
-      <label>
+      <label className="zone-search">
         Search time zones
         <input className="field" value={query} placeholder="America/Denver" onChange={(event) => setQuery(event.target.value)} />
       </label>

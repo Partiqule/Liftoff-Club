@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { domePoint, skyAzimuth, skyHitRadius, skyWheelZoom } from '@/lib/sky-point'
+import { domePoint, skyAzimuth, skyDragMode, skyHitRadius, skyWheelZoom } from '@/lib/sky-point'
 import type { SkyDot } from '@/components/sky-dots'
 
 export type { SkyDot }
@@ -34,6 +34,11 @@ export function SkyDome({
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const zoomRef = useRef(zoom)
   const panRef = useRef(pan)
+  const [trackedZoom, setTrackedZoom] = useState(zoom)
+  if (zoom !== trackedZoom) {
+    setTrackedZoom(zoom)
+    if (zoom <= 1.01) setPan({ x: 0, y: 0 })
+  }
   const shownPan = zoom <= 1.01 ? { x: 0, y: 0 } : pan
 
   useEffect(() => {
@@ -57,6 +62,7 @@ export function SkyDome({
         mode = 'pinch'
         const [a, b] = [...pointers.values()]
         pinch = { dist: Math.hypot(a.x - b.x, a.y - b.y) || 1, zoom: zoomRef.current }
+        if (node.hasPointerCapture(event.pointerId) === false) node.setPointerCapture(event.pointerId)
         return
       }
       pointer = event.pointerId
@@ -64,11 +70,13 @@ export function SkyDome({
       moved = 0
       dragged.current = false
       mode = event.pointerType === 'mouse' && zoomRef.current > 1.05 ? 'move' : 'undecided'
+      if (mode === 'move') node.setPointerCapture(event.pointerId)
     }
     const onMove = (event: PointerEvent) => {
       if (!pointers.has(event.pointerId)) return
       pointers.set(event.pointerId, { x: event.clientX, y: event.clientY })
       if (mode === 'pinch' && pointers.size >= 2 && pinch) {
+        if (event.cancelable) event.preventDefault()
         const [a, b] = [...pointers.values()]
         const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1
         onZoom(pinch.zoom * (dist / pinch.dist))
@@ -80,12 +88,11 @@ export function SkyDome({
       moved = Math.max(moved, Math.hypot(dx, dy))
       if (moved > 8) dragged.current = true
       if (mode === 'undecided') {
-        if (moved < 10) return
-        if (Math.abs(dy) > Math.abs(dx) * 1.15 || zoomRef.current <= 1.05) {
-          mode = 'scroll'
-          return
-        }
-        mode = 'move'
+        const next = skyDragMode({ moved, dx, dy, zoom: zoomRef.current })
+        if (next === 'undecided') return
+        mode = next
+        if (mode === 'scroll') return
+        node.setPointerCapture(event.pointerId)
       }
       if (mode !== 'move') return
       const rect = node.getBoundingClientRect()
