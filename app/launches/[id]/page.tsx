@@ -11,7 +11,6 @@ import { LocalTime } from '@/components/local-time'
 import { LaunchViewed } from '@/components/analytics'
 import { LaunchRemind } from '@/components/launch-remind'
 import { ShareLaunch } from '@/components/share-launch'
-import { whenLabel } from '@/lib/ios/schedule'
 import { OrbitGlobe } from '@/components/orbit-globe'
 import { RocketFigure } from '@/components/rocket-figure'
 import { StatusStamp } from '@/components/status-stamp'
@@ -74,7 +73,7 @@ export default async function LaunchPage({ params }: { params: Promise<{ id: str
           </Link>
         </p>
         <LaunchRemind launchId={launch.id} />
-        <ShareLaunch name={launch.name} when={whenLabel(launch.net)} url={`${siteUrl()}/launches/${launch.id}`} />
+        <ShareLaunch name={launch.name} net={launch.net} url={`${siteUrl()}/launches/${launch.id}`} />
         <p className="meta">
           <LocalTime iso={launch.net} />
           {launch.windowEnd ? (

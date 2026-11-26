@@ -15,8 +15,12 @@ function loose(launch: Pick<Launch, 'precision' | 'net' | 'windowEnd'>): boolean
  * Close pads can be seen in daylight. Twilight Falcon and Starship plumes
  * are sometimes visible a few hundred miles away. Beyond that we say so.
  */
+export type SeeLaunch = Pick<Launch, 'name' | 'rocketName' | 'padLat' | 'padLon' | 'padName' | 'precision' | 'net' | 'windowEnd'> & {
+  provider: { name: string }
+}
+
 export function seeLaunch(
-  launch: Pick<Launch, 'name' | 'rocketName' | 'provider' | 'padLat' | 'padLon' | 'padName' | 'precision' | 'net' | 'windowEnd'>,
+  launch: SeeLaunch,
   observer: { lat: number; lon: number; label?: string } | null,
   when = new Date(),
 ): SeeVerdict {

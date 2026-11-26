@@ -7,10 +7,10 @@ import { zoneAbbrev } from '@/lib/pro/time'
 import { useActiveZone } from '@/components/use-zone'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const LINKS: { href: string; label: string; prefetch?: false }[] = [
-  { href: '/', label: 'Tonight' },
+  { href: '/', label: 'Home' },
   { href: '/launches', label: 'Launches' },
   { href: '/sky', label: 'Sky' },
   { href: '/brief', label: 'Brief', prefetch: false },
@@ -19,12 +19,35 @@ const LINKS: { href: string; label: string; prefetch?: false }[] = [
 
 export function Header() {
   const pathname = usePathname()
+  return <HeaderBar key={pathname} pathname={pathname} />
+}
+
+function HeaderBar({ pathname }: { pathname: string }) {
   const { settings, updateSettings } = useClub()
   const zone = useActiveZone()
   const kids = settings.kidsMode
   const town = settings.location?.label.split(',')[0] || 'Set your location'
   const [menuOpen, setMenuOpen] = useState(false)
-  const [searchOpen, setSearchOpen] = useState(false)
+  const focusSearch = useRef(false)
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== '/') return
+      const target = event.target as HTMLElement | null
+      const typing = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
+      if (typing) return
+      focusSearch.current = true
+      setMenuOpen(true)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  useEffect(() => {
+    if (!menuOpen || !focusSearch.current) return
+    focusSearch.current = false
+    document.getElementById('site-search')?.focus()
+  }, [menuOpen])
 
   return (
     <>
@@ -49,30 +72,14 @@ export function Header() {
           </nav>
           <button
             type="button"
-            className="search-toggle"
-            aria-expanded={searchOpen}
-            onClick={() => {
-              setMenuOpen(false)
-              setSearchOpen((open) => !open)
-            }}
-          >
-            Search
-          </button>
-          <button
-            type="button"
             className="menu-toggle"
             aria-expanded={menuOpen}
-            onClick={() => {
-              setSearchOpen(false)
-              setMenuOpen((open) => !open)
-            }}
+            onClick={() => setMenuOpen((open) => !open)}
           >
             Menu
           </button>
-          <div className={searchOpen ? 'site-search-slot is-open' : 'site-search-slot'}>
-            <SiteSearch />
-          </div>
           <div className={menuOpen ? 'top-tools is-open' : 'top-tools'}>
+            <SiteSearch />
             <Link className="pro-entry" href="/pro" prefetch={false}>
               Pro
             </Link>

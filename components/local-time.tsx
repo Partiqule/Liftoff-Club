@@ -1,8 +1,8 @@
 'use client'
 
-import { useActiveZone } from '@/components/use-zone'
+import { useZonedText } from '@/components/use-zone'
 import { zoneAbbrev } from '@/lib/pro/time'
-import { formatClock, formatWhen } from '@/lib/time'
+import { formatClock, formatWhen, textWhenReady } from '@/lib/time'
 
 export function LocalTime({
   iso,
@@ -13,9 +13,9 @@ export function LocalTime({
   timeZone?: string
   clock?: boolean
 }) {
-  const active = useActiveZone()
+  const zoned = useZonedText()
   if (!iso) return <span>Time not set</span>
-  const zone = timeZone || active
-  const text = clock ? `${formatClock(iso, zone)} ${zoneAbbrev(zone)}` : formatWhen(iso, zone)
+  const format = (value: string, zone: string) => (clock ? `${formatClock(value, zone)} ${zoneAbbrev(zone)}` : formatWhen(value, zone))
+  const text = timeZone ? textWhenReady(iso, timeZone, true, format) : zoned(iso, format)
   return <time dateTime={iso}>{text}</time>
 }

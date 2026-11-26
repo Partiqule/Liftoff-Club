@@ -1,10 +1,13 @@
 'use client'
 
 import { useState } from 'react'
+import { useZonedText } from '@/components/use-zone'
 import { shareLaunchText } from '@/lib/share-text'
 
-export function ShareLaunch({ name, when, url }: { name: string; when: string; url: string }) {
+export function ShareLaunch({ name, net, url }: { name: string; net: string | null; url: string }) {
   const [note, setNote] = useState<string | null>(null)
+  const zoned = useZonedText()
+  const when = net ? zoned(net) : 'Clock not set'
 
   async function onShare() {
     const text = shareLaunchText(name, when)

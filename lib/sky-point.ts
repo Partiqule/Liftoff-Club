@@ -32,7 +32,6 @@ export const SKY_COPY = {
   cardKicker: 'Sky finder',
   cardTitle: 'A compass for the sky',
   cardLede: 'Point your phone at the sky. The page names the satellites in that direction.',
-  thanksgiving: 'iPhone app targeted for Thanksgiving.',
   cardAction: 'Open the sky finder',
   pageKicker: 'Sky finder',
   pageTitle: 'Sky finder',

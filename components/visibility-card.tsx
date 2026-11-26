@@ -5,16 +5,15 @@ import Link from 'next/link'
 import { planForLaunch } from '@/lib/planner'
 import { zoneAbbrev } from '@/lib/pro/time'
 import { formatClock } from '@/lib/time'
-import { useActiveZone } from '@/components/use-zone'
-import type { Launch } from '@/lib/types'
-import { seeLaunch } from '@/lib/visibility'
+import { useZonedText } from '@/components/use-zone'
+import { seeLaunch, type SeeLaunch } from '@/lib/visibility'
 import { skyAt } from '@/lib/weather'
 
-export function VisibilityCard({ launch }: { launch: Launch }) {
+export function VisibilityCard({ launch }: { launch: SeeLaunch }) {
   const { settings, weather } = useClub()
-  const zone = useActiveZone()
+  const zoned = useZonedText()
   const verdict = seeLaunch(launch, settings.location)
-  const clock = launch.net && settings.location ? `${formatClock(launch.net, zone)} ${zoneAbbrev(zone)}` : null
+  const clock = launch.net && settings.location ? zoned(launch.net, (iso, zone) => `${formatClock(iso, zone)} ${zoneAbbrev(zone)}`) : null
   const plan = planForLaunch(verdict, settings.location?.label ?? 'your town', clock)
   const sky = launch.net ? skyAt(weather, launch.net) : null
   return (

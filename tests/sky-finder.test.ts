@@ -82,7 +82,7 @@ function line(id: string, name: string, motion = '15.49368089'): ParsedTle {
 describe('sky finder words', () => {
   it('keeps the page, the card, and the guide free of dashes and the word walk', () => {
     for (const text of Object.values(SKY_COPY)) expectPlain(text)
-    expect(SKY_COPY.thanksgiving).toBe('iPhone app targeted for Thanksgiving.')
+    expect(Object.values(SKY_COPY).join('\n')).not.toContain('Thanksgiving')
     expect(SKY_COPY.figureEight).toContain('figure eight')
     expect(emptyCatalogNotice()).toBe(SKY_COPY.loadFailed)
     expectPlain(emptyCatalogNotice())

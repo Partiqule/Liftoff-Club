@@ -9,26 +9,23 @@ import { leadPass } from '@/lib/planner'
 import { isVisibleTrain } from '@/lib/trains'
 import { watchingPlace } from '@/lib/places'
 import { Trail } from '@/components/trail'
-import { LocalTime } from '@/components/local-time'
 import { zoneAbbrev } from '@/lib/pro/time'
 import { formatClock } from '@/lib/time'
-import { useActiveZone } from '@/components/use-zone'
-import { pickNext } from '@/lib/schedule'
+import { useZonedText } from '@/components/use-zone'
 import { SkyFinderCard } from '@/components/sky-finder-card'
 import { LocationPrompt } from '@/components/location-prompt'
 
 export function Tonight() {
-  const { settings, briefs, passes, skyState, skyNotice, weather } = useClub()
+  const { settings, passes, skyState, skyNotice, weather } = useClub()
   const now = useNow()
   const place = watchingPlace(settings.location)
-  const zone = useActiveZone()
+  const zoned = useZonedText()
   const town = place?.label.split(',')[0]?.trim() || place?.label || ''
-  const next = pickNext(briefs, now)
   const lead = skyState === 'ready' ? leadPass(passes, now) : null
   const judgement = lead ? skyAt(weather, lead.peak) : null
   const tone = judgement?.call === 'nogo' ? 'fade' : judgement?.call === 'go' ? 'strong' : 'mid'
   const direction = lead ? compass8(lead.riseAzimuth) : null
-  const clock = lead ? `${formatClock(lead.start, zone)} ${zoneAbbrev(zone)}` : null
+  const clock = lead ? zoned(lead.start, (iso, zone) => `${formatClock(iso, zone)} ${zoneAbbrev(zone)}`) : null
   const who = lead ? (lead.kind === 'iss' ? 'The station rises' : 'A dim Starlink crosses') : null
 
   return (
@@ -36,10 +33,7 @@ export function Tonight() {
       <p className="kicker">{place ? `Tonight over ${town}` : 'Set your location'}</p>
       <Trail tone={tone} span="hero" />
       <p className="flourish">Ad astra</p>
-      <h1>
-        {place ? `Tonight over ${town}` : 'Tonight'}
-        {next ? <span className="when">{next.name}</span> : null}
-      </h1>
+      <h1>{place ? `Tonight over ${town}` : 'Tonight'}</h1>
       {place ? <p className="meta">Watching from {place.label}</p> : <LocationPrompt />}
       {who && direction && clock ? (
         <p className="lede">
@@ -59,34 +53,19 @@ export function Tonight() {
           </p>
         </>
       ) : skyState === 'error' ? (
-        <p className="lede">The sky chart is resting. The next rocket is still listed below.</p>
+        <p className="lede">The orbit feed stumbled. Refresh in a minute. Launch times on the board do not depend on this chart.</p>
       ) : (
-        <p className="lede">The sky chart is settling. The next rocket is already listed.</p>
-      )}
-      {next ? (
-        <p className="hero-next">
-          <Link href={`/launches/${next.id}`}>Next launch: {next.name}</Link>
-          {next.net ? (
-            <span className="meta">
-              {' · '}
-              <LocalTime iso={next.net} />
-            </span>
-          ) : null}
-        </p>
-      ) : (
-        <p className="hero-next">
-          Next launch not posted yet. <Link href="/launches">See the full schedule</Link>
-        </p>
+        <p className="lede">The sky chart is settling.</p>
       )}
       {passes.some(isVisibleTrain) ? (
         <p className="note">
           A recent Starlink train may be visible. Times are approximate.{' '}
-          <Link href="/sky">See the sky chart</Link>
+          <Link href="#trains">See the sky chart</Link>
         </p>
       ) : null}
       {skyNotice ? <p className="note">{skyNotice}</p> : null}
       <div className="hero-actions">
-        <Link className="btn" href="/sky">
+        <Link className="btn" href="/sky/finder">
           Plan the viewing
         </Link>
       </div>

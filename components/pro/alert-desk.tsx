@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useProStore } from '@/components/pro/use-pro-store'
 import { formatMountain } from '@/lib/pro/time'
-import { useActiveZone } from '@/components/use-zone'
+import { useZonedText } from '@/components/use-zone'
 import {
   buildFeed,
   markSeen,
@@ -35,7 +35,7 @@ export function AlertDesk({
   feedToken?: string | null
 }) {
   const { store, setStore, ready } = useProStore()
-  const zone = useActiveZone()
+  const zoned = useZonedText()
   if (!ready) return <div className="pro-skeleton" aria-busy="true" aria-label="Opening saved rules" />
   const live = buildFeed(store, launches, constellations, now)
   const feed = mergeFeed(live, store.feed)
@@ -80,7 +80,7 @@ export function AlertDesk({
       <ol className="pro-feed">
         {feed.map((item) => (
           <li key={item.id}>
-            <p className="meta">{formatMountain(item.at, zone)}</p>
+            <p className="meta">{zoned(item.at, formatMountain)}</p>
             <p>{item.launchId ? <Link href={`/launches/${item.launchId}`}>{item.text}</Link> : item.text}</p>
           </li>
         ))}

@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react'
 import { useProStore } from '@/components/pro/use-pro-store'
 import type { DeskOption } from '@/lib/pro/options'
 import { formatMountain } from '@/lib/pro/time'
-import { useActiveZone } from '@/components/use-zone'
+import { useZonedText } from '@/components/use-zone'
 import {
   addTarget,
   changesSince,
@@ -33,7 +33,7 @@ export function WatchlistDesk({
   const { store, setStore, ready } = useProStore()
   const [kind, setKind] = useState<DeskOption['kind']>('company')
   const [query, setQuery] = useState('')
-  const zone = useActiveZone()
+  const zoned = useZonedText()
   const [picked, setPicked] = useState('')
   const options = useMemo(
     () => choices.filter((item) => item.kind === kind && item.label.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 40),
@@ -109,7 +109,7 @@ export function WatchlistDesk({
                 {next ? (
                   <Link href={`/launches/${next.id}`}>
                     {next.name}
-                    {next.net ? ` · ${formatMountain(next.net, zone)}` : ''}
+                    {next.net ? ` · ${zoned(next.net, formatMountain)}` : ''}
                   </Link>
                 ) : (
                   'None on the current board.'

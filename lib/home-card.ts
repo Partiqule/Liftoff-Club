@@ -15,6 +15,8 @@ export type HomeCard = {
   padLat: number | null
   padLon: number | null
   net: string | null
+  /** Coarse listings stay a date. Without this, the home card would invent a clock. */
+  precision: string | null
   statusName: string
   statusAbbrev: string
   featured: boolean
@@ -36,6 +38,7 @@ export function toHomeCard(launch: Launch): HomeCard {
     padLat: launch.padLat,
     padLon: launch.padLon,
     net: launch.net,
+    precision: launch.precision,
     statusName: launch.statusName,
     statusAbbrev: launch.statusAbbrev,
     featured: launch.featured,

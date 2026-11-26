@@ -5,7 +5,7 @@ import { FigureLine } from '@/components/pro/figure-line'
 import { useMemo, useState } from 'react'
 import { filterManifest, isRideshareLaunch, manifestCsv, manifestFacts } from '@/lib/pro/manifest-intel'
 import { formatMountain } from '@/lib/pro/time'
-import { useActiveZone } from '@/components/use-zone'
+import { useZonedText } from '@/components/use-zone'
 import type { Launch } from '@/lib/types'
 
 export function ManifestDesk({
@@ -23,7 +23,7 @@ export function ManifestDesk({
   refreshedAt: string | null
   locked?: boolean
 }) {
-  const zone = useActiveZone()
+  const zoned = useZonedText()
   const [company, setCompany] = useState('')
   const [rideshare, setRideshare] = useState(false)
   const [orbit, setOrbit] = useState('')
@@ -106,7 +106,7 @@ export function ManifestDesk({
               ))}
             </p>
             <p className="pro-time">
-              {formatMountain(launch.net, zone)} · {launch.rocketName}
+              {zoned(launch.net, formatMountain)} · {launch.rocketName}
             </p>
             <dl className="pro-facts">
               {manifestFacts(launch, asOf).map((fact) => (
@@ -139,7 +139,7 @@ export function ManifestDesk({
                 {knownRideshare.slice(0, 6).map((launch) => (
                   <li key={launch.id}>
                     <Link href={`/launches/${launch.id}`}>{launch.name}</Link>
-                    {launch.net ? <span className="meta"> {formatMountain(launch.net, zone)}</span> : null}
+                    {launch.net ? <span className="meta"> {zoned(launch.net, formatMountain)}</span> : null}
                   </li>
                 ))}
               </ul>

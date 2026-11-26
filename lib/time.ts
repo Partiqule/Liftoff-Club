@@ -1,3 +1,22 @@
+/** Shown until the browser zone is known. Same text on the server and the first client render. */
+export const LOCAL_TIME_FALLBACK = 'Local time'
+
+/**
+ * A launch clock for a visitor. Before the client zone is ready, return a stable
+ * fallback so the page never paints UTC and then swaps it.
+ */
+export function textWhenReady(
+  iso: string | null | undefined,
+  timeZone: string | null,
+  ready: boolean,
+  format: (iso: string, timeZone: string) => string,
+): string {
+  if (!iso) return 'Time not set'
+  if (Number.isNaN(new Date(iso).getTime())) return 'Time not set'
+  if (!ready || !timeZone) return LOCAL_TIME_FALLBACK
+  return format(iso, timeZone)
+}
+
 export function formatWhen(iso: string, timeZone?: string, locale = 'en-US'): string {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return 'Time not set'
