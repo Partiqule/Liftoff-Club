@@ -24,6 +24,7 @@ import { publishedReason } from '@/lib/slip'
 import { slipsFor } from '@/lib/slip-store'
 import { spotsForLaunch } from '@/lib/viewing-spots'
 import { rocketId } from '@/lib/rocket-photos'
+import { HOME_COPY } from '@/lib/home-copy'
 import { siteUrl } from '@/lib/site'
 
 export const revalidate = 3600
@@ -62,18 +63,9 @@ export default async function LaunchPage({ params }: { params: Promise<{ id: str
         {launch.provider.name} · {launch.padLocation ?? launch.padName}
       </p>
       <div className="detail-top">
-        <RocketFigure rocketName={launch.rocketName} />
         <StatusStamp abbrev={launch.statusAbbrev} name={launch.statusName} />
         <h1>{launch.name}</h1>
-        <AiOrbit notes={aiNotes} />
         <Countdown net={launch.net} size="lg" />
-        <p className="day-link">
-          <Link className="btn" href={`/launches/${launch.id}/day`}>
-            Launch day mode
-          </Link>
-        </p>
-        <LaunchRemind launchId={launch.id} />
-        <ShareLaunch name={launch.name} net={launch.net} url={`${siteUrl()}/launches/${launch.id}`} />
         <p className="meta">
           <LocalTime iso={launch.net} />
           {launch.windowEnd ? (
@@ -84,6 +76,19 @@ export default async function LaunchPage({ params }: { params: Promise<{ id: str
           ) : null}
           {loose ? ' · the clock can still move' : null}
         </p>
+        <p className="next-see">
+          <a className="btn" href="#from-here">
+            {HOME_COPY.see}
+          </a>
+        </p>
+        <p className="day-link">
+          <Link className="btn btn-quiet" href={`/launches/${launch.id}/day`}>
+            Launch day
+          </Link>
+        </p>
+        <LaunchRemind launchId={launch.id} />
+        <ShareLaunch name={launch.name} net={launch.net} url={`${siteUrl()}/launches/${launch.id}`} />
+        <RocketFigure rocketName={launch.rocketName} />
       </div>
       <div className="detail-grid">
         <article>
@@ -99,7 +104,10 @@ export default async function LaunchPage({ params }: { params: Promise<{ id: str
               ? 'Story drafted by a model from the public listing and cached on the server.'
               : 'Story written from the public listing. A model key can be added later; none is required.'}
           </p>
-          <VisibilityCard launch={launch} />
+          <AiOrbit notes={aiNotes} />
+          <div id="from-here">
+            <VisibilityCard launch={launch} />
+          </div>
           {orbit ? <OrbitGlobe spec={orbit} /> : null}
           {change ? (
             <>

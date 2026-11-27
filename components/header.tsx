@@ -32,6 +32,10 @@ function HeaderBar({ pathname }: { pathname: string }) {
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMenuOpen(false)
+        return
+      }
       if (event.key !== '/') return
       const target = event.target as HTMLElement | null
       const typing = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
@@ -74,11 +78,12 @@ function HeaderBar({ pathname }: { pathname: string }) {
             type="button"
             className="menu-toggle"
             aria-expanded={menuOpen}
+            aria-controls="site-tools"
             onClick={() => setMenuOpen((open) => !open)}
           >
-            Menu
+            {menuOpen ? 'Close' : 'Menu'}
           </button>
-          <div className={menuOpen ? 'top-tools is-open' : 'top-tools'}>
+          <div id="site-tools" className={menuOpen ? 'top-tools is-open' : 'top-tools'}>
             <SiteSearch />
             <Link className="pro-entry" href="/pro" prefetch={false}>
               Pro
@@ -99,7 +104,8 @@ function HeaderBar({ pathname }: { pathname: string }) {
             <button
               className="switch"
               type="button"
-              aria-pressed={settings.nightRed}
+              role="switch"
+              aria-checked={settings.nightRed}
               onClick={() => updateSettings((current) => ({ ...current, nightRed: !current.nightRed }))}
             >
               <span className="switch-ui" data-on={settings.nightRed ? 'true' : 'false'} />

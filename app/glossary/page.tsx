@@ -12,7 +12,7 @@ export default function GlossaryPage() {
       <p className="kicker">A small dictionary</p>
       <h1>Space words</h1>
       <p className="lede">
-        These are the calls you hear on a countdown. Tap one on a launch, a timeline, or launch day, and the card uses the kids line or the grown up line to match the switch in the corner. Words you open stay in this browser.
+        Short definitions for the calls on a countdown. Open a word and the card follows kids mode. Words you open stay in this browser.
       </p>
       <SpaceWords />
     </main>

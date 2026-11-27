@@ -8,6 +8,7 @@ import { compass8, heightPhrase } from '@/lib/geo'
 import { watchingPlace } from '@/lib/places'
 import {
   SKY_COPY,
+  finderChrome,
   clampSkyZoom,
   compassNeedsTap,
   guideAngle,
@@ -182,6 +183,7 @@ export function SkyFinder({ initialCatalog = null }: { initialCatalog?: { object
       : null
   const dots = domeDots(above, selected, zoom)
   const notice = catalogState === 'error' ? SKY_COPY.loadFailed : catalog?.notice
+  const chrome = finderChrome({ hydrated, hasPlace: Boolean(place), catalogState })
   const headingForMap = skyView === 'compass' ? heading : null
 
   return (
@@ -192,13 +194,13 @@ export function SkyFinder({ initialCatalog = null }: { initialCatalog?: { object
       <p className="meta">
         {SKY_COPY.creditBefore} <a href="https://celestrak.org">{SKY_COPY.creditName}</a>.
       </p>
-      {!hydrated || (place && catalogState === 'loading') ? <p className="lede">{SKY_COPY.checking}</p> : null}
-      {notice ? (
+      {chrome.checking ? <p className="lede">{SKY_COPY.checking}</p> : null}
+      {chrome.showNotice && notice ? (
         <p className="banner" role="status">
           {notice}
         </p>
       ) : null}
-      {hydrated && !place ? (
+      {chrome.askTown ? (
         <>
           <p className="lede">{SKY_COPY.needTown}</p>
           <LocationPrompt />
@@ -250,7 +252,6 @@ export function SkyFinder({ initialCatalog = null }: { initialCatalog?: { object
           </div>
           <p className="note">{SKY_COPY.skyGesture}</p>
           <SkyDome
-            key={zoom > 1.01 ? 'zoomed' : 'flat'}
             dots={dots}
             path={detail?.id === selected ? detail.pass.path : []}
             heading={headingForMap}

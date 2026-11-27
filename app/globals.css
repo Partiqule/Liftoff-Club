@@ -48,8 +48,8 @@ body {
 }
 img { max-width: 100%; }
 button, input, select { font: inherit; color: inherit; }
-button { cursor: pointer; }
-a { color: inherit; text-underline-offset: 0.22em; }
+button { cursor: pointer; transition: color 160ms ease; }
+a { color: inherit; text-underline-offset: 0.22em; transition: color 160ms ease; }
 a:hover { color: var(--core); }
 :focus-visible { outline: 2px solid var(--core); outline-offset: 3px; }
 ::selection { background: rgba(243, 215, 176, 0.35); color: var(--ink); }
@@ -223,8 +223,18 @@ a:hover { color: var(--core); }
 .logo-mark { display: block; flex: none; width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
 html[data-night="red"] .logo-mark { filter: sepia(0.5) hue-rotate(-32deg) saturate(1.25) brightness(0.9); }
 .wordmark { letter-spacing: -0.03em; font-size: 1.35rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.top-nav { display: none; gap: 1.25rem; }
-.top-nav a { text-decoration: none; color: var(--ink-quiet); font-weight: 400; }
+.top-nav { display: none; gap: 0.35rem 0.8rem; }
+.top-nav a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 0.35rem;
+  text-decoration: none;
+  color: var(--ink-quiet);
+  font-weight: 400;
+}
 .top-nav a[aria-current="page"] { color: var(--ink); }
 .top-tools { display: none; }
 .top-tools.is-open {
@@ -285,7 +295,7 @@ html[data-night="red"] .logo-mark { filter: sepia(0.5) hue-rotate(-32deg) satura
 .tabbar a[aria-current="page"] { color: var(--ink); }
 body { padding-bottom: calc(4.5rem + env(safe-area-inset-bottom)); }
 
-h1, h2, section[id] { scroll-margin-top: 6.75rem; }
+h1, h2, section[id], #from-here { scroll-margin-top: 6.75rem; }
 h1, h2, h3, .display, .wordmark {
   font-family: var(--font-display);
   font-weight: 400;
@@ -382,6 +392,7 @@ h3 { font-size: 1.25rem; line-height: 1.2; }
 .btn:hover, .ticket:hover { color: var(--ink); transform: none; filter: none; }
 .term {
   display: inline;
+  position: relative;
   margin: 0;
   padding: 0;
   border: 0;
@@ -393,6 +404,19 @@ h3 { font-size: 1.25rem; line-height: 1.2; }
   text-decoration-thickness: 1.5px;
   text-decoration-color: var(--core);
   text-underline-offset: 0.2em;
+}
+.meta a,
+.jobs h3 a { position: relative; }
+.term::before,
+.meta a::before,
+.jobs h3 a::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 44px;
+  transform: translateY(-50%);
 }
 .term:hover, .term:focus-visible { color: var(--ink); }
 .word-list { display: flex; flex-wrap: wrap; gap: 0.85rem 1.5rem; }
@@ -431,6 +455,7 @@ dialog.term-card p { font-size: 1.05rem; margin: 0.85rem 0 0; }
 dialog.term-card .kicker { font-size: 0.95rem; margin: 0; }
 .tickets { display: flex; flex-wrap: wrap; gap: 1.25rem 1.75rem; }
 .choice { display: flex; flex-wrap: wrap; gap: 1rem 1.4rem; }
+.choice .btn { min-width: 44px; justify-content: center; }
 .choice button[aria-pressed="true"] {
   color: var(--ink);
   background: transparent;
@@ -615,7 +640,7 @@ input.field, .quiet-fields input {
   font-weight: 500;
   letter-spacing: -0.03em;
 }
-input.field::placeholder { color: var(--nebula); }
+input.field::placeholder { color: var(--ink-quiet); }
 .results { list-style: none; margin: 0.4rem 0 0; padding: 0; }
 .results button {
   width: 100%;
@@ -675,7 +700,24 @@ input.field::placeholder { color: var(--nebula); }
   background: linear-gradient(var(--line), var(--line)) left top / 100% 1px no-repeat;
 }
 .pass-time { font-size: 1.35rem; font-weight: 500; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
-.pass summary { cursor: pointer; color: var(--cold); }
+.pass summary,
+.quiet-more summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  min-width: 44px;
+  cursor: pointer;
+  color: var(--cold);
+}
+.quiet-more { margin-top: 0.8rem; }
+.zone-picker { display: grid; justify-items: start; gap: 0.2rem; margin-top: 1.2rem; }
+.zone-search { display: grid; gap: 0.25rem; width: 100%; margin-top: 0.35rem; color: var(--cold); }
+.quiet-more summary {
+  font-family: var(--font-data);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
 
 .day-screen {
   min-height: 100dvh;
